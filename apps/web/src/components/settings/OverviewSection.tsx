@@ -6,6 +6,7 @@ import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { SettingsSaveBar } from './SettingsShell';
 import { notify, notifyResult } from '@/lib/notify';
+import { initials, memberName } from '@/components/assets/library/FolderMembers';
 
 /**
  * `Settings WS Overview`, measured off the prototype's own DOM.
@@ -57,6 +58,19 @@ interface Health {
   platforms: Array<{ platform: string; connected: boolean; supported: boolean }>;
 }
 
+/** `team.list`'s rows, as far as the avatar stack reads them. */
+interface TeamRow {
+  userId: string;
+  name?: string;
+  email?: string;
+  orgRole: string;
+  allBrands: boolean;
+  brands: Array<{ brandId: string }>;
+}
+
+/** Three tints from the app's own palette, so three initials read as three people. */
+const AVATAR_FILLS = ['#9CEFFF', '#E7D6FF', '#FFD6F6'];
+
 /** `#F3F4F8` — the design's field fill, already in the ramp. */
 const FIELD_BG = 'var(--ss-field-bg)';
 
@@ -70,6 +84,8 @@ export function OverviewSection() {
   /* `brand.settings.patch` renames a *brand*, and `useSelectedGenome` carries
      only the genome — so the brandId comes off the same `genome.list` read. */
   const [brandId, setBrandId] = useState<string | null>(null);
+  /* The people who can reach this brand — the design's avatar stack. */
+  const [team, setTeam] = useState<TeamRow[] | null>(null);
 
   const [name, setName] = useState('');
   const [oneLiner, setOneLiner] = useState('');
@@ -90,7 +106,7 @@ export function OverviewSection() {
        * comfort food…" — opened its own settings to "Not described yet", and
        * the placeholder invited the owner to type one it already had.
        */
-      const [g, h, list, genome] = await Promise.all([
+      const [g, h, list, genome, people] = await Promise.all([
         invoke<Governance>('brand.governance.get', {}),
         invoke<Health>('integration.health', {}),
         invoke<{ genomes: Array<{ genomeId: string; brandId: string; name: string; updatedAt: string }> }>(
@@ -98,7 +114,11 @@ export function OverviewSection() {
           {},
         ),
         invoke<{ genome: { identity?: { one_liner?: string } } }>('genome.get', { genomeId }),
+        invoke<{ members: TeamRow[] }>('team.list', { limit: 100 }),
       ]);
+      /* A viewer may not be allowed to list the team; the stack is then
+         simply not drawn rather than drawn wrong. */
+      if (people.status === 'succeeded') setTeam(people.output.members);
       if (g.status === 'succeeded') setGov(g.output);
       if (h.status === 'succeeded') setHealth(h.output);
       if (genome.status === 'succeeded') {
@@ -157,6 +177,7 @@ export function OverviewSection() {
   const kitDone = gov?.brandKit.steps.filter((s) => s.done).length ?? 0;
   const kitTotal = gov?.brandKit.steps.length ?? 0;
   const compliant = gov ? gov.strictMode : false;
+  const onBrand = (team ?? []).filter((m) => m.allBrands || (brandId !== null && m.brands.some((b) => b.brandId === brandId)));
 
   return (
     <div className="rounded-xl bg-white">
@@ -225,35 +246,55 @@ export function OverviewSection() {
             className="absolute left-[50px] top-[291px] h-[37px] w-[560px] bg-transparent text-28 font-semibold leading-[1.28] text-ink outline-none max-cq-canvas:static max-cq-canvas:mt-[16px] max-cq-canvas:w-full"
           />
 
-          <span
-            aria-hidden
-            /*
-              `relative`, not `static`. The three circles inside are absolute at
-              left 0/26/52 and read this box as their origin; `static` sent them
-              to the nearest positioned ancestor instead, and on a 1024-wide
-              window they landed 243px above the gap they left behind. The box
-              keeps its own 91x40 and still flows inline.
-            */
-            className="absolute left-[50px] top-[348px] block h-[40px] w-[91px] max-cq-canvas:relative max-cq-canvas:left-auto max-cq-canvas:top-auto max-cq-canvas:mt-[14px] max-cq-canvas:inline-block max-cq-canvas:align-middle"
-          >
-            {[0, 26, 52].map((x, i) => (
-              <span
-                key={x}
-                className="absolute top-0 block h-[39px] w-[39px] rounded-full bg-surface-200 bg-cover bg-center"
-                style={{
-                  left: x,
-                  zIndex: 3 - i,
-                  backgroundImage: gov?.logoUrl ? `url('${gov.logoUrl}')` : undefined,
-                  boxShadow: '0 0 0 2px #FFFFFF, inset 0 0 0 1px rgba(131,131,131,0.3)',
-                }}
-              />
-            ))}
-          </span>
+          {/*
+            The team on this brand. The design draws three people's photos
+            here; this drew the brand's own logo three times, which read as a
+            mystery row of the same picture. Up to three people who can reach
+            the brand — owners and admins reach all of them — as initials, since
+            the team list carries no photos, with the rest as "+N".
+          */}
+          {onBrand.length > 0 ? (
+            <span
+              role="img"
+              aria-label={`Team: ${onBrand.map(memberName).join(', ')}`}
+              title={onBrand.map(memberName).join(', ')}
+              /*
+                `relative`, not `static`. The circles inside are absolute at
+                left 0/26/52 and read this box as their origin; `static` sent
+                them to the nearest positioned ancestor instead, and on a
+                1024-wide window they landed 243px above the gap they left.
+              */
+              className="absolute left-[50px] top-[348px] block h-[40px] max-cq-canvas:relative max-cq-canvas:left-auto max-cq-canvas:top-auto max-cq-canvas:mt-[14px] max-cq-canvas:inline-block max-cq-canvas:align-middle"
+              style={{ width: 39 + 26 * (Math.min(onBrand.length, 3) - 1) + (onBrand.length > 3 ? 26 : 0) }}
+            >
+              {[...onBrand.slice(0, 3).map((m) => initials(m)), ...(onBrand.length > 3 ? [`+${onBrand.length - 3}`] : [])].map(
+                (label, i) => (
+                  <span
+                    key={`${label}-${i}`}
+                    className="absolute top-0 flex h-[39px] w-[39px] items-center justify-center rounded-full text-13 font-semibold"
+                    style={{
+                      left: i * 26,
+                      zIndex: 4 - i,
+                      background: AVATAR_FILLS[i % AVATAR_FILLS.length],
+                      color: '#0C0C0C',
+                      boxShadow: '0 0 0 2px #FFFFFF',
+                    }}
+                  >
+                    {label}
+                  </span>
+                ),
+              )}
+            </span>
+          ) : null}
 
           {updatedAt ? (
             <span
-              className="absolute left-[152px] top-[352px] flex h-[34px] items-center rounded-[75.111px] px-[13px] text-15 font-medium max-cq-canvas:static max-cq-canvas:mt-[14px] max-cq-canvas:ml-[12px] max-cq-canvas:inline-flex max-cq-canvas:align-middle"
-              style={{ boxShadow: 'inset 0 0 0 0.851px rgba(131,131,131,0.2)', color: 'rgb(131,131,131)' }}
+              className="absolute top-[352px] flex h-[34px] items-center rounded-[75.111px] px-[13px] text-15 font-medium max-cq-canvas:static max-cq-canvas:mt-[14px] max-cq-canvas:ml-[12px] max-cq-canvas:inline-flex max-cq-canvas:align-middle"
+              style={{
+                left: onBrand.length > 0 ? 50 + 39 + 26 * (Math.min(onBrand.length, 3) - 1) + (onBrand.length > 3 ? 26 : 0) + 11 : 50,
+                boxShadow: 'inset 0 0 0 0.851px rgba(131,131,131,0.2)',
+                color: 'rgb(131,131,131)',
+              }}
             >
               Updated {new Date(updatedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
@@ -268,7 +309,23 @@ export function OverviewSection() {
               </dd>
             </div>
             <div className="mt-[23px]">
-              <dt className="inline" style={{ color: 'rgba(131,131,131,0.8)' }}>Brand Compliance Status:</dt>
+              <dt className="inline" style={{ color: 'rgba(131,131,131,0.8)' }}>Brand Compliance Status:&nbsp;</dt>
+              {/* The design's status chip, on the line it labels. It was pinned
+                  at fixed coordinates beside where this line sits when Purpose
+                  is one line long — so a three-line Purpose pushed the label
+                  down and the chip landed on the description. */}
+              <dd className="inline-flex align-middle">
+                <span
+                  className="inline-flex h-[32px] items-center gap-[8px] rounded-[88.266px] px-[10px] text-19 font-medium text-ink"
+                  style={{ background: compliant ? 'var(--ss-cyan)' : 'rgba(131,131,131,0.18)' }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
+                    <circle cx="11" cy="11" r="9.4" stroke="currentColor" strokeWidth="1.6" />
+                    <path d="m6.8 11.3 3 3 5.4-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {compliant ? 'Compliant' : 'Standard'}
+                </span>
+              </dd>
             </div>
             <div className="mt-[19px]">
               <dt className="inline" style={{ color: 'rgba(131,131,131,0.8)' }}>Publishing Connections Health:&nbsp;</dt>
@@ -281,18 +338,6 @@ export function OverviewSection() {
               </dd>
             </div>
           </dl>
-
-          {/* The design's cyan status chip. */}
-          <span
-            className="absolute left-[1166px] top-[299px] flex h-[32px] items-center gap-[8px] rounded-[88.266px] px-[10px] text-19 font-medium text-ink max-cq-canvas:static max-cq-canvas:mt-[10px] max-cq-canvas:inline-flex"
-            style={{ background: compliant ? 'var(--ss-cyan)' : 'rgba(131,131,131,0.18)' }}
-          >
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-              <circle cx="11" cy="11" r="9.4" stroke="currentColor" strokeWidth="1.6" />
-              <path d="m6.8 11.3 3 3 5.4-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {compliant ? 'Compliant' : 'Standard'}
-          </span>
 
           {/* ── the three fields ───────────────────────────────────────── */}
           <div className="absolute left-[47px] top-[447px] flex w-[1249px] gap-[33px] max-cq-canvas:static max-cq-canvas:mt-[28px] max-cq-canvas:w-full max-cq-canvas:flex-col max-cq-canvas:gap-[20px]">

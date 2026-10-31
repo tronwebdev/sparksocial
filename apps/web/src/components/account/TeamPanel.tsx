@@ -4,11 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notifyResult } from '@/lib/notify';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `SET-WS-01` — teams, roles, and which brands each person can reach.
@@ -217,7 +216,7 @@ export function TeamPanel() {
       {/* ── Members ─────────────────────────────────────────────────────── */}
       <div className="mt-4">
         {members === null && !error ? (
-          <Skeleton className="h-40 w-full rounded-lg" />
+          <SparkLoader label="Loading team members…" className="min-h-[160px]" />
         ) : members && members.length === 0 ? (
           <p className="text-14 text-ink-muted">Nobody else has joined yet.</p>
         ) : members ? (

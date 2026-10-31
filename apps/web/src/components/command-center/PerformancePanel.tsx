@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { PerformanceCards } from './PerformanceCards';
 import type { BrandSeries } from '@/components/dashboard/types';
@@ -194,7 +193,9 @@ export function PerformancePanel({
 
       {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
-      {!metrics && !error ? <Skeleton className="mt-4 h-64 w-full rounded-lg" /> : null}
+      {/* No loader of its own: the cards above are already showing one, and
+          two marks stacked in one tab read as two waits. These groups sit
+          below the cards and arrive when the metrics do. */}
 
       {metrics ? (
         <>

@@ -270,26 +270,26 @@ export interface MarkOptions {
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 class LiveMark {
-  // Assigned in the constructor rather than as field initialisers: those would
-  // read `this.el` before a parameter property is set, depending on how class
-  // fields are compiled.
-  private rig: SVGGElement;
-  private face: SVGGElement;
-  private blobsG: SVGGElement;
-  private eyeEls: Record<'L' | 'R', SVGPathElement>;
-  private disc: SVGCircleElement;
-  private rim: SVGStopElement;
-  private vglow: SVGFEFloodElement;
-  private halo: SVGCircleElement;
-  private ring: SVGCircleElement;
-  private orbit: SVGGElement;
-  private orbitDots: SVGCircleElement[];
-  private shimmer: SVGRectElement;
-  private drop: SVGPathElement;
-  private bubble: SVGGElement;
-  private parts: SVGGElement[];
-  private zz: SVGTextElement[];
-  private blobs: SVGCircleElement[];
+  // Assigned by `bind()` rather than as field initialisers: those would read
+  // `this.el` before it is set, and the drawing can be replaced underneath us
+  // (see `bind`).
+  private rig!: SVGGElement;
+  private face!: SVGGElement;
+  private blobsG!: SVGGElement;
+  private eyeEls!: Record<'L' | 'R', SVGPathElement>;
+  private disc!: SVGCircleElement;
+  private rim!: SVGStopElement;
+  private vglow!: SVGFEFloodElement;
+  private halo!: SVGCircleElement;
+  private ring!: SVGCircleElement;
+  private orbit!: SVGGElement;
+  private orbitDots!: SVGCircleElement[];
+  private shimmer!: SVGRectElement;
+  private drop!: SVGPathElement;
+  private bubble!: SVGGElement;
+  private parts!: SVGGElement[];
+  private zz!: SVGTextElement[];
+  private blobs!: SVGCircleElement[];
 
   private phase = Math.random() * 100;
   private off: [number, number] = [0, 0];
@@ -313,6 +313,28 @@ class LiveMark {
   constructor(el: HTMLElement, opts: MarkOptions) {
     this.el = el;
     this.opts = opts;
+    this.bind();
+    const m = MOODS[opts.mood];
+    this.pts = { L: shape(m.eye, 'L', m.size ?? 1), R: shape(m.eye, 'R', m.size ?? 1) };
+    this.colors = colorsOf(m.palette);
+    // The first mood arrives quietly: a page full of marks should not all jump
+    // on load. Changes after this play their reaction.
+    if (opts.mood !== 'idle') this.play(m.react);
+  }
+
+  /**
+   * Finds the parts of the drawing this mark moves.
+   *
+   * Called again whenever they have left the document. React re-applies the
+   * mark's `innerHTML` on a render after hydration — measured on the deployed
+   * sign-in page: the engine attached at ~0.9s, React replaced the `<svg>` with
+   * an identical copy at ~1.75s — and from then on every frame was written to
+   * the detached original while the drawing on screen never moved. That was
+   * "the logo is static everywhere". Re-binding costs one `isConnected` read a
+   * frame, and survives any future cause of the same swap.
+   */
+  private bind() {
+    const el = this.el;
     const q = <T extends Element>(sel: string) => el.querySelector(sel) as T;
     const qa = <T extends Element>(sel: string) => [...el.querySelectorAll<T>(sel)];
     this.rig = q('.rig');
@@ -332,12 +354,6 @@ class LiveMark {
     this.parts = qa('.pt');
     this.zz = qa('.zz');
     this.blobs = [0, 1, 2, 3].map((i) => q<SVGCircleElement>(`.b${i}`));
-    const m = MOODS[opts.mood];
-    this.pts = { L: shape(m.eye, 'L', m.size ?? 1), R: shape(m.eye, 'R', m.size ?? 1) };
-    this.colors = colorsOf(m.palette);
-    // The first mood arrives quietly: a page full of marks should not all jump
-    // on load. Changes after this play their reaction.
-    if (opts.mood !== 'idle') this.play(m.react);
   }
 
   setMood(mood: SparkMood) {
@@ -351,6 +367,10 @@ class LiveMark {
   onClick() { if (this.opts.interactive) this.play('boop'); }
 
   frame(now: number, pointer: [number, number] | null, still: boolean) {
+    if (!this.rig?.isConnected) {
+      if (!this.el.querySelector('.rig')) return;
+      this.bind();
+    }
     const o = this.opts;
     const m = MOODS[o.mood];
 

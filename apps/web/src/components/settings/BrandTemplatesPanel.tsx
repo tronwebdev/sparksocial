@@ -3,11 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notify, notifyResult } from '@/lib/notify';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `SET-WS-BRAND-KITS` → Templates. The prototype draws five peer tabs
@@ -135,8 +134,7 @@ export function BrandTemplatesPanel() {
   if (templates === null) {
     return (
       <section>
-        <Skeleton className="h-5 w-40" />
-        <Skeleton className="mt-3 h-24 w-full" />
+        <SparkLoader label="Loading templates…" />
       </section>
     );
   }

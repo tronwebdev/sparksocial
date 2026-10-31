@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { EmptyCard } from '@/components/common/EmptyCard';
 import { postKindLabel } from '@/lib/platforms';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
@@ -181,10 +181,7 @@ export function RightRail({
 function Published({ posts }: { posts: UpcomingPost[] | null }) {
   if (posts === null) {
     return (
-      <div className="flex flex-col gap-4">
-        <Skeleton className="h-[220px] w-full rounded-[36.34px]" />
-        <Skeleton className="h-[220px] w-full rounded-[36.34px]" />
-      </div>
+      <SparkLoader label="Loading published posts…" className="min-h-[456px]" />
     );
   }
 
@@ -192,7 +189,6 @@ function Published({ posts }: { posts: UpcomingPost[] | null }) {
     return (
       <EmptyCard
         narrow
-        glyph="plane"
         title="Nothing published yet"
         body={<>Posts appear here once they have gone out. Scheduled and drafted posts live on the calendar until then.</>}
         action={{ label: 'Open calendar', href: '/calendar' }}
@@ -308,11 +304,7 @@ function Published({ posts }: { posts: UpcomingPost[] | null }) {
 function Trending({ trends }: { trends: RankedTrend[] | null }) {
   if (trends === null) {
     return (
-      <div className="flex flex-col gap-[18px]">
-        <Skeleton className="h-[160px] w-full rounded-[24px]" />
-        <Skeleton className="h-[160px] w-full rounded-[24px]" />
-        <Skeleton className="h-[160px] w-full rounded-[24px]" />
-      </div>
+      <SparkLoader label="Loading trends…" className="min-h-[516px]" />
     );
   }
 

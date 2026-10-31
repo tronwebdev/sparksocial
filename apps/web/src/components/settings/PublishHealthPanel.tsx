@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { platformLabel } from '@/lib/platforms';
 import { CredentialConnectModal } from './CredentialConnectModal';
 import { expiresInWords } from '@sparksocial/shared';
@@ -11,7 +10,7 @@ import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { userMessage } from '@/lib/errorCopy';
 import { notifyResult } from '@/lib/notify';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `integration.health` — real since 18 Aug 2026, replacing `publish.status`
@@ -248,7 +247,7 @@ export function PublishHealthPanel() {
 
       <div className="mt-4">
         {platforms === null ? (
-          <Skeleton className="h-32 w-full rounded-xl" />
+          <SparkLoader label="Loading publishing health…" />
         ) : (
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {platforms.map((p) => (

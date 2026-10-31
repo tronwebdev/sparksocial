@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { WhyPopover } from '@/components/explain/WhyPopover';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -53,7 +53,7 @@ export function AssetGapsPanel({ refreshKey }: { refreshKey: number }) {
       <h2 className="text-18 font-semibold text-ink">What's missing</h2>
       {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
       {data === null && !error ? (
-        <Skeleton className="mt-3 h-16 w-full rounded-xl" />
+        <SparkLoader size="inline" label="Checking what’s missing…" className="mt-3 min-h-[64px]" />
       ) : data ? (
         <>
           <p className="mt-2 text-14 text-ink">{data.why.summary}</p>

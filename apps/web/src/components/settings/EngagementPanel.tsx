@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PanelSkeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { AutonomyStep } from './engagement/AutonomyStep';
 import { BoundariesStep } from './engagement/BoundariesStep';
@@ -24,7 +23,7 @@ import {
   type Step,
 } from './engagement/types';
 import { notify, notifyResult } from '@/lib/notify';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * ENGAGEMENT INTELLIGENCE — `Settings WS Engagement Start` through `… Done`.
@@ -253,7 +252,7 @@ export function EngagementPanel() {
     return (
       <section aria-busy className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
         <h2 className="text-18 font-semibold text-ink">Engagement Intelligence</h2>
-        <PanelSkeleton rows={3} />
+        <SparkLoader label="Loading engagement settings…" />
       </section>
     );
   }

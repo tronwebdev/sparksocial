@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { WhyPopover } from '@/components/explain/WhyPopover';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
@@ -111,7 +111,7 @@ export function AgencyRosterPanel() {
       </div>
 
       {error ? <p className="mt-4 text-13 text-ink-muted">{error}</p> : null}
-      {data === null && !error ? <Skeleton className="mt-4 h-40 w-full rounded-lg" /> : null}
+      {data === null && !error ? <SparkLoader label="Loading your brands…" className="mt-4" /> : null}
 
       {data ? (
         <>

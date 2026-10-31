@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { VariantResult } from './VariantResult';
@@ -144,11 +143,7 @@ export function DraftList({
       <h2 className="text-18 font-semibold text-ink">Drafts</h2>
 
       {items === null ? (
-        <div className="mt-4 grid grid-cols-1 gap-2">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-14 w-full rounded" />
-          ))}
-        </div>
+        <SparkLoader label="Loading your drafts…" className="mt-4" />
       ) : error ? (
         <p className="mt-2 text-14 text-ink-muted">{error}</p>
       ) : items.length === 0 ? (

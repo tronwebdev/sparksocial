@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -203,10 +203,7 @@ export function DayActionSheet({
         ) : null}
 
         {asking ? (
-          <div className="mt-4 grid grid-cols-1 gap-2">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-20 w-full" />
-          </div>
+          <SparkLoader label="Asking SPARK what fits this day…" className="mt-4 min-h-[108px] py-[16px]" />
         ) : null}
 
         {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}

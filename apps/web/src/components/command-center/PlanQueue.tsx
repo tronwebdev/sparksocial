@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { platformLabel } from '@/lib/platforms';
@@ -421,7 +421,7 @@ export function PlanQueue({
 
       {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
-      {items === null && !error ? <Skeleton className="mt-4 h-40 w-full rounded-lg" /> : null}
+      {items === null && !error ? <SparkLoader label="Loading the plan queue…" className="mt-4 min-h-40" /> : null}
 
       {items !== null && items.length === 0 ? (
         <EmptyCard

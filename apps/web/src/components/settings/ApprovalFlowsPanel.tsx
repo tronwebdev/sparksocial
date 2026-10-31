@@ -4,12 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { userMessage } from '@/lib/errorCopy';
 import { notifyResult } from '@/lib/notify';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * APPROVAL FLOWS (`SET-WS-TEAM-GROUPS`) — the second half of the Team Roles
@@ -150,7 +149,7 @@ export function ApprovalFlowsPanel() {
       )}
 
       {rules === null ? (
-        <Skeleton className="mt-4 h-24 w-full rounded-lg" />
+        <SparkLoader label="Loading approval rules…" className="mt-4" />
       ) : rules.length === 0 ? (
         <p className="mt-4 text-13 text-ink-muted">
           No rules yet. Everything follows each campaign&rsquo;s own approval setting.

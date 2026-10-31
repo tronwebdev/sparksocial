@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { CAMPAIGN_STATE } from '@/lib/useCampaigns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { EmptyCalendarReason } from './EmptyCalendarReason';
 import { EmptyCard } from '@/components/common/EmptyCard';
@@ -472,7 +472,7 @@ export function CalendarBoard({
 
   const moveSlot = useCallback((slot: Slot, toDay: string) => reschedule(slot.id, toDay), [reschedule]);
 
-  if (loading || hydrating) return <Skeleton className="h-64 w-full rounded" />;
+  if (loading || hydrating) return <SparkLoader label="Loading your calendar…" className="min-h-[256px]" />;
 
   if (genomeError && !view) {
     return (

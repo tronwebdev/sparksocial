@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CampaignWizard } from '@/components/campaign/CampaignWizard';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { AgentBanner } from './AgentBanner';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -77,6 +77,9 @@ interface Snapshot {
   published: UpcomingPost[] | null;
   trends: RankedTrend[] | null;
 }
+
+/** How long the page loader waits for the rail once the rest is ready. */
+const RAIL_GRACE_MS = 3000;
 
 /** Enough rows to be a feed and not a screen. The full lists have their own routes. */
 const FEED_LIMIT = 8;
@@ -172,7 +175,7 @@ export function BrandHome() {
           leads.status === 'succeeded' ? leads.output.counts : { hot: 0, warm: 0, cold: 0 },
         upcoming: upcoming.status === 'succeeded' ? upcoming.output.items : [],
         published: published.status === 'succeeded' ? published.output.items : [],
-        // Null rather than [] on failure, so the rail can show a skeleton for
+        // Null rather than [] on failure, so the rail can show a loader for
         // "not loaded" and prose for "nothing worth joining" — two different
         // facts that an empty array would collapse into one. It starts null and
         // is filled by the separate effect below.
@@ -195,7 +198,7 @@ export function BrandHome() {
 
     Its own effect, writing into the same snapshot field. The rail already
     distinguishes null (not loaded) from an empty array (nothing worth
-    joining), so it shows its skeleton until this lands and the rest of the
+    joining), so it shows its loader until this lands and the rest of the
     page does not wait.
   */
   useEffect(() => {
@@ -215,14 +218,25 @@ export function BrandHome() {
     };
   }, [genomeId, reloads]);
 
-  if (loading || !snap) {
+  /*
+    One loader for the page, not a page that appears and then fills in. The
+    rail's two halves load on their own (see above), so the page loader also
+    waits for them — but only for RAIL_GRACE_MS after the rest is ready, so
+    a trend source that is down still cannot hold the dashboard back. Past
+    that the rail shows its own loader for whatever is still coming.
+  */
+  const railPending = snap !== null && (snap.trends === null || snap.published === null);
+  const [railGraceOver, setRailGraceOver] = useState(false);
+  const snapReady = snap !== null;
+  useEffect(() => {
+    if (!snapReady) return;
+    const t = setTimeout(() => setRailGraceOver(true), RAIL_GRACE_MS);
+    return () => clearTimeout(t);
+  }, [snapReady]);
+
+  if (loading || !snap || (railPending && !railGraceOver)) {
     return (
-      <div className="grid grid-cols-1 gap-6">
-        <Skeleton className="h-14 w-full rounded-xl" />
-        <Skeleton className="h-32 w-full rounded-xl" />
-        <Skeleton className="h-24 w-full rounded-xl" />
-        <Skeleton className="h-64 w-full rounded-xl" />
-      </div>
+      <SparkLoader label="Loading your dashboard…" className="min-h-[560px]" />
     );
   }
 

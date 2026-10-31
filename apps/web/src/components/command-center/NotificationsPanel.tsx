@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { useAuth } from '@clerk/nextjs';
@@ -128,12 +127,7 @@ export function NotificationsPanel() {
   }
 
   if (items === null) {
-    return (
-      <div className="grid grid-cols-1 gap-2">
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-12 w-full" />
-      </div>
-    );
+    return <SparkLoader label="Loading your notifications…" />;
   }
 
   return (

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { notifyResult } from '@/lib/notify';
 import { relativeTime } from '@/lib/relativeTime';
@@ -306,11 +306,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
 
       <div className="mt-5">
         {results === null ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-40 w-full rounded-xl" />
-            ))}
-          </div>
+          <SparkLoader label="Loading your assets…" className="min-h-[160px]" />
         ) : results.length === 0 ? (
           /*
             The designed empty state. Two different situations reach here and they

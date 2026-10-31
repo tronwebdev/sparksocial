@@ -7,11 +7,10 @@ import { SparkMark } from './SparkMark';
  * fetching.
  *
  * It replaces the bare grey "Loading…" lines that sat where whole screens and
- * panels were about to appear, and gives the app a page-level loading state it
- * did not have. A skeleton is still the right answer where the shape of what is
- * coming is known (a list, a grid of cards): it says how much is coming, which
- * this cannot. This is for the waits before that — opening the account,
- * resolving the brand, a panel's first read.
+ * panels were about to appear, and it replaces the shimmer skeletons too: the
+ * owner's call was that a wait looks like SPARK and nothing else — a page
+ * loader that gave way to grey blocks read as the loader giving up before the
+ * content arrived. One loader per region, never a row of marks.
  *
  *   page    the whole viewport, for the guards and route loading
  *   panel   centred in the space a section will fill

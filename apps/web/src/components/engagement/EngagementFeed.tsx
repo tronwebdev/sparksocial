@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { EmptyCard } from '@/components/common/EmptyCard';
 import { invoke } from '@/lib/tools';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
@@ -119,7 +119,7 @@ export function EngagementFeed() {
     setItems((prev) => prev?.filter((i) => i.id !== messageId) ?? prev);
   }
 
-  if (loading) return <Skeleton className="h-64 w-full rounded-xl" />;
+  if (loading) return <SparkLoader label="Loading your inbox…" className="min-h-[256px]" />;
   if (genomeError || !genomeId) {
     return (
       <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
@@ -297,16 +297,11 @@ export function EngagementFeed() {
       <div className="mt-[24px] h-px" style={{ background: 'rgba(131,131,131,0.15)' }} />
 
       {items === null ? (
-        <div className="mt-[20px] grid grid-cols-1 gap-3 lg:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-56 w-full rounded-[19.14px]" />
-          ))}
-        </div>
+        <SparkLoader label="Loading messages…" className="mt-[20px] min-h-[224px]" />
       ) : error ? (
         <p className="mt-[20px] text-16 text-ink-muted">{error}</p>
       ) : items.length === 0 ? (
         <EmptyCard
-          glyph="chat"
           title="Nothing in this tab yet"
           body={
             tab === 'sales_opportunity'

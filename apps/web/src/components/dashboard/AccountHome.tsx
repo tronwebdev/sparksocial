@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 
 /**
@@ -93,7 +93,7 @@ export function AccountHome() {
         </div>
 
         {brands === null ? (
-          <Skeleton className="mt-4 h-24 w-full rounded-lg" />
+          <SparkLoader label="Loading your brands…" className="mt-4 min-h-[96px]" />
         ) : brands.length === 0 ? (
           <p className="mt-4 text-14 text-ink-muted">
             No brands yet. Finish onboarding to create the first one.

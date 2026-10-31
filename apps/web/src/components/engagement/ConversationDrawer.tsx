@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
@@ -145,13 +145,7 @@ export function ConversationDrawer({
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {error ? <p className="text-13 text-destructive">{error}</p> : null}
 
-          {thread === null && !error ? (
-            <div className="grid grid-cols-1 gap-3">
-              {[0, 1, 2].map((i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : null}
+          {thread === null && !error ? <SparkLoader label="Loading this conversation…" /> : null}
 
           {thread?.single ? (
             <p className="mb-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] px-3 py-2 text-13 text-ink-muted">

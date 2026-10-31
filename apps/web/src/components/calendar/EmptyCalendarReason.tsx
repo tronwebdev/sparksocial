@@ -3,10 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * WHY A CAMPAIGN HAS NO POSTS IN IT.
@@ -128,7 +127,7 @@ export function EmptyCalendarReason({
       </p>
 
       {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
-      {data === null && !error ? <Skeleton className="mt-4 h-14 w-full rounded-lg" /> : null}
+      {data === null && !error ? <SparkLoader size="inline" label="Checking what’s missing…" className="mt-4 min-h-[56px]" /> : null}
 
       {data ? (
         <>

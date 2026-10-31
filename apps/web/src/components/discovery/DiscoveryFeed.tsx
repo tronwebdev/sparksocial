@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
@@ -432,7 +432,7 @@ export function DiscoveryFeed() {
     return list;
   }, [trends, skippedCards, tab, checks, watchlist, sort, search, sources]);
 
-  if (loading) return <Skeleton className="h-64 w-full rounded-[20px]" />;
+  if (loading) return <SparkLoader label="Loading discovery…" className="min-h-[256px]" />;
   if (genomeError || !genomeId) {
     return (
       <section className="rounded-[20px] bg-white p-8">
@@ -661,11 +661,7 @@ export function DiscoveryFeed() {
               <InfluencerWatchlist genomeId={genomeId} />
             </div>
           ) : trends === null ? (
-            <div className="mt-[18px] grid grid-cols-1 gap-disc-grid-gap md:grid-cols-2 2xl:grid-cols-3">
-              {[0, 1, 2].map((i) => (
-                <Skeleton key={i} className="h-disc-trend w-full rounded-[18px]" />
-              ))}
-            </div>
+            <SparkLoader label="Finding trends for your brand…" className="mt-[18px] min-h-disc-trend" />
           ) : error ? (
             <p className="mt-[82px] text-center text-17 font-medium text-ink-muted">{error}</p>
           ) : visible.length === 0 ? (

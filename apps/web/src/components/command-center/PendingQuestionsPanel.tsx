@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
@@ -96,7 +95,7 @@ export function PendingQuestionsPanel() {
       <h2 className="text-18 font-semibold text-ink">SPARK is waiting on you</h2>
 
       {questions === null ? (
-        <Skeleton className="mt-4 h-20 w-full rounded" />
+        <SparkLoader label="Loading SPARK’s questions…" className="mt-4" />
       ) : error ? (
         <p className="mt-2 text-14 text-ink-muted">{error}</p>
       ) : (

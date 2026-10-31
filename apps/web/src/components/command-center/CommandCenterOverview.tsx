@@ -2,7 +2,7 @@
 
 
 import { useEffect, useState } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { orderCampaigns, useCampaigns } from '@/lib/useCampaigns';
@@ -111,10 +111,7 @@ export function CommandCenterOverview({
 
   if (genomeLoading) {
     return (
-      <div className="grid grid-cols-1 gap-6">
-        <Skeleton className="h-24 w-full rounded" />
-        <Skeleton className="h-64 w-full rounded" />
-      </div>
+      <SparkLoader label="Loading your command center…" className="min-h-[376px]" />
     );
   }
 

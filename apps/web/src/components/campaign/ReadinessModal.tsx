@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import type { ToolOutput } from '@/lib/toolTypes.generated';
 import { userMessage } from '@/lib/errorCopy';
-import { Busy } from '@/components/brand/SparkLoader';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * WHAT WOULD STOP THIS CAMPAIGN WORKING — shown before it is created.
@@ -99,12 +98,7 @@ export function ReadinessModal({ genomeId, objective, windowDays, onProceed, onC
             </div>
           </>
         ) : !data ? (
-          <>
-            <h2 className="text-18 font-semibold text-ink">
-              <Busy size={16}>Checking what this campaign needs…</Busy>
-            </h2>
-            <Skeleton className="mt-4 h-24 w-full rounded-lg" />
-          </>
+          <SparkLoader label="Checking what this campaign needs…" className="min-h-[148px]" />
         ) : (
           <>
             <h2 className="text-18 font-semibold text-ink">

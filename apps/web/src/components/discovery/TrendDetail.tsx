@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
@@ -403,16 +403,7 @@ export function TrendDetail({
   if (!view || !asCard) {
     return (
       <div className="rounded-[20px] bg-white p-[28px]">
-        <Skeleton className="h-[36px] w-[420px] rounded-lg" />
-        <div className="mt-[26px] flex gap-[12px]">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-[82px] w-[136px] rounded-xl" />
-          ))}
-        </div>
-        <div className="mt-[28px] flex flex-wrap gap-[38px]">
-          <Skeleton className="h-[420px] w-[706px] rounded-[15px]" />
-          <Skeleton className="h-[420px] min-w-[400px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[15px]" />
-        </div>
+        <SparkLoader label="Loading this trend…" className="min-h-[592px]" />
       </div>
     );
   }

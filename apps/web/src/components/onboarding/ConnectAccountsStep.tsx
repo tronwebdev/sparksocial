@@ -3,12 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { platformLabel } from '@/lib/platforms';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notify, notifyResult } from '@/lib/notify';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `ONB-04` — *"Connect Social Accounts (connected profiles list + OAuth popup)"*.
@@ -122,7 +121,7 @@ export function ConnectAccountsStep({
       {error ? <p className="text-14 text-[var(--ss-danger)]">{error}</p> : null}
 
       {platforms === null && !error ? (
-        <Skeleton className="h-40 w-full rounded-xl" />
+        <SparkLoader label="Loading your connected accounts…" />
       ) : (
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {(platforms ?? []).map((p) => (

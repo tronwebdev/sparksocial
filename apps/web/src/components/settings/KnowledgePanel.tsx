@@ -4,14 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { userMessage } from '@/lib/errorCopy';
 import { notify, notifyResult } from '@/lib/notify';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `ONB-02` / §8.12 — what this brand knows, and the way in.
@@ -272,7 +271,7 @@ export function KnowledgePanel() {
       {/* ── What is attached. First, because it is the answer to "did that work?" ── */}
       <div className="mt-5">
         {list === null && !error ? (
-          <Skeleton className="h-24 w-full rounded-lg" />
+          <SparkLoader label="Loading attached documents…" />
         ) : list && list.docs.length === 0 ? (
           <div className="rounded-lg border border-warn/40 bg-warn/10 p-3">
             <p className="text-13 font-medium text-ink">Nothing attached yet</p>

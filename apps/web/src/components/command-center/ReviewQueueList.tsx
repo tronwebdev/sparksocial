@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
 
 /**
@@ -50,7 +50,7 @@ export function ReviewQueueList({
     setDeciding(null);
   }
 
-  if (items === null) return <Skeleton className="h-40 w-full rounded-lg" />;
+  if (items === null) return <SparkLoader label="Loading the review queue…" className="min-h-40" />;
 
   return (
     <section id="review-queue" className="overflow-hidden rounded-lg bg-white">

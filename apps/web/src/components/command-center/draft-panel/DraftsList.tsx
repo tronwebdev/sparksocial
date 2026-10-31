@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import type { PostType } from './DraftDrawer';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -223,11 +222,7 @@ export function DraftsList({
       {error ? <p className="mt-[24px] text-14 text-destructive">{error}</p> : null}
 
       {items === null ? (
-        <div className="mt-[30px] flex flex-col gap-[14px]">
-          <Skeleton className="h-[80px] w-full rounded-[12px]" />
-          <Skeleton className="h-[80px] w-full rounded-[12px]" />
-          <Skeleton className="h-[80px] w-full rounded-[12px]" />
-        </div>
+        <SparkLoader label="Loading your drafts…" className="mt-[30px] min-h-[268px]" />
       ) : slice.length === 0 ? (
         <p className="mt-[30px] text-16 text-ink-muted">
           {counts.all === 0

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { postKindLabel } from '@/lib/platforms';
 import { cn } from '@/lib/utils';
@@ -318,10 +318,18 @@ export function CalendarMonthGrid({
       </div>
 
       {slots === null && !error ? (
-        <div className={cn('grid grid-cols-7 gap-[8px]', variant === 'screen' ? 'mt-[8px]' : 'mt-[14px]')}>
-          {Array.from({ length: weeks * 7 }, (_, i) => (
-            <Skeleton key={i} className={cn('rounded-2xl', variant === 'screen' ? 'h-cal-cell' : 'h-[140px]')} />
-          ))}
+        /* One SPARK loader for the month, holding the grid's height so the
+           page does not jump when the days arrive. */
+        <div
+          className={cn('flex', variant === 'screen' ? 'mt-[8px]' : 'mt-[14px]')}
+          style={{
+            minHeight:
+              variant === 'screen'
+                ? `calc(${weeks} * var(--ss-cal-cell) + ${(weeks - 1) * 8}px)`
+                : weeks * 140 + (weeks - 1) * 8,
+          }}
+        >
+          <SparkLoader label="Loading your calendar…" />
         </div>
       ) : (
         <div className={cn('grid grid-cols-7 gap-[8px]', variant === 'screen' ? 'mt-[8px]' : 'mt-[14px]')}>

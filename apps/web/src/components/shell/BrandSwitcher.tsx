@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheck,
 } from '@/components/ui/dropdown-menu';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useAuth } from '@clerk/nextjs';
 import { invoke } from '@/lib/tools';
 import { readSelectedGenome, writeSelectedGenome } from '@/lib/selectedGenome';
@@ -81,10 +81,7 @@ export function BrandSwitcher() {
 
   if (genomes === null) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-[26px] w-[180px]" />
-        <Skeleton className="h-[18px] w-[120px]" />
-      </div>
+      <SparkLoader size="inline" label="Loading your brands…" />
     );
   }
 

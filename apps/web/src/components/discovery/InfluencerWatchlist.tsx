@@ -4,8 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { notifyResult } from '@/lib/notify';
 import { cn } from '@/lib/utils';
@@ -212,7 +211,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
 
       {/* ── The list ────────────────────────────────────────────────────── */}
       {watchlist === null ? (
-        <Skeleton className="h-24 w-full rounded-lg" />
+        <SparkLoader label="Loading your watchlist…" className="min-h-[96px]" />
       ) : watchlist.length === 0 ? (
         <p className="text-14 text-ink-muted">
           No accounts watched yet. Add the two or three whose posts you already check by hand.

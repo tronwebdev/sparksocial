@@ -268,7 +268,6 @@ export function PerformanceCards({
                 <SparkLoader size="inline" label="Working out which post did best…" className="mt-6 text-16" />
               ) : (
                 <EmptyCard
-                  glyph="chart"
                   title="No top post yet"
                   body="Once posts have gone out and the platforms report back, the best performing one appears here."
                 />
@@ -471,7 +470,6 @@ export function PerformanceCards({
           <SparkLoader label="Reading your results…" />
         ) : ranked.length === 0 ? (
           <EmptyCard
-            glyph="chart"
             title="Nothing measured yet"
             body="Your published posts appear here ranked by engagement, once the platforms report their numbers."
           />

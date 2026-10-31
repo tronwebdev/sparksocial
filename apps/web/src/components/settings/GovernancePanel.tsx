@@ -3,7 +3,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PanelSkeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -14,7 +13,7 @@ import { KitSection } from './KitSection';
 import { DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared/voices';
 import { timezoneRegions, zoneLabel, zonesIncluding, zonesInRegion } from '@sparksocial/shared';
 import { notify, notifyResult } from '@/lib/notify';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * A text field on a kit card. `Input`'s fill is `--ss-field`, the same grey as
@@ -286,7 +285,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
     <div className="grid grid-cols-1 gap-[27px]">
       {loading ? (
         <KitSection title="Brand kit">
-          <PanelSkeleton rows={3} />
+          <SparkLoader label="Loading your brand kit…" />
         </KitSection>
       ) : (
         <>

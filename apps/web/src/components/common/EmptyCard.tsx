@@ -6,11 +6,11 @@ import Link from 'next/link';
  * not contain — its cards are all populated, so this had to be read off a
  * screenshot of the design.
  *
- * Centred in the card: SPARK asleep with a grey glyph badge (it was the glyph
- * alone until the mark gained moods), "You don't have an active campaign" at
+ * Centred in the card: SPARK asleep (it was a grey glyph until the mark gained
+ * moods, then the mark with that glyph on a badge), "You don't have an active campaign" at
  * 19px/600, two lines of 14px grey beneath it, and a white "+ Create Campaign"
  * button with a thin ring. Every card that has nothing to show uses the same
- * block with a different glyph and second line.
+ * block with its own title and second line.
  *
  * ── `action`, and why every empty card has one ────────────────────────────
  *
@@ -45,13 +45,11 @@ import Link from 'next/link';
  * checked it.
  */
 export function EmptyCard({
-  glyph = 'document',
   body,
   title,
   narrow,
   action = { label: 'Create Campaign', href: '/home?new=1' },
 }: {
-  glyph?: 'document' | 'plane' | 'chat' | 'chart';
   /** The second line — what will fill this card, and how. */
   body: React.ReactNode;
   /** What is actually empty. Required: see the note above on inherited headlines. */
@@ -63,28 +61,11 @@ export function EmptyCard({
 }) {
   return (
     <div className="flex flex-col items-center px-6 py-12 text-center">
-      {/* SPARK, asleep — there is nothing here for it to do yet — with the
-          card's own glyph on a badge, so what is missing still reads first. */}
-      <span className="relative mb-6 block">
-        <SparkMark size={84} mood="asleep" decorative />
-        <span
-          aria-hidden
-          className="absolute -bottom-[4px] -right-[10px] flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white"
-          style={{ boxShadow: '0 6px 16px -8px rgba(12,12,12,0.35), inset 0 0 0 1px rgba(131,131,131,0.18)' }}
-        >
-          <span className="block origin-center scale-[0.5]">
-            {glyph === 'plane' ? (
-              <PlaneGlyph />
-            ) : glyph === 'chat' ? (
-              <ChatGlyph />
-            ) : glyph === 'chart' ? (
-              <ChartGlyph />
-            ) : (
-              <DocumentGlyph />
-            )}
-          </span>
-        </span>
-      </span>
+      {/* SPARK, asleep — there is nothing here for it to do yet. The mark
+          alone: it used to carry a white badge with the card's glyph on it,
+          and two pictures side by side read as clutter rather than as one
+          state. The title says what is missing. */}
+      <SparkMark size={84} mood="asleep" decorative className="mb-6" />
 
       <p
         className={
@@ -113,53 +94,5 @@ export function EmptyCard({
         {action.label}
       </Link>
     </div>
-  );
-}
-
-/** The page-with-a-magnifier the activity and content cards use. */
-function DocumentGlyph() {
-  return (
-    <svg width="44" height="46" viewBox="0 0 44 46" fill="none" aria-hidden className="block">
-      <path
-        d="M7 4.5A2.5 2.5 0 0 1 9.5 2h16.4L37 13.1V38a2.5 2.5 0 0 1-2.5 2.5H9.5A2.5 2.5 0 0 1 7 38V4.5Z"
-        fill="#C9CDD2"
-      />
-      <path d="M25.6 2.4V13h10.6" fill="#AEB4BA" />
-      <circle cx="15.5" cy="30" r="7" fill="#6E7883" />
-      <circle cx="15.5" cy="30" r="4" fill="#EDEFF2" />
-      <path d="m20.4 34.6 5.2 5.2" stroke="#6E7883" strokeWidth="3.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-/** The paper plane the rail's "Post published" half uses. */
-function PlaneGlyph() {
-  return (
-    <svg width="46" height="44" viewBox="0 0 46 44" fill="none" aria-hidden className="block">
-      <path d="M43 3 3 19.5l15.2 5.6L43 3Z" fill="#3B4148" />
-      <path d="M43 3 18.2 25.1l3.1 15.6L43 3Z" fill="#20252B" />
-    </svg>
-  );
-}
-
-/** The speech bubbles the engagement cards use. */
-function ChatGlyph() {
-  return (
-    <svg width="46" height="44" viewBox="0 0 46 44" fill="none" aria-hidden className="block">
-      <path d="M3 8.5A3.5 3.5 0 0 1 6.5 5h24A3.5 3.5 0 0 1 34 8.5v13a3.5 3.5 0 0 1-3.5 3.5H14l-8 6.5V25H6.5A3.5 3.5 0 0 1 3 21.5v-13Z" fill="#C9CDD2" />
-      <path d="M18 20.5A3.5 3.5 0 0 1 21.5 17h18A3.5 3.5 0 0 1 43 20.5v10a3.5 3.5 0 0 1-3.5 3.5H38v5.5L31 34h-9.5A3.5 3.5 0 0 1 18 30.5v-10Z" fill="#6E7883" />
-    </svg>
-  );
-}
-
-/** Bars, for the cards that are waiting on measured performance. */
-function ChartGlyph() {
-  return (
-    <svg width="46" height="44" viewBox="0 0 46 44" fill="none" aria-hidden className="block">
-      <rect x="3" y="26" width="9" height="15" rx="2" fill="#C9CDD2" />
-      <rect x="15.5" y="16" width="9" height="25" rx="2" fill="#6E7883" />
-      <rect x="28" y="21" width="9" height="20" rx="2" fill="#C9CDD2" />
-      <path d="M3 11 13 6l9 4 11-6" stroke="#6E7883" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
 import { CREDIT_CATEGORY_HINT, creditsToCents } from '@sparksocial/shared/credits';
@@ -12,7 +11,7 @@ import type { CreditCategory } from '@sparksocial/shared/credits';
 import { cn } from '@/lib/utils';
 import { userMessage } from '@/lib/errorCopy';
 import { notifyResult } from '@/lib/notify';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `SET-WS-CREDIT-USAGE` — the Credit & Usage screen.
@@ -120,7 +119,7 @@ export function UsagePanel() {
     return (
       <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
         <h2 className="text-18 font-semibold text-ink">This month&rsquo;s spend</h2>
-        <Skeleton className="mt-4 h-32 w-full rounded-lg" />
+        <SparkLoader label="Loading this month’s spend…" className="mt-4" />
       </section>
     );
   }

@@ -4,7 +4,7 @@ import { UNNAMED_AGENT } from '@sparksocial/shared/agentIdentity';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 
 /**
@@ -81,11 +81,7 @@ export function AgentIdentityCard({
   if (loading) {
     return (
       <section aria-busy className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-3 w-24" />
-          <Skeleton className="h-7 w-52" />
-          <Skeleton className="h-3 w-72" />
-        </div>
+        <SparkLoader label="Loading your agent’s identity…" />
       </section>
     );
   }

@@ -1,10 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
-import { Skeleton } from '@/components/ui/skeleton';
 import { humaniseGoal } from '@/lib/runGoal';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
@@ -184,7 +183,7 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
 
         {items === null ? (
           <div className="px-7 pb-7">
-            <Skeleton className="h-[46px] w-full rounded-lg" />
+            <SparkLoader label="Loading what’s waiting on you…" />
           </div>
         ) : items.length === 0 ? (
           <p className="px-7 pb-[26px] text-16 text-ink-muted">

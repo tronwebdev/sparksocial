@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
@@ -119,11 +118,7 @@ export function RunTimeline() {
 
   if (runs === null) {
     return (
-      <div className="grid grid-cols-1 gap-3">
-        {[0, 1, 2].map((i) => (
-          <Skeleton key={i} className="h-16 w-full rounded" />
-        ))}
-      </div>
+      <SparkLoader label="Loading agent runs…" className="min-h-[216px]" />
     );
   }
 
@@ -239,7 +234,7 @@ function RunDetailPanel({
     );
   }
 
-  if (!detail) return <Skeleton className="h-64 w-full rounded" />;
+  if (!detail) return <SparkLoader label="Loading this run…" className="min-h-[256px]" />;
 
   return (
     <div className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-5">

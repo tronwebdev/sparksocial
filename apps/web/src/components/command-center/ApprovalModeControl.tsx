@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 
@@ -52,7 +52,7 @@ export function ApprovalModeControl() {
     setView(res.output);
   }
 
-  if (!view) return <Skeleton className="h-16 w-full rounded" />;
+  if (!view) return <SparkLoader size="inline" label="Loading your approval mode…" className="min-h-16 justify-center" />;
 
   return (
     <section className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-4">

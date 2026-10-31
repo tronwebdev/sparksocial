@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notifyResult } from '@/lib/notify';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * The Agency Portal — plan §6.9, §12 P6. Org-level plan/governance/SSO and
@@ -118,7 +117,7 @@ export function AgencyPanel() {
   }
 
   if (settings === null || brands === null) {
-    return <Skeleton className="h-64 w-full rounded-xl" />;
+    return <SparkLoader label="Loading agency settings…" className="min-h-[256px]" />;
   }
 
   return (

@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
@@ -124,7 +123,7 @@ export function VariantResult({
 
   if (!genomeId) return null;
   if (error) return <p className="text-12 text-destructive">{error}</p>;
-  if (!result) return <Skeleton className="h-24 w-full rounded-lg" />;
+  if (!result) return <SparkLoader size="inline" label="Loading the A/B test result…" className="min-h-24" />;
 
   const winnerArm = result.arms.find((a) => a.label === result.winner);
 

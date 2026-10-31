@@ -4,13 +4,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 import { userMessage } from '@/lib/errorCopy';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `SET-ORG-01` / §10 — the audit log.
@@ -256,7 +255,7 @@ export function AuditPanel() {
       {tab === 'calls' ? (
         <div className="mt-4">
           {calls === null && !error ? (
-            <Skeleton className="h-48 w-full rounded-lg" />
+            <SparkLoader label="Loading the activity log…" className="min-h-[192px]" />
           ) : shown.length === 0 ? (
             <p className="text-14 text-ink-muted">
               {refusalsOnly ? 'Nothing was refused in this range — which is the good outcome.' : 'No calls in this range.'}
@@ -321,7 +320,7 @@ export function AuditPanel() {
       {tab === 'engagement' ? (
         <div className="mt-4">
           {engagement === null && !error ? (
-            <Skeleton className="h-48 w-full rounded-lg" />
+            <SparkLoader label="Loading replies and escalations…" className="min-h-[192px]" />
           ) : (engagement ?? []).length === 0 ? (
             <p className="text-14 text-ink-muted">Nothing has been replied to, escalated or dismissed in this range.</p>
           ) : (

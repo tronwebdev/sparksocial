@@ -12,8 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Busy } from '@/components/brand/SparkLoader';
+import { SparkMark } from '@/components/brand/SparkMark';
 
 /**
  * The account menu — and until now, the only way to sign out was clearing
@@ -34,7 +34,9 @@ export function UserMenu() {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
 
-  if (!isLoaded) return <Skeleton className="h-9 w-9 rounded-full" />;
+  /* The avatar's own 36px slot: the mark thinking, no line of text, so the
+     top bar does not widen and then snap back. */
+  if (!isLoaded) return <SparkMark size={36} mood="thinking" label="Loading your account…" />;
   if (!user) return null;
 
   const label = user.fullName ?? user.primaryEmailAddress?.emailAddress ?? 'Account';

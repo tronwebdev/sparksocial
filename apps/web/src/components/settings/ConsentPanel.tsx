@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notifyResult } from '@/lib/notify';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `genome.consent.grant` / `.revoke` / `.list` — real since P3, unreached from
@@ -148,7 +147,7 @@ export function ConsentPanel() {
 
       <div className="mt-5">
         {records === null ? (
-          <Skeleton className="h-16 w-full rounded-xl" />
+          <SparkLoader size="inline" label="Loading consent records…" />
         ) : records.length === 0 ? (
           <p className="text-13 text-ink-muted">No consent records yet.</p>
         ) : (

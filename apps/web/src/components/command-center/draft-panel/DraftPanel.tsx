@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
@@ -108,7 +107,7 @@ export function DraftPanel({
    * `failed` is new, and its absence was the defect.
    *
    * There was no phase for "the load did not work", so every early return in
-   * `loadDraft` left `phase` on `'loading'` — which renders a bare skeleton. A
+   * `loadDraft` left `phase` on `'loading'` — which renders only the loader. A
    * failed open therefore showed a grey box indefinitely, with the reason sitting
    * in `error` state and never drawn, because `error` is only rendered inside the
    * phase blocks that never mounted.
@@ -268,7 +267,7 @@ export function DraftPanel({
          * The phase has to move, and this line is the whole of the "empty Draft
          * modal" defect.
          *
-         * `phase` stayed `'loading'`, which renders a bare `<Skeleton>` — so a
+         * `phase` stayed `'loading'`, which renders only the loader — so a
          * failed load showed a grey box forever, with the error sitting in state
          * and never rendered, because `error` is only drawn inside the phase
          * blocks that never mounted. Every early return in this function had the
@@ -1296,7 +1295,7 @@ export function DraftPanel({
             phase === 'trigger' ? '' : 'px-6 py-5',
           )}
         >
-          {phase === 'loading' ? <Skeleton className="h-64 w-full rounded" /> : null}
+          {phase === 'loading' ? <SparkLoader label="Loading your draft…" className="min-h-64" /> : null}
 
           {/*
             A load that failed, said so.
@@ -1396,7 +1395,7 @@ export function DraftPanel({
               <div>
                 <p className="text-13 font-medium text-ink-muted">Post type</p>
                 {playbooks === null ? (
-                  <Skeleton className="mt-2 h-10 w-full rounded" />
+                  <SparkLoader size="inline" label="Loading post types…" className="mt-2 min-h-10" />
                 ) : playbooks.length === 0 ? (
                   <div className="mt-2 rounded-lg border border-border bg-surface-muted p-3">
                     <p className="text-13 text-ink">
@@ -1833,7 +1832,7 @@ export function DraftPanel({
                 </div>
                 {repurposeOpen ? (
                   repurposePlaybooks === null ? (
-                    <Skeleton className="mt-3 h-10 w-full rounded" />
+                    <SparkLoader size="inline" label="Loading formats…" className="mt-3 min-h-10" />
                   ) : (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {repurposePlaybooks

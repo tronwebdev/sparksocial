@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { pillarStyle } from '@/components/calendar/pillars';
 import { useState } from 'react';
 import { AdjustFrequency } from './AdjustFrequency';
@@ -92,7 +92,7 @@ export function CampaignFocusCard({
 }) {
   const [managing, setManaging] = useState(false);
 
-  if (campaign === undefined) return <Skeleton className="h-40 w-full rounded-xl" />;
+  if (campaign === undefined) return <SparkLoader label="Loading your campaign…" className="min-h-40" />;
 
   if (campaign === null) {
     return (

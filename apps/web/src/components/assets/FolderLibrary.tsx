@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { notifyResult } from '@/lib/notify';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -152,7 +151,7 @@ export function FolderLibrary({ refreshKey }: { refreshKey: number }) {
       </div>
 
       {folders === null ? (
-        <Skeleton className="mt-5 h-24 w-full rounded-lg" />
+        <SparkLoader label="Loading your folders…" className="mt-5 min-h-[96px]" />
       ) : folders.length === 0 ? (
         <p className="mt-5 text-14 text-ink-muted">
           No folders yet. Everything you upload is still searchable — a folder just gives you somewhere to
@@ -282,7 +281,7 @@ function FolderDetail({
       </div>
 
       {assets === null ? (
-        <Skeleton className="mt-5 h-40 w-full rounded-lg" />
+        <SparkLoader label="Loading this folder…" className="mt-5 min-h-[160px]" />
       ) : assets.length === 0 ? (
         <p className="mt-5 text-14 text-ink-muted">
           Nothing in this folder yet. Move something here from any asset, or upload with this folder

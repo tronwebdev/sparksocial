@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
@@ -128,7 +128,7 @@ export function EngagementGate({
   if (loading || state.kind === 'loading') {
     return (
       <div className="grid grid-cols-1 gap-4">
-        <Skeleton className="h-28 w-full rounded-xl" />
+        <SparkLoader size="inline" label="Checking engagement status…" />
         {children}
       </div>
     );

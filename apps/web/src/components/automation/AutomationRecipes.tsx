@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { notifyResult } from '@/lib/notify';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -165,7 +164,7 @@ export function AutomationRecipes() {
     if (res.status === 'succeeded') setOutputs((prev) => prev?.filter((x) => x.id !== o.id) ?? prev);
   }
 
-  if (loading) return <Skeleton className="h-64 w-full rounded-xl" />;
+  if (loading) return <SparkLoader label="Loading automations…" className="min-h-[256px]" />;
   if (genomeError || !genomeId) {
     return (
       <section className="rounded-xl border border-border bg-surface p-6">
@@ -223,11 +222,7 @@ export function AutomationRecipes() {
           ) : null}
 
           {recipes === null ? (
-            <div className="mt-4 grid grid-cols-1 gap-2">
-              {[0, 1].map((i) => (
-                <Skeleton key={i} className="h-20 w-full rounded" />
-              ))}
-            </div>
+            <SparkLoader label="Loading your recipes…" className="mt-4 min-h-[168px]" />
           ) : error ? (
             <p className="mt-4 text-14 text-ink-muted">{error}</p>
           ) : recipes.length === 0 ? (
@@ -296,11 +291,7 @@ export function AutomationRecipes() {
           )}
         </>
       ) : outputs === null ? (
-        <div className="mt-4 grid grid-cols-1 gap-2">
-          {[0, 1].map((i) => (
-            <Skeleton key={i} className="h-20 w-full rounded" />
-          ))}
-        </div>
+        <SparkLoader label="Loading the approval queue…" className="mt-4 min-h-[168px]" />
       ) : error ? (
         <p className="mt-4 text-14 text-ink-muted">{error}</p>
       ) : outputs.length === 0 ? (

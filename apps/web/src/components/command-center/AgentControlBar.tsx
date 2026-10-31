@@ -4,8 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Busy } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 
@@ -98,7 +97,7 @@ export function AgentControlBar({
     setFreqDraft(null);
   }
 
-  if (!status) return <Skeleton className="h-20 w-full rounded" />;
+  if (!status) return <SparkLoader size="inline" label="Loading your agent’s controls…" className="min-h-20 justify-center" />;
 
   return (
     <section className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-4">
