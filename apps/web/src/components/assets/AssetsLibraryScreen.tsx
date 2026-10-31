@@ -273,8 +273,16 @@ export function AssetsLibraryScreen() {
     );
   }, [assets, assetQuery]);
 
+  /* What the listing just returned, now that a folder is listed rather than
+     searched — the folder row's stored `assetCount` was read before an upload
+     or a move and said "0 Files" above the file that had just arrived. The
+     stored count only wins when the listing hit its 200-row page. */
   const shelfCount =
-    openFolder?.folderId === UNFILED ? (assets?.length ?? 0) : (openFolder?.assetCount ?? 0);
+    assets === null
+      ? (openFolder?.assetCount ?? 0)
+      : openFolder?.folderId === UNFILED || assets.length < 200
+        ? assets.length
+        : Math.max(assets.length, openFolder?.assetCount ?? 0);
 
   const folderPending = useMemo(
     () => (openFolder ? (pending ?? []).filter((a) => a.folderId === openFolder.folderId) : (pending ?? [])),
@@ -308,9 +316,27 @@ export function AssetsLibraryScreen() {
   async function removeAsset(a: Asset) {
     if (!genomeId) return;
     const res = await invoke('asset.archive', { genomeId, assetId: a.assetId }, `asset-archive:${a.assetId}`);
-    if (!notifyResult(res, `${a.filename ?? a.caption ?? 'Asset'} deleted`, 'Couldn’t delete it')) return;
+    if (!notifyResult(res, undefined, 'Couldn’t delete it')) return;
     setAssets((prev) => prev?.filter((x) => x.assetId !== a.assetId) ?? prev);
     void loadFolders();
+    /* One click deletes, so the way back rides on the notification. Deleting
+       is archiving — the row and the file stay — and `asset.archive` restores
+       with `archived: false`; the library just never offered it. */
+    const folder = openFolder;
+    notify.success(`${assetName(a)} deleted`, {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          void (async () => {
+            const back = await invoke('asset.archive', { genomeId, assetId: a.assetId, archived: false }, `asset-restore:${a.assetId}:${Date.now()}`);
+            if (!notifyResult(back, `${assetName(a)} restored`, 'Couldn’t restore it')) return;
+            void loadFolders();
+            void loadUnfiled();
+            if (folder) void loadAssets(folder);
+          })();
+        },
+      },
+    });
   }
 
   if (genomeLoading) {
@@ -366,9 +392,7 @@ export function AssetsLibraryScreen() {
               {/* 94 against a title box of 46..79. */}
               <div className="mt-[15px] flex flex-wrap items-center gap-[14px] text-16 font-medium" style={{ color: '#5B5B5B' }}>
                 <span>
-                  {/* The Unfiled shelf has no row of its own, so its count is
-                      whatever the listing just returned rather than a stored
-                      `assetCount` that goes stale the moment one is filed. */}
+                  {/* Counted from the listing — see `shelfCount`. */}
                   {shelfCount} {shelfCount === 1 ? 'File' : 'Files'}
                 </span>
                 <Dot />

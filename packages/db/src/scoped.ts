@@ -566,7 +566,15 @@ export async function listAssetFolders(db: Database, scope: Scope): Promise<Asse
       assetCount: sql<number>`count(${assets.id})::int`,
     })
     .from(assetFolders)
-    .leftJoin(assets, and(eq(assets.folderId, assetFolders.id), eq(assets.orgId, assetFolders.orgId)))
+    // Archived assets are deleted as far as the library is concerned — they
+    // leave its listings — so they leave the count too. Counted, a folder
+    // whose only file had been deleted still said "1 File" and its delete
+    // dialog warned about a file that was not there. In the join, not the
+    // `where`, so a folder of only archived files still appears, at zero.
+    .leftJoin(
+      assets,
+      and(eq(assets.folderId, assetFolders.id), eq(assets.orgId, assetFolders.orgId), isNull(assets.archivedAt)),
+    )
     .where(scopePredicate('assetFolders', scope))
     .groupBy(assetFolders.id, assetFolders.genomeId, assetFolders.name, assetFolders.createdAt)
     .orderBy(assetFolders.name);

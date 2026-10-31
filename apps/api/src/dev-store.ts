@@ -644,7 +644,7 @@ export function createDevStore(
           // `listAssetFolders`'s left join.
           .map((f) => ({
             ...f,
-            assetCount: [...assets.values()].filter((a) => a.orgId === org && a.folderId === f.id).length,
+            assetCount: [...assets.values()].filter((a) => a.orgId === org && a.folderId === f.id && !a.archivedAt).length,
           }));
       },
 
