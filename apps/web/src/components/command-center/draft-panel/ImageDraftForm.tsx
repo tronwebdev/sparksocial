@@ -1,10 +1,28 @@
 'use client';
 
+import type { ReactElement, SVGProps } from 'react';
 import { cn } from '@/lib/utils';
 import { Busy } from '@/components/brand/SparkLoader';
 import { TypeIcon, type PostType } from './DraftDrawer';
 import { CarouselStoryboard, VideoStoryboard } from './Storyboard';
 import { clock, type ResolvedBeat } from './types';
+import {
+  ArrowUpRightIcon,
+  AvatarMusicIcon,
+  AvatarPersonIcon,
+  ClockIcon,
+  GlobeIcon,
+  InfoIcon,
+  MusicTitleIcon,
+  PaletteIcon,
+  PremiumIcon,
+  RatioIcon,
+  RegenerateIcon,
+  SlidesIcon,
+  SmallPlusIcon,
+  SparkleIcon,
+  VoiceTitleIcon,
+} from './icons';
 
 /**
  * The `DP image` interior — the drawer's single-column form.
@@ -164,7 +182,9 @@ export function ImageDraftForm({
 }: ImageDraftFormProps) {
   const scenes = beats ?? [];
   return (
-    <div className={cn(COLUMN, 'pt-[27px] pb-[30px]')}>
+    // 16 below the tab row's hairline: the focus card's top is y112 of the
+    // pane in every `DP` form, and the hairline is y95.
+    <div className={cn(COLUMN, 'pt-[16px] pb-[30px]')}>
       {/* ── Focus card — y139, 240 tall ─────────────────────────────────── */}
       {/* A cyan wash at 8% inside a 1px sky ring at 40%. The 40% sky was being
           used as the fill, which painted the card several shades too dark. */}
@@ -182,8 +202,9 @@ export function ImageDraftForm({
               — printing it for a post opened from the calendar would be the
               card stating something untrue. */}
           {source ? (
+            /* 27 tall, r8.79, the label 9px in — `DP video`'s pill, not a capsule. */
             <span
-              className="rounded-full bg-white px-[12px] py-[4px] text-14 font-medium text-ink"
+              className="flex h-[27px] items-center rounded-[8.786px] bg-white px-[9px] text-14 font-medium text-ink"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
             >
               From: {source}
@@ -297,22 +318,26 @@ export function ImageDraftForm({
             </div>
 
             <div className="mt-[24px] grid grid-cols-1 gap-[16px] md:grid-cols-2">
-              <DefaultCard title="Voice (default)" pill="Ai Voice" value={voice} />
+              <DefaultCard title="Voice (default)" pill="Ai Voice" value={voice} kind="voice" />
               {/*
                 The design titles this card "Voice (default)" too and fills it
                 with "Upbeat / Modern, energetic loop". Two cards with one title
                 and different contents is an authoring slip in the export, not a
                 spec — so the music card is titled for what it holds.
               */}
-              <DefaultCard title="Music (default)" pill="Ai Music" value={music} ringed />
+              <DefaultCard title="Music (default)" pill="Ai Music" value={music} kind="music" ringed />
             </div>
 
-            <p className="mt-[14px] text-14 font-medium text-ink-muted">
+            <p className="mt-[14px] flex items-center gap-[3.277px] text-14 font-medium text-ink-muted">
+              <InfoIcon className="shrink-0" />
               Each scene below uses these defaults — override per scene as needed
             </p>
           </div>
 
-          <h4 className="mt-[60px] text-18 font-medium text-ink">AI storyboard</h4>
+          {/* The full-width rule 25 below the card, then 34 to the heading —
+              y828 and y863 in `DP video`. */}
+          <Rule className="mt-[25px]" />
+          <h4 className="mt-[34px] text-18 font-medium text-ink">AI storyboard</h4>
           <VideoStoryboard
             beats={scenes}
             voiceName={voice?.name}
@@ -333,18 +358,21 @@ export function ImageDraftForm({
           <div className="mt-[22px] flex flex-wrap items-center gap-[37px]">
             <Chip label="4:5" mark="ratio" />
             <Chip label="Brand template" mark="palette" />
-            <Chip label={scenes.length === 1 ? '1 slide' : `${scenes.length} slides`} mark="grade" />
+            <Chip label={scenes.length === 1 ? '1 slide' : `${scenes.length} slides`} mark="slides" />
           </div>
 
-          <div className="mt-[41px] flex items-baseline justify-between gap-4">
+          {/* `DP carousel`'s rule at y610: 18 under the chips, 22 over the heading. */}
+          <Rule className="mt-[18px]" />
+          <div className="mt-[22px] flex items-baseline justify-between gap-4">
             <span className="text-18 font-medium text-ink">AI storyboard</span>
             {onRegenerate ? (
               <button
                 type="button"
                 onClick={onRegenerate}
                 disabled={busy}
-                className="text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
+                className="flex items-center gap-[9.063px] text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
               >
+                <RegenerateIcon className="shrink-0" />
                 Regenerate concept
               </button>
             ) : null}
@@ -364,8 +392,9 @@ export function ImageDraftForm({
             type="button"
             onClick={onRegenerate}
             disabled={busy}
-            className="text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
+            className="flex items-center gap-[9.063px] text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
           >
+            <RegenerateIcon className="shrink-0" />
             Regenerate concept
           </button>
         ) : null}
@@ -400,33 +429,54 @@ export function ImageDraftForm({
       <div className="mt-[17px] flex flex-wrap items-center gap-[22px]">
         <Chip label="4:5" mark="ratio" />
         <Chip label="Brand colors" mark="palette" />
-        <Chip label="Premium" mark="grade" />
+        <Chip label="Premium" mark="premium" />
       </div>
         </>
       ) : null}
 
-      <div className="mt-[52px] flex flex-wrap items-center justify-between gap-4">
+      {/*
+        The rule over the actions, 20 above them — y979 / y999 in `DP image`,
+        y1749 / y1769 in `DP carousel`. It sits 34 under the image chips and 17
+        under the carousel's last strip. `DP video` draws none: its actions
+        follow the storyboard card 22 below it.
+      */}
+      {postType === 'video' ? null : <Rule className={postType === 'carousel' ? 'mt-[17px]' : 'mt-[34px]'} />}
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-between gap-4',
+          postType === 'video' ? 'mt-[22px]' : 'mt-[19px]',
+        )}
+      >
+        {/*
+          190x43: the sparkle at 11,11, the label centred in the next 115px,
+          and the up-right arrow 9 after it — the prototype's own row. The
+          export paints the sparkle #000 on the #0C0C0C button, which is
+          invisible; it takes the label's white here.
+        */}
         <button
           type="button"
           onClick={onGenerate}
           disabled={busy || Boolean(blockedReason)}
           title={blockedReason}
-          className="flex h-[43px] w-[190px] items-center justify-center gap-[10px] rounded-[8.457px] bg-ink text-17 font-medium text-white disabled:opacity-60"
+          className="flex h-[43px] w-[190px] items-center rounded-[8.457px] bg-ink pl-[11px] text-17 font-medium text-white disabled:opacity-60"
         >
-          <Sparkle />
-          {busy ? <Busy>Generating…</Busy> : 'Generate Post'}
-          <Sparkle className="h-[11px] w-[11px]" />
+          <SparkleIcon className="shrink-0" />
+          <span className="ml-[7.421px] w-[115px] text-center">
+            {busy ? <Busy>Generating…</Busy> : 'Generate Post'}
+          </span>
+          <ArrowUpRightIcon className="ml-[9px] shrink-0" />
         </button>
 
+        {/* 168x44 white, the plus 27 in and the label centred in 102 after it. */}
         {onSaveDraft ? (
           <button
             type="button"
             onClick={onSaveDraft}
             disabled={busy}
-            className="flex items-center gap-[8px] text-16 font-medium text-ink hover:underline disabled:opacity-50"
+            className="flex h-[44px] w-[168px] items-center rounded-[8.457px] bg-white pl-[27px] text-16 font-medium text-ink hover:underline disabled:opacity-50"
           >
-            Save as Draft
-            <Sparkle />
+            <SmallPlusIcon className="shrink-0" />
+            <span className="ml-[9px] w-[102px] text-center">Save as Draft</span>
           </button>
         ) : null}
       </div>
@@ -452,14 +502,6 @@ function Fact({ label, value }: { label: string; value?: string }) {
 }
 
 /**
- * A settings chip — a ~20px outline mark, 6px from its label.
- *
- * Three different glyphs, not three squares. A repeated bordered square next to
- * a label is a checkbox everywhere else in this app, and these are statements
- * about the image, not toggles — the first build of this row read as three
- * unticked options nobody could tick.
- */
-/**
  * A post-wide default — the voice and music cards in `DP video`.
  *
  * 409x122 r13.84 white, a 15.27/500 title with a tinted pill on the right, and
@@ -470,16 +512,23 @@ function Fact({ label, value }: { label: string; value?: string }) {
  * `ringed` because the two cards differ: every video prototype draws the voice
  * card bare and the music card inside a 1px grey ring at 20%. The inner card
  * carries that ring in both.
+ *
+ * The prototype's inner card also carries a chevron at its right edge, which
+ * reads as "pick another voice". There is no voice picker behind it — the
+ * default voice is the brand's, set in the kit — so it is not drawn.
  */
 function DefaultCard({
   title,
   pill,
   value,
+  kind,
   ringed,
 }: {
   title: string;
   pill: string;
   value?: { name: string; description?: string };
+  /** Which glyph the title and the avatar carry — a mic, or a note. */
+  kind: 'voice' | 'music';
   ringed?: boolean;
 }) {
   return (
@@ -488,7 +537,21 @@ function DefaultCard({
       style={ringed ? { boxShadow: '0 0 0 1px rgba(131,131,131,0.2)' } : undefined}
     >
       <div className="flex items-center justify-between gap-3 px-[22px]">
-        <span className="text-15 font-medium text-ink">{title}</span>
+        {/* The glyph hangs left of the 32px text edge — 15.75 in for the mic,
+            15 for the note — so the title keeps its column. Black, as drawn. */}
+        <span
+          className={cn(
+            'flex items-center text-15 font-medium text-ink',
+            kind === 'voice' ? '-ml-[16.249px] gap-[4.751px]' : '-ml-[17px] gap-[4px]',
+          )}
+        >
+          {kind === 'voice' ? (
+            <VoiceTitleIcon className="shrink-0 text-black" />
+          ) : (
+            <MusicTitleIcon className="shrink-0 text-black" />
+          )}
+          {title}
+        </span>
         <span
           className="flex h-[26px] items-center rounded-[12.381px] px-[12px] text-12 font-medium"
           style={{ color: 'var(--ss-purple)', background: 'rgba(163,65,255,0.2)' }}
@@ -504,9 +567,15 @@ function DefaultCard({
         >
           <span
             aria-hidden
-            className="h-[48px] w-[48px] shrink-0 rounded-[13.331px]"
+            className="relative h-[48px] w-[48px] shrink-0 rounded-[13.331px]"
             style={{ background: 'rgba(108,232,255,0.4)' }}
-          />
+          >
+            {kind === 'voice' ? (
+              <AvatarPersonIcon className="absolute left-[14.769px] top-[12.305px] text-ink" />
+            ) : (
+              <AvatarMusicIcon className="absolute left-[12px] top-[13.773px] text-black" />
+            )}
+          </span>
           <div className="min-w-0">
             <p className="text-18 font-medium text-ink-muted">{value.name}</p>
             {value.description ? (
@@ -528,64 +597,49 @@ function totalSeconds(beats: ResolvedBeat[]): number {
   return beats.reduce((sum, b) => sum + (b.durationSec ?? 0), 0);
 }
 
+/**
+ * A settings chip — the prototype's glyph, then its label.
+ *
+ * Different glyphs, not three squares. A repeated bordered square next to a
+ * label is a checkbox everywhere else in this app, and these are statements
+ * about the post, not toggles.
+ */
 function Chip({ label, mark }: { label: string; mark: ChipMarkKind }) {
+  const { Icon, slot } = MARK[mark];
   return (
-    <span className="flex items-center gap-[6px] text-18 font-medium text-ink-muted">
-      <ChipMark mark={mark} />
+    <span className="flex items-center text-18 font-medium text-ink-muted">
+      {/* The glyph sits in a slot as wide as the prototype's label offset, so
+          the words start exactly where they do there. */}
+      <span className="flex shrink-0 items-center" style={{ width: slot }}>
+        <Icon />
+      </span>
       {label}
     </span>
   );
 }
 
-type ChipMarkKind = 'ratio' | 'palette' | 'grade' | 'clock' | 'globe';
+type ChipMarkKind = 'ratio' | 'palette' | 'slides' | 'premium' | 'clock' | 'globe';
 
-function ChipMark({ mark }: { mark: ChipMarkKind }) {
-  const common = {
-    width: 20,
-    height: 20,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.6,
-    className: 'shrink-0',
-  } as const;
-  if (mark === 'ratio') {
-    return (
-      <svg {...common} aria-hidden>
-        <rect x="6" y="3" width="12" height="18" rx="2.5" />
-      </svg>
-    );
-  }
-  if (mark === 'clock') {
-    return (
-      <svg {...common} aria-hidden>
-        <circle cx="12" cy="12" r="8.5" />
-        <path d="M12 7.5V12l3 2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-  if (mark === 'globe') {
-    return (
-      <svg {...common} aria-hidden>
-        <circle cx="12" cy="12" r="8.5" />
-        <path d="M3.5 12h17M12 3.5c2.2 2.4 3.3 5.3 3.3 8.5s-1.1 6.1-3.3 8.5c-2.2-2.4-3.3-5.3-3.3-8.5S9.8 5.9 12 3.5z" />
-      </svg>
-    );
-  }
-  if (mark === 'palette') {
-    return (
-      <svg {...common} aria-hidden>
-        <path d="M12 3a9 9 0 100 18 2.2 2.2 0 001.8-3.5c-.6-.8 0-2 1-2H17a4 4 0 004-4c0-4.7-4-8.5-9-8.5z" />
-        <circle cx="8" cy="10" r="1.1" fill="currentColor" stroke="none" />
-        <circle cx="12" cy="7.5" r="1.1" fill="currentColor" stroke="none" />
-      </svg>
-    );
-  }
-  return (
-    <svg {...common} aria-hidden>
-      <path d="M12 3l2.3 6.1L20.5 11l-6.2 2L12 19l-2.3-6L3.5 11l6.2-1.9z" strokeLinejoin="round" />
-    </svg>
-  );
+/**
+ * Each chip's glyph and where its label starts — the prototypes' own pairs:
+ * `9:16` / `4:5` at +27, the clock and globe at +25, the palette at +22, the
+ * slide stack at +27, Premium's badge at +24.
+ */
+const MARK: Record<ChipMarkKind, { Icon: (props: SVGProps<SVGSVGElement>) => ReactElement; slot: number }> = {
+  ratio: { Icon: RatioIcon, slot: 27 },
+  clock: { Icon: ClockIcon, slot: 25 },
+  globe: { Icon: GlobeIcon, slot: 25 },
+  palette: { Icon: PaletteIcon, slot: 22 },
+  slides: { Icon: SlidesIcon, slot: 27 },
+  premium: { Icon: PremiumIcon, slot: 24 },
+};
+
+/**
+ * A full-width hairline — 25% grey across the whole 940 content pane, not just
+ * the 875 column, which is how every `DP` form draws its section rules.
+ */
+function Rule({ className }: { className?: string }) {
+  return <div aria-hidden className={cn('-mx-[30px] h-px', className)} style={{ background: 'rgba(131,131,131,0.25)' }} />;
 }
 
 /**
@@ -632,20 +686,6 @@ function StatusChip({
       )}
       {label}
     </span>
-  );
-}
-
-/** The mark on both action buttons — four-pointed, not a text asterisk. */
-function Sparkle({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={cn('h-[13px] w-[13px] shrink-0', className)}
-    >
-      <path d="M12 0l2.4 8.2L22.6 11 14.4 13.4 12 22l-2.4-8.6L1.4 11l8.2-2.8z" />
-    </svg>
   );
 }
 

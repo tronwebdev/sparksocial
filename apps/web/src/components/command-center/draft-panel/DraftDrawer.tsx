@@ -1,6 +1,7 @@
 'use client';
 
 import { SparkMark } from '@/components/brand/SparkMark';
+import { CloseDraftIcon } from './icons';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +32,7 @@ import { cn } from '@/lib/utils';
  *   "Post Type" y183 · 14/600 · ink-500
  *   tab chip    x820 y52 · 174x44 · r10 · #6CE8FF
  *   tab label   18/600 active, 18/500 inactive
- *   Close Draft x605 y500 · 23x96 · 18/500 — on the drawer's *outside* edge
+ *   Close Draft x595 y486 · 42x145 · r10 · 18/500 — on the drawer's *outside* edge
  *
  * ── Proportional width, exact radii ───────────────────────────────────────
  *
@@ -120,11 +121,16 @@ export function DraftDrawer({
             Vertical, and the prototype puts it *outside* the panel rather than
             in a corner of it — the affordance belongs to the page it is
             covering, not to the thing covering it.
+
+            42x145, r10, flush against the drawer's edge, with the prototype's
+            close mark below the words — vertical-rl runs the label top to
+            bottom and the 180° turn makes it read upward, so the mark, first
+            in the DOM, lands at the bottom where `DP video` draws it.
           */}
           <button
             type="button"
             onClick={onClose}
-            className="absolute -left-[32px] top-1/2 flex h-[96px] w-[23px] -translate-y-1/2 items-center justify-center rounded-l-[8px] text-18 font-medium text-ink"
+            className="absolute -left-[42px] top-1/2 flex h-[145px] w-[42px] -translate-y-1/2 items-center justify-center gap-[7.555px] rounded-[10px] text-18 font-medium text-ink"
             style={{
               writingMode: 'vertical-rl',
               transform: 'translateY(-50%) rotate(180deg)',
@@ -134,6 +140,7 @@ export function DraftDrawer({
               background: 'linear-gradient(90deg, rgb(214,242,248) 1.96%, rgb(255,255,255) 98.03%)',
             }}
           >
+            <CloseDraftIcon className="shrink-0" />
             Close Draft
           </button>
 
@@ -271,7 +278,7 @@ function PostTypeRail({
                 */}
                 <span
                   aria-hidden
-                  className="flex h-[75px] w-[75px] items-center justify-center rounded-[15.689px] transition-colors"
+                  className="relative flex h-[75px] w-[75px] items-center justify-center rounded-[15.689px] transition-colors"
                   /*
                     Inline, not `bg-[rgba(...)]`.
 
@@ -285,18 +292,25 @@ function PostTypeRail({
                     is the worst way for it to fail. The focus card sets its own
                     rgba the same way for the same reason.
                   */
-                  style={
-                    on
-                      ? { background: 'rgb(255,255,255)' }
-                      : { background: 'rgba(131,131,131,0.05)', boxShadow: 'inset 0 0 0 1.165px rgba(131,131,131,0.1)' }
-                  }
+                  style={on ? undefined : { background: 'rgba(131,131,131,0.05)', boxShadow: 'inset 0 0 0 1.165px rgba(131,131,131,0.1)' }}
                 >
                   {on ? (
-                    <span
-                      className="flex h-[58.547px] w-[58.547px] items-center justify-center rounded-[12.326px]"
-                      style={{ background: TYPE_HUE[t.id].tint }}
-                    >
-                      <TypeIcon type={t.id} active stroke={TYPE_HUE[t.id].ink} />
+                    /*
+                      The chosen tile is not the 75 square: it is 116x73 from the
+                      same left edge, long enough to run 2-3px under the content
+                      pane, so the white tile and the white pane read as one
+                      shape — a tab joined to the page it opens. Drawn
+                      absolutely so the column keeps its 75px slot and the label
+                      stays centred under it, as it does in the prototype; `z-10`
+                      lifts it over the pane, which comes later in the DOM.
+                    */
+                    <span className="absolute left-0 top-0 z-10 h-[73px] w-[116px] rounded-[15.689px] bg-white">
+                      <span
+                        className="absolute flex h-[58.547px] w-[58.547px] items-center justify-center rounded-[12.326px]"
+                        style={{ left: TYPE_HUE[t.id].at[0], top: TYPE_HUE[t.id].at[1], background: TYPE_HUE[t.id].tint }}
+                      >
+                        <TypeIcon type={t.id} active stroke={TYPE_HUE[t.id].ink} />
+                      </span>
                     </span>
                   ) : (
                     <TypeIcon type={t.id} active={false} />
@@ -323,15 +337,18 @@ function PostTypeRail({
  * `DP video`, `DP carousel`, `DP text`. Image's tint is the one that differs in
  * alpha as well as hue (0.4 against 0.2), and that is the export's, not a typo.
  *
+ * `at` is where the tinted square sits inside the 116x73 tile — the four
+ * exports place it a few tenths apart, and each is followed.
+ *
  * `label` is the chosen tile's caption colour, which the four disagree on: ink
  * under Image and Video, grey under Carousel and Text. Followed as drawn — the
  * tile itself is what marks the choice in all four.
  */
-const TYPE_HUE: Record<PostType, { tint: string; ink: string; label: 'ink' | 'muted' }> = {
-  image: { tint: 'rgba(232,207,255,0.4)', ink: 'rgb(134,45,218)', label: 'ink' },
-  video: { tint: 'rgba(237,173,46,0.2)', ink: 'rgb(219,157,33)', label: 'ink' },
-  carousel: { tint: 'rgba(45,86,219,0.2)', ink: 'rgb(45,86,219)', label: 'muted' },
-  text: { tint: 'rgba(224,33,220,0.2)', ink: 'rgb(224,33,220)', label: 'muted' },
+const TYPE_HUE: Record<PostType, { tint: string; ink: string; label: 'ink' | 'muted'; at: [number, number] }> = {
+  image: { tint: 'rgba(232,207,255,0.4)', ink: 'rgb(134,45,218)', label: 'ink', at: [12, 7] },
+  video: { tint: 'rgba(237,173,46,0.2)', ink: 'rgb(219,157,33)', label: 'ink', at: [8.007, 6.547] },
+  carousel: { tint: 'rgba(45,86,219,0.2)', ink: 'rgb(45,86,219)', label: 'muted', at: [8.007, 7.102] },
+  text: { tint: 'rgba(224,33,220,0.2)', ink: 'rgb(224,33,220)', label: 'muted', at: [8.007, 7.102] },
 };
 
 /** The four rail glyphs, drawn rather than imported — each is a few lines. */
@@ -377,13 +394,14 @@ export function TypeIcon({ type, active, stroke: ink }: { type: PostType; active
  * inactive one is 18/500 in ink-500 with no fill, only a 1px grey ring at 40%
  * — `DP video` and `DP list` both draw it. A hover tint is added on top.
  *
- * The row closes on the prototype's hairline at 25% grey, painted as a shadow
- * so it adds no height.
+ * The row closes on the prototype's hairline at 25% grey, at y95 of the pane:
+ * 25 above the 44px chips, 26 below them, then the 1px rule — painted as an
+ * inset shadow on the row's last pixel.
  */
 function DrawerTabs({ tab, onTab }: { tab: DrawerTab; onTab: (next: DrawerTab) => void }) {
   return (
     <div
-      className="flex shrink-0 items-center gap-[14px] px-[32px] pt-[25px] pb-[18px]"
+      className="flex shrink-0 items-center gap-[14px] px-[32px] pt-[25px] pb-[27px]"
       style={{ boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.25)' }}
     >
       {([

@@ -1,8 +1,20 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, type DragEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { backdropOf, clock, type ResolvedBeat } from './types';
+import {
+  AddPlusIcon,
+  AudioOverrideIcon,
+  DragHandleIcon,
+  MicOffIcon,
+  PersonSmallIcon,
+  RewriteIcon,
+  SceneCloseIcon,
+  ScriptMicIcon,
+  SlideImageIcon,
+  SmallPlusIcon,
+} from './icons';
 
 /**
  * The storyboard — `DP video.dc.html`'s scene list and `DP carousel`'s slides.
@@ -149,6 +161,68 @@ export interface StoryboardProps {
    * not a generate call.
    */
   addSlot?: ReactNode;
+  /**
+   * Remove one scene — the 26px close box at each card's top right.
+   *
+   * This is the panel's existing `content.scene.remove`, moved out of the
+   * opened controls to where `DP video` draws it, not a second way to do it:
+   * `BeatRow` stops offering "Remove scene" inside a storyboard card.
+   */
+  onRemoveScene?: (beatId: string) => void;
+  /**
+   * Move one scene to a new position — what the gutter's drag handle does.
+   *
+   * The same `content.scene.reorder` the opened controls' Move up / Move down
+   * call, which stay there for anyone not using a pointer.
+   */
+  onMoveScene?: (beatId: string, toIndex: number) => void;
+}
+
+/**
+ * Drag-to-reorder for a storyboard list, through the panel's own reorder.
+ *
+ * Native drag and drop and nothing more: the handle starts the drag, a card
+ * accepts the drop, and the drop is one `onMove` to the card's index. Without
+ * `onMove` there is nothing to bind, and the handle is not drawn — a grip that
+ * does not grip is the dead control this panel keeps refusing to ship.
+ */
+function useReorder(beats: ResolvedBeat[], onMove?: (beatId: string, toIndex: number) => void) {
+  const [from, setFrom] = useState<number | null>(null);
+  const [over, setOver] = useState<number | null>(null);
+  const reset = () => {
+    setFrom(null);
+    setOver(null);
+  };
+  return {
+    enabled: Boolean(onMove),
+    handle: (i: number) => ({
+      draggable: true,
+      onDragStart: (e: DragEvent<HTMLElement>) => {
+        setFrom(i);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', beats[i]?.beatId ?? '');
+        // The whole card follows the pointer, not the 15px grip.
+        const card = e.currentTarget.closest('li');
+        if (card) e.dataTransfer.setDragImage(card, 24, 24);
+      },
+      onDragEnd: reset,
+    }),
+    item: (i: number) => ({
+      onDragOver: (e: DragEvent<HTMLElement>) => {
+        if (from === null) return;
+        e.preventDefault();
+        if (over !== i) setOver(i);
+      },
+      onDrop: (e: DragEvent<HTMLElement>) => {
+        e.preventDefault();
+        const moving = from === null ? undefined : beats[from];
+        if (onMove && moving && from !== i) onMove(moving.beatId, i);
+        reset();
+      },
+    }),
+    /** Where a drop would land, for the outline that says so. */
+    target: (i: number) => from !== null && over === i && from !== i,
+  };
 }
 
 export function VideoStoryboard({
@@ -160,8 +234,11 @@ export function VideoStoryboard({
   busy,
   renderDetail,
   addSlot,
+  onRemoveScene,
+  onMoveScene,
 }: StoryboardProps) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const reorder = useReorder(beats, onMoveScene);
 
   if (beats.length === 0) return <EmptyStoryboard what="The storyboard appears here once this post is generated." />;
 
@@ -174,7 +251,11 @@ export function VideoStoryboard({
           const dur = beat.durationSec ?? 0;
           elapsed += dur;
           return (
-            <li key={beat.beatId}>
+            <li
+              key={beat.beatId}
+              {...(reorder.enabled ? reorder.item(i) : {})}
+              className={cn('rounded-[15px]', reorder.target(i) ? 'outline outline-2 outline-ring' : '')}
+            >
               <SceneCard
                 beat={beat}
                 index={i}
@@ -188,6 +269,8 @@ export function VideoStoryboard({
                 detail={renderDetail}
                 open={openId === beat.beatId}
                 onToggle={renderDetail ? () => setOpenId((id) => (id === beat.beatId ? null : beat.beatId)) : undefined}
+                onRemove={onRemoveScene ? () => onRemoveScene(beat.beatId) : undefined}
+                handle={reorder.enabled ? reorder.handle(i) : undefined}
               />
             </li>
           );
@@ -213,6 +296,8 @@ function SceneCard({
   detail,
   open,
   onToggle,
+  onRemove,
+  handle,
 }: {
   beat: ResolvedBeat;
   index: number;
@@ -226,6 +311,8 @@ function SceneCard({
   detail?: (beat: ResolvedBeat, index: number) => ReactNode;
   open?: boolean;
   onToggle?: () => void;
+  onRemove?: () => void;
+  handle?: DragHandleProps;
 }) {
   const kind = kindBadge(beat);
   const script = scriptOf(beat);
@@ -244,8 +331,14 @@ function SceneCard({
         style={{ background: overridden ? 'var(--ss-scene-bar-warm)' : 'var(--ss-cyan)' }}
       />
       <ColumnRule />
+      {/* The gutter's grip at 12,13 and the close box at 23 from the right,
+          15 down — `DP video`'s two corner controls. */}
+      {handle ? <Grip handle={handle} label={`Drag to move scene ${index + 1}`} className="top-[13px]" /> : null}
+      {onRemove ? (
+        <CloseBox onClick={onRemove} disabled={busy} label={`Remove scene ${index + 1}`} className="right-[23px] top-[15px]" />
+      ) : null}
 
-      <div className="flex flex-wrap items-center gap-x-[14px] gap-y-[6px]">
+      <div className={cn('flex flex-wrap items-center gap-x-[14px] gap-y-[6px]', onRemove ? 'pr-[34px]' : '')}>
         <span className="text-15 font-medium text-ink-muted">Scene {index + 1}</span>
         {/* A legacy beat carries no duration, so it shows none rather than 0:00. */}
         {hasDuration ? (
@@ -293,19 +386,48 @@ function SceneCard({
       ) : null}
 
       {script === null ? (
-        <div className="mt-[19px] rounded-[14.058px] bg-white px-[19px] py-[16px]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-16 font-medium text-ink">This scene runs without a voiceover.</p>
+        /*
+          `DP video`'s silent scene: inside the white card, a 46-tall dashed
+          box — a muted mic, the line, and "Add voiceover" at the right. The
+          link opens this scene's controls, which is where its voiceover is
+          generated; it is offered only while they are closed, since open they
+          are already on screen beneath it.
+        */
+        <div className="mt-[19px] rounded-[14.058px] bg-white px-[19px] pb-[13px] pt-[16px]">
+          <div
+            className="flex min-h-[46px] flex-wrap items-center justify-between gap-3 rounded-[10.158px] bg-white pl-[10px] pr-[14px]"
+            style={{ outline: '1.016px dashed rgba(131,131,131,0.2)' }}
+          >
+            <p className="flex items-center gap-[8px] text-16 font-medium text-ink">
+              <MicOffIcon className="shrink-0 text-ink-muted" />
+              This scene runs without a voiceover.
+            </p>
+            {onToggle && !open ? (
+              <button
+                type="button"
+                onClick={onToggle}
+                className="flex items-center gap-[3px] text-16 font-medium text-brand-purple hover:underline"
+              >
+                <SmallPlusIcon className="shrink-0" />
+                Add voiceover
+              </button>
+            ) : null}
           </div>
         </div>
       ) : (
         <div className="mt-[19px] rounded-[14.058px] bg-white px-[19px] py-[9px]">
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-15 font-medium text-ink-muted">Voiceover script</span>
-            {/* The scene's own voice when it has one, otherwise the post's. */}
-            <span className="text-12 font-medium text-ink-muted">
-              {overridden ? (beat.voice === 'brand' ? 'Brand voice' : 'Stock voice') : (voiceName ?? '')}
+            <span className="flex items-center gap-[4.826px] text-15 font-medium text-ink-muted">
+              <ScriptMicIcon className="shrink-0" />
+              Voiceover script
             </span>
+            {/* The scene's own voice when it has one, otherwise the post's. */}
+            {overridden || voiceName ? (
+              <span className="flex items-center gap-[5.127px] text-12 font-medium text-ink-muted">
+                <PersonSmallIcon className="shrink-0" />
+                {overridden ? (beat.voice === 'brand' ? 'Brand voice' : 'Stock voice') : voiceName}
+              </span>
+            ) : null}
           </div>
 
           <div className="mt-[14px] rounded-[10.158px] bg-white px-[17px] py-[12px] shadow-[0_4px_15px_0_rgba(163,65,255,0.2)]">
@@ -320,8 +442,9 @@ function SceneCard({
                   type="button"
                   onClick={() => onRewrite(beat.beatId)}
                   disabled={busy}
-                  className="text-15 font-medium text-ink-muted hover:text-ink hover:underline disabled:opacity-50"
+                  className="flex items-center gap-[5.206px] text-15 font-medium text-ink-muted hover:text-ink hover:underline disabled:opacity-50"
                 >
+                  <RewriteIcon className="shrink-0" />
                   Rewrite
                 </button>
               ) : null}
@@ -330,9 +453,10 @@ function SceneCard({
                   type="button"
                   onClick={() => onAudioOverride(beat.beatId)}
                   disabled={busy}
-                  className={cn('text-15 font-medium text-ink-muted hover:underline disabled:opacity-50')}
+                  className={cn('flex items-center gap-[6.096px] text-15 font-medium text-ink-muted hover:underline disabled:opacity-50')}
                   style={overridden ? { color: HUE.override } : undefined}
                 >
+                  <AudioOverrideIcon className="shrink-0" />
                   Audio override
                 </button>
               ) : null}
@@ -403,10 +527,23 @@ export interface CarouselStoryboardProps {
   /** One slide's controls — see `renderDetail` on the video storyboard. */
   renderDetail?: (beat: ResolvedBeat, index: number) => ReactNode;
   addSlot?: ReactNode;
+  /** See `StoryboardProps.onRemoveScene` — the same close box, on a slide. */
+  onRemoveScene?: (beatId: string) => void;
+  /** See `StoryboardProps.onMoveScene`. */
+  onMoveScene?: (beatId: string, toIndex: number) => void;
 }
 
-export function CarouselStoryboard({ beats, onAddScene, busy, renderDetail, addSlot }: CarouselStoryboardProps) {
+export function CarouselStoryboard({
+  beats,
+  onAddScene,
+  busy,
+  renderDetail,
+  addSlot,
+  onRemoveScene,
+  onMoveScene,
+}: CarouselStoryboardProps) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const reorder = useReorder(beats, onMoveScene);
 
   if (beats.length === 0) return <EmptyStoryboard what="The slides appear here once this post is generated." />;
 
@@ -414,13 +551,20 @@ export function CarouselStoryboard({ beats, onAddScene, busy, renderDetail, addS
     <div className="mt-[14px]">
       <ul className="flex flex-col gap-[17px]">
         {beats.map((beat, i) => (
-          <li key={beat.beatId}>
+          <li
+            key={beat.beatId}
+            {...(reorder.enabled ? reorder.item(i) : {})}
+            className={cn('rounded-[15px]', reorder.target(i) ? 'outline outline-2 outline-ring' : '')}
+          >
             <SlideCard
               beat={beat}
               index={i}
               detail={renderDetail}
               open={openId === beat.beatId}
               onToggle={renderDetail ? () => setOpenId((id) => (id === beat.beatId ? null : beat.beatId)) : undefined}
+              onRemove={onRemoveScene ? () => onRemoveScene(beat.beatId) : undefined}
+              handle={reorder.enabled ? reorder.handle(i) : undefined}
+              busy={busy}
             />
           </li>
         ))}
@@ -438,12 +582,18 @@ function SlideCard({
   detail,
   open,
   onToggle,
+  onRemove,
+  handle,
+  busy,
 }: {
   beat: ResolvedBeat;
   index: number;
   detail?: (beat: ResolvedBeat, index: number) => ReactNode;
   open?: boolean;
   onToggle?: () => void;
+  onRemove?: () => void;
+  handle?: DragHandleProps;
+  busy?: boolean;
 }) {
   const hue = beat.label ? labelHue(beat.label) : 'neutral';
   /*
@@ -468,6 +618,8 @@ function SlideCard({
       : hue === 'cta'
         ? { background: 'rgba(31,175,19,0.2)', boxShadow: 'inset 0 0 0 1.29px rgba(31,175,19,0.1)' }
         : { background: 'rgba(131,131,131,0.2)', boxShadow: 'inset 0 0 0 1.29px rgba(131,131,131,0.1)' };
+  /** The picture glyph in the empty thumbnail — a deeper cyan, the green, or grey. */
+  const glyph = hue === 'hook' ? 'rgb(28,178,206)' : hue === 'cta' ? 'rgb(31,175,19)' : 'rgb(131,131,131)';
 
   return (
     <div
@@ -475,12 +627,24 @@ function SlideCard({
       style={{ background: 'rgba(131,131,131,0.05)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
     >
       <ColumnRule />
+      {/* The grip centred in the gutter, the close box 14 in from the top
+          right — where `DP carousel` puts both. */}
+      {handle ? <Grip handle={handle} label={`Drag to move slide ${index + 1}`} className="top-1/2 -translate-y-1/2" /> : null}
+      {onRemove ? (
+        <CloseBox onClick={onRemove} disabled={busy} label={`Remove slide ${index + 1}`} className="right-[14px] top-[14px]" />
+      ) : null}
       <div className="flex gap-[20px]">
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" className="h-[147px] w-[124px] shrink-0 rounded-[10px] object-cover" />
       ) : (
-        <span aria-hidden className="h-[147px] w-[124px] shrink-0 rounded-[10px]" style={tint} />
+        <span
+          aria-hidden
+          className="flex h-[147px] w-[124px] shrink-0 items-center justify-center rounded-[10px]"
+          style={{ ...tint, color: glyph }}
+        >
+          <SlideImageIcon />
+        </span>
       )}
 
       <div className="min-w-0 flex-1 pt-[8px]">
@@ -564,6 +728,58 @@ function note(beat: ResolvedBeat): string {
   return rest;
 }
 
+type DragHandleProps = ReturnType<ReturnType<typeof useReorder>['handle']>;
+
+/**
+ * The six-dot grip in a card's gutter — 15x24 at x12, grey.
+ *
+ * Hidden from assistive tech on purpose: dragging is a pointer affordance, and
+ * the keyboard route to the same reorder is Move up / Move down in the card's
+ * opened controls.
+ */
+function Grip({ handle, label, className }: { handle: DragHandleProps; label: string; className?: string }) {
+  return (
+    <span
+      {...handle}
+      aria-hidden
+      title={label}
+      className={cn('absolute left-[12px] z-[1] cursor-grab text-ink-muted active:cursor-grabbing', className)}
+    >
+      <DragHandleIcon />
+    </span>
+  );
+}
+
+/** The 26px close box — r6.19, a 1.39px grey ring, the grey cross centred. */
+function CloseBox({
+  onClick,
+  disabled,
+  label,
+  className,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className={cn(
+        'absolute z-[1] flex h-[26px] w-[26px] items-center justify-center rounded-[6.19px] text-ink-muted hover:text-ink disabled:opacity-50',
+        className,
+      )}
+      style={{ boxShadow: '0 0 0 1.393px rgb(131,131,131)' }}
+    >
+      <SceneCloseIcon />
+    </button>
+  );
+}
+
 /**
  * The 1px rule at x35 down a scene or slide card — the edge of the column the
  * design keeps for its drag handle. Grey at 25%, absolutely placed so it adds
@@ -615,10 +831,10 @@ function AddStrip({ label, onClick, busy }: { label: string; onClick: () => void
       type="button"
       onClick={onClick}
       disabled={busy}
-      className="mt-[16px] flex h-[65px] w-full items-center justify-center gap-[10px] rounded-[10px] text-18 font-medium text-ink disabled:opacity-50"
+      className="mt-[16px] flex h-[65px] w-full items-center justify-center gap-[9px] rounded-[10px] text-18 font-medium text-ink disabled:opacity-50"
       style={{ background: 'rgba(131,131,131,0.1)', boxShadow: '0 0 0 1px rgba(131,131,131,0.3)' }}
     >
-      <span aria-hidden className="text-20 leading-none">+</span>
+      <AddPlusIcon className="shrink-0" />
       {label}
     </button>
   );

@@ -350,15 +350,20 @@ export function BeatRow({
           </select>
         ) : null}
 
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={busy}
-          onClick={() => onRemove(beat.beatId)}
-          className="ml-auto text-destructive"
-        >
-          Remove scene
-        </Button>
+        {/* Inside a storyboard card the card's own close box is the remove —
+            `DP video` draws it at the card's corner — so it is not offered
+            twice. The plain image/text list has no such box and keeps this. */}
+        {chrome ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => onRemove(beat.beatId)}
+            className="ml-auto text-destructive"
+          >
+            Remove scene
+          </Button>
+        ) : null}
       </div>
 
     </Frame>

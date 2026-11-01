@@ -6,6 +6,17 @@ import { cn } from '@/lib/utils';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import type { PostType } from './DraftDrawer';
 import { userMessage } from '@/lib/errorCopy';
+import { notify } from '@/lib/notify';
+import {
+  ClockIcon,
+  ListCarouselIcon,
+  ListImageIcon,
+  ListTextIcon,
+  ListVideoIcon,
+  PagerChevronIcon,
+  PencilIcon,
+  TrashIcon,
+} from './icons';
 
 /**
  * The Drafts List — `DP list.dc.html`, and the tab that did nothing.
@@ -46,7 +57,17 @@ interface ContentListItem {
   createdAt: string;
   blockedReason?: string;
   publishAttempts?: number;
+  /** A still of the post — its tall render, or a generated picture — when it has one. */
+  thumbnailUrl?: string;
 }
+
+/** The thumbnail's glyph when there is no picture, one per post type. */
+const TYPE_GLYPH: Record<PostType, typeof ListImageIcon> = {
+  image: ListImageIcon,
+  video: ListVideoIcon,
+  carousel: ListCarouselIcon,
+  text: ListTextIcon,
+};
 
 /**
  * How far along a post is, and what that looks like.
@@ -157,6 +178,37 @@ export function DraftsList({
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | PostType>('all');
   const [page, setPage] = useState(0);
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  /**
+   * The row's bin — `content.delete`, as the Plan Queue calls it.
+   *
+   * Destructive, so policy holds it for an owner or admin: for most people the
+   * answer is "sent for approval" and the row stays until someone approves it
+   * in Needs Attention. Saying so beats a row that seems to ignore the click.
+   * Idempotent by declaration, so no key.
+   */
+  async function remove(item: ContentListItem) {
+    if (!genomeId || removing) return;
+    if (!window.confirm(`Delete “${item.summary}”? Its copy, renders and links are deleted, and this cannot be undone.`)) return;
+    setRemoving(item.contentItemId);
+    try {
+      const res = await invoke('content.delete', { contentItemId: item.contentItemId, genomeId });
+      if (res.status === 'failed') {
+        notify.error('Couldn’t delete the draft', { body: userMessage(res.error) });
+        return;
+      }
+      if (res.status !== 'succeeded') {
+        notify.pending('Deletion sent for approval', {
+          body: 'An owner or admin approves it in Needs Attention, and the draft stays until then.',
+        });
+        return;
+      }
+      setItems((list) => (list ? list.filter((i) => i.contentItemId !== item.contentItemId) : list));
+    } finally {
+      setRemoving(null);
+    }
+  }
 
   useEffect(() => {
     let live = true;
@@ -203,20 +255,29 @@ export function DraftsList({
   const clamped = Math.min(page, pages - 1);
   const slice = shown.slice(clamped * PAGE_SIZE, clamped * PAGE_SIZE + PAGE_SIZE);
 
+  /*
+    ── Measured off `DP list` ────────────────────────────────────────────────
+
+    Below the tab row's hairline (y95): "Draft List" at y151, so 55 down; the
+    subtitle 5 under it; the pills 10 below the heading's top. A full-width rule
+    at y229, 27 under the subtitle; the first card 18 under that at y248. Cards
+    are 1016x97 on a 114 pitch, so 17 apart, from x39. The pager's rule sits 57
+    under the last card and the pager 27 under the rule.
+  */
   return (
-    <div className="px-[30px] pt-[27px] pb-[30px]">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="px-[39px] pb-[30px] pt-[55px]">
+      <div className="flex flex-wrap items-start justify-between gap-4 pl-[2px]">
         <div>
           {/* Pure black in `DP list`, the one heading in the panel that is not ink. */}
           <h2 className="text-20 font-medium text-black">Draft List</h2>
-          <p className="mt-[10px] text-16 font-medium text-ink-muted">
+          <p className="mt-[5px] text-16 font-medium text-ink-muted">
             {items === null
               ? <Busy size={16}>Loading…</Busy>
               : `${counts.all} unfinished draft${counts.all === 1 ? '' : 's'} · auto-saved`}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-[10px]">
+        <div className="mt-[10px] flex flex-wrap items-center gap-[10px]">
           {FILTERS.map((f) => {
             const n = counts[f.id];
             const on = filter === f.id;
@@ -249,6 +310,8 @@ export function DraftsList({
         </div>
       </div>
 
+      <Rule className="mt-[27px]" colour="rgba(131,131,131,0.2)" />
+
       {error ? <p className="mt-[24px] text-14 text-destructive">{error}</p> : null}
 
       {items === null ? (
@@ -260,79 +323,177 @@ export function DraftsList({
             : 'No unfinished drafts of that type.'}
         </p>
       ) : (
-        <ul className="mt-[24px] flex flex-col">
+        <ul className="mt-[18px] flex flex-col gap-[17px]">
           {slice.map((item) => {
             const stage = stageOf(item);
             const here = item.contentItemId === currentId;
+            const actionColour = stage.actionable ? (stage.actionHue ?? stage.hue) : 'var(--ss-scene-cta)';
+            const Glyph = item.mediaType ? TYPE_GLYPH[item.mediaType] : ListTextIcon;
             return (
               <li key={item.contentItemId}>
-                <button
-                  type="button"
-                  onClick={() => onOpen(item.contentItemId)}
-                  /*
-                    Each row is a card in `DP list`: grey at 5% inside a 1px grey
-                    ring at 20%, r10.158. The rule it used to draw underneath is
-                    kept, transparent, so the row keeps its height.
-                  */
+                {/*
+                  A 1016x97 card: grey at 5% inside a 1px grey ring at 20%,
+                  r10.158. The thumbnail, the title and its line of facts open
+                  the draft; so do the action and the pencil, which is what the
+                  design gives them. The bin deletes.
+                */}
+                <div
                   className={cn(
-                    'flex w-full items-start justify-between gap-6 rounded-[10.158px] border-b border-transparent bg-ink-muted/5 py-[22px] text-left shadow-[0_0_0_1px_rgba(131,131,131,0.2)] transition-colors',
-                    here ? 'opacity-60' : 'hover:bg-surface-muted/60',
+                    'flex h-[97px] items-center rounded-[10.158px] bg-ink-muted/5 pl-[15px] pr-[18px] shadow-[0_0_0_1px_rgba(131,131,131,0.2)]',
+                    here ? 'opacity-60' : '',
                   )}
                 >
-                  <span className="min-w-0">
-                    <span className="block truncate text-18 font-medium text-ink">{item.summary}</span>
-                    <span className="mt-[14px] flex flex-wrap items-center gap-[16px]">
-                      <span className="text-15 font-medium" style={{ color: stage.hue }}>
-                        {stage.label}
-                      </span>
-                      <span className="text-15 font-medium text-ink-muted">{ago(item.createdAt)}</span>
-                      {item.mediaType ? (
-                        <span
-                          className="rounded-[12.381px] px-[12px] py-[3px] text-12 font-medium text-ink-muted"
-                          style={{ background: 'rgba(131,131,131,0.1)', boxShadow: '0 0 0 1px rgba(131,131,131,0.4)' }}
-                        >
-                          {item.mediaType}
-                        </span>
-                      ) : null}
+                  <button
+                    type="button"
+                    onClick={() => onOpen(item.contentItemId)}
+                    className="flex min-w-0 flex-1 items-center gap-[16px] self-stretch text-left"
+                  >
+                    {/* 67x67 r14.1, grey at 10% in a 20% ring — the post's own
+                        still when it has one, the type's glyph when not. */}
+                    <span
+                      className="flex h-[67px] w-[67px] shrink-0 items-center justify-center overflow-hidden rounded-[14.105px] text-ink-muted"
+                      style={{ background: 'rgba(131,131,131,0.1)', boxShadow: 'inset 0 0 0 1.048px rgba(131,131,131,0.2)' }}
+                    >
+                      {item.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <Glyph />
+                      )}
                     </span>
-                  </span>
 
-                  <span
-                    className="shrink-0 text-16 font-semibold"
-                    style={{ color: stage.actionable ? (stage.actionHue ?? stage.hue) : 'var(--ss-scene-cta)' }}
+                    <span className="min-w-0">
+                      <span className="block truncate text-18 font-medium text-ink">{item.summary}</span>
+                      <span className="mt-[10px] flex flex-wrap items-center gap-[10px]">
+                        {/* The stage as the design's pill: its hue at 10% in a 40% ring. */}
+                        <span
+                          className="flex h-[26px] items-center rounded-[12.381px] px-[10px] text-15 font-medium"
+                          style={{
+                            color: stage.hue,
+                            background: `color-mix(in srgb, ${stage.hue} 10%, transparent)`,
+                            boxShadow: `0 0 0 1px color-mix(in srgb, ${stage.hue} 40%, transparent)`,
+                          }}
+                        >
+                          {stage.label}
+                        </span>
+                        {item.mediaType ? (
+                          <span
+                            className="flex h-[26px] items-center rounded-[12.381px] px-[10px] text-15 font-medium capitalize text-ink-muted"
+                            style={{ background: 'rgba(131,131,131,0.1)', boxShadow: '0 0 0 1px rgba(131,131,131,0.4)' }}
+                          >
+                            {item.mediaType}
+                          </span>
+                        ) : null}
+                        <span className="flex items-center gap-[4.833px] text-15 font-medium text-ink-muted">
+                          <ClockIcon className="shrink-0" />
+                          {ago(item.createdAt)}
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+
+                  {/* 116x42 r8.4, ringed in its own colour at 0.7px. */}
+                  <button
+                    type="button"
+                    onClick={() => onOpen(item.contentItemId)}
+                    className="ml-[16px] flex h-[41.938px] w-[116px] shrink-0 items-center justify-center rounded-[8.405px] text-16 font-semibold"
+                    style={{ color: actionColour, boxShadow: `inset 0 0 0 0.701px ${actionColour}` }}
                   >
                     {here ? 'Open now' : stage.action}
-                  </span>
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(item.contentItemId)}
+                    aria-label={`Edit “${item.summary}”`}
+                    title="Edit"
+                    className="ml-[11px] flex h-[41.097px] w-[41.097px] shrink-0 items-center justify-center rounded-[8.251px] text-ink-muted"
+                    style={{ boxShadow: 'inset 0 0 0 0.636px rgb(131,131,131)' }}
+                  >
+                    <PencilIcon />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void remove(item)}
+                    disabled={removing !== null}
+                    aria-label={`Delete “${item.summary}”`}
+                    title="Delete"
+                    className="ml-[11px] flex h-[41.097px] w-[41.097px] shrink-0 items-center justify-center rounded-[8.251px] disabled:opacity-50"
+                    style={{ color: 'rgb(243,85,37)', boxShadow: 'inset 0 0 0 0.636px rgb(243,85,37)' }}
+                  >
+                    {removing === item.contentItemId ? (
+                      <Busy size={14}>
+                        <span className="sr-only">Deleting</span>
+                      </Busy>
+                    ) : (
+                      <TrashIcon />
+                    )}
+                  </button>
+                </div>
               </li>
             );
           })}
         </ul>
       )}
 
+      {/*
+        The pager: the 25% rule, then "Page 1 of 4" 16.25/400 grey at the left
+        and two 22px circles at the right, 14 apart — white, a hairline ring,
+        the chevron in it; the one that cannot move fades both to 40%.
+      */}
       {pages > 1 ? (
-        <div className="mt-[26px] flex items-center gap-[18px]">
-          <button
-            type="button"
-            disabled={clamped === 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            className="text-16 font-medium text-ink-muted hover:text-ink disabled:opacity-40"
-          >
-            Previous
-          </button>
-          <span className="text-16 text-ink-muted">
-            Page {clamped + 1} of {pages}
-          </span>
-          <button
-            type="button"
-            disabled={clamped >= pages - 1}
-            onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
-            className="text-16 font-medium text-ink-muted hover:text-ink disabled:opacity-40"
-          >
-            Next
-          </button>
-        </div>
+        <>
+          <Rule className="mt-[57px]" colour="rgba(131,131,131,0.25)" />
+          <div className="-ml-[6px] mt-[27px] flex items-center justify-between">
+            <span className="text-16 text-ink-muted">
+              Page {clamped + 1} of {pages}
+            </span>
+            <span className="flex items-center gap-[14.224px]">
+              <PagerButton
+                label="Previous page"
+                disabled={clamped === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                back
+              />
+              <PagerButton
+                label="Next page"
+                disabled={clamped >= pages - 1}
+                onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
+              />
+            </span>
+          </div>
+        </>
       ) : null}
     </div>
+  );
+}
+
+/** A rule across the whole drawer, past the list's own 39px inset. */
+function Rule({ className, colour }: { className?: string; colour: string }) {
+  return <div aria-hidden className={cn('-mx-[39px] h-px', className)} style={{ background: colour }} />;
+}
+
+function PagerButton({
+  label,
+  disabled,
+  onClick,
+  back,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  back?: boolean;
+}) {
+  const ink = disabled ? 'rgba(131,131,131,0.4)' : 'rgb(131,131,131)';
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex h-[22.347px] w-[22.347px] items-center justify-center rounded-full bg-white"
+      style={{ color: ink, boxShadow: `inset 0 0 0 0.223px ${ink}` }}
+    >
+      <PagerChevronIcon className={back ? '-scale-x-100' : undefined} />
+    </button>
   );
 }

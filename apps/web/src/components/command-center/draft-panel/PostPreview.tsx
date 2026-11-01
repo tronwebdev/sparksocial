@@ -1,10 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { PLATFORM_LIMITS, platformTakes, type PostFormat } from '@sparksocial/shared';
 import { cn } from '@/lib/utils';
 import { Busy } from '@/components/brand/SparkLoader';
 import { backdropOf, type DraftView } from './types';
+import {
+  ArrowUpRightIcon,
+  CalendarIcon,
+  ChevronIcon,
+  ClockIcon,
+  CommentIcon,
+  GeneratedIcon,
+  LikeIcon,
+  PencilIcon,
+  RegenerateIcon,
+  ShareIcon,
+  SmallPlusIcon,
+} from './icons';
 
 /**
  * The preview — `DP prevText.dc.html`, "Review your post".
@@ -63,6 +76,15 @@ export interface PostPreviewProps {
   onSchedule?: () => void;
   onSaveDraft: () => void;
   busy?: boolean;
+  /** The header's back box — the way to the editor `DP prevText` draws. */
+  onBack?: () => void;
+  /** When the post is set to go, for the date and time pickers to start from. */
+  scheduledAt?: string;
+  /**
+   * Move the post to a new moment — what the schedule card's calendar and clock
+   * boxes do. The panel's own `content.schedule`; absent hides both boxes.
+   */
+  onReschedule?: (iso: string) => void;
 }
 
 /** `CF` from `ClientForce AI` — two letters, the design's own treatment. */
@@ -183,9 +205,26 @@ function CarouselDeck({
         if (e.key === 'ArrowRight') { e.preventDefault(); go(at + 1); }
       }}
     >
-      <p className="text-15 font-medium text-ink-muted" aria-live="polite">
-        Slide {at + 1} of {total}
-      </p>
+      {/*
+        "Slide 2 of 6" 18/500 grey at the left of a row as wide as the frame,
+        the two bare chevrons at its right end, 25 apart — `DP prevCarousel`'s
+        arrangement. The frame below carries nothing at its sides.
+      */}
+      <div className="flex items-center justify-between">
+        <p className="text-18 font-medium text-ink-muted" aria-live="polite">
+          Slide {at + 1} of {total}
+        </p>
+        {grid ? null : (
+          <div className="flex items-center gap-[25px] text-ink-muted">
+            <button type="button" aria-label="Previous slide" onClick={() => go(at - 1)} className="flex items-center">
+              <ChevronIcon className="-scale-x-100" />
+            </button>
+            <button type="button" aria-label="Next slide" onClick={() => go(at + 1)} className="flex items-center">
+              <ChevronIcon />
+            </button>
+          </div>
+        )}
+      </div>
 
       {grid ? (
         <div className="mt-[10px] grid grid-cols-2 gap-[10px]">
@@ -211,43 +250,16 @@ function CarouselDeck({
           ))}
         </div>
       ) : (
-      /* The arrows are bare grey chevrons in `DP prevCarousel` — no disc, no ring. */
-      <div className="mt-[10px] flex items-center gap-[10px]">
-        <button
-          type="button"
-          aria-label="Previous slide"
-          onClick={() => go(at - 1)}
-          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full text-16 text-ink-muted"
-        >
-          &#8249;
-        </button>
-
-        {/*
-          4:5 — the ratio the carousel playbooks render at (1080x1350), and the
-          one the design labels under the frame. `object-contain` rather than
-          `cover`, because a slide cropped in the preview is a slide whose
-          cropping nobody approved.
-        */}
-        <div
-          className="flex aspect-[4/5] min-w-0 flex-1 items-center justify-center overflow-hidden rounded-[10px]"
-          style={{ background: 'rgba(131,131,131,0.1)', boxShadow: 'inset 0 0 0 0.3px rgba(131,131,131,0.3)' }}
-        >
-          {current.kind === 'video' ? (
-            <video src={current.url} controls className="h-full w-full object-contain" />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={current.url} alt={`Slide ${at + 1} of ${total}`} className="h-full w-full object-contain" />
-          )}
-        </div>
-
-        <button
-          type="button"
-          aria-label="Next slide"
-          onClick={() => go(at + 1)}
-          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full text-16 text-ink-muted"
-        >
-          &#8250;
-        </button>
+      <div
+        className="mt-[14px] flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[10px]"
+        style={{ background: 'rgba(131,131,131,0.1)', boxShadow: 'inset 0 0 0 0.3px rgba(131,131,131,0.3)' }}
+      >
+        {current.kind === 'video' ? (
+          <video src={current.url} controls className="h-full w-full object-contain" />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={current.url} alt={`Slide ${at + 1} of ${total}`} className="h-full w-full object-contain" />
+        )}
       </div>
       )}
 
@@ -286,16 +298,26 @@ function CarouselDeck({
         words and picture are actually changed — rather than a second editor
         grown inside the preview.
       */}
-      <div className="mt-[14px] flex flex-wrap items-center justify-center gap-[18px]">
+      {/* 155x46 chips, r9.04, a 1.07px ink ring at 40% over white at 7% — the
+          cycle arrows on one, the pencil on the other, 9 apart. */}
+      <div className="mt-[14px] flex flex-wrap items-center justify-center gap-[9px]">
         <button
           type="button"
           onClick={() => setGrid((g) => !g)}
-          className="text-16 font-medium text-ink hover:underline"
+          className="flex h-[46px] w-[155px] items-center justify-center gap-[9.134px] rounded-[9.036px] text-16 font-medium text-ink"
+          style={CHIP}
         >
+          <RegenerateIcon className="shrink-0" />
           {grid ? 'One at a time' : 'All slides'}
         </button>
         {onEditOutline ? (
-          <button type="button" onClick={onEditOutline} className="text-16 font-medium text-ink hover:underline">
+          <button
+            type="button"
+            onClick={onEditOutline}
+            className="flex h-[46px] w-[155px] items-center justify-center gap-[8.315px] rounded-[9.036px] text-16 font-medium text-ink"
+            style={CHIP}
+          >
+            <PencilIcon width={14.396} height={14.394} className="shrink-0" />
             Edit outline
           </button>
         ) : null}
@@ -303,6 +325,8 @@ function CarouselDeck({
     </div>
   );
 }
+
+const CHIP = { background: 'rgba(255,255,255,0.07)', boxShadow: '0 0 0 1.068px rgba(12,12,12,0.4)' } as const;
 
 /**
  * The post card — `DP prevText.dc.html`, and only that.
@@ -372,12 +396,21 @@ function PostCard({
 
       {/* No rule above the engagement row in `DP prevText`; the border stays,
           transparent, so the row keeps its place. */}
-      <footer className="mt-[24px] flex items-center gap-[52px] border-t border-transparent pt-[16px]">
-        {['Like', 'Comment', 'Share'].map((a) => (
-          <span key={a} aria-hidden className="text-16 text-ink-muted">
-            {a}
-          </span>
-        ))}
+      <footer className="mt-[24px] flex items-center gap-[26px] border-t border-transparent pt-[16px] text-ink-muted">
+        {/* Each glyph and its word at the prototype's own offsets: 23, 22, 23
+            from the glyph's left edge to the word's. */}
+        <span aria-hidden className="flex items-center gap-[4.02px] text-16">
+          <LikeIcon className="shrink-0" />
+          Like
+        </span>
+        <span aria-hidden className="flex items-center gap-[5.572px] text-16">
+          <CommentIcon className="shrink-0" />
+          Comment
+        </span>
+        <span aria-hidden className="flex items-center gap-[7.123px] text-16">
+          <ShareIcon className="shrink-0" />
+          Share
+        </span>
       </footer>
     </article>
   );
@@ -461,7 +494,28 @@ export function PostPreview({
   onSchedule,
   onSaveDraft,
   busy,
+  onBack,
+  scheduledAt,
+  onReschedule,
 }: PostPreviewProps) {
+  /*
+    The calendar and clock boxes open the browser's own date and time pickers.
+    The inputs are visually hidden rather than absent so `showPicker` has
+    something to open; the chosen value lands on the post through
+    `onReschedule`, keeping the half that was not changed.
+  */
+  const dateInput = useRef<HTMLInputElement>(null);
+  const timeInput = useRef<HTMLInputElement>(null);
+  const base = () => {
+    const d = scheduledAt ? new Date(scheduledAt) : new Date();
+    if (!scheduledAt) d.setHours(9, 0, 0, 0);
+    return d;
+  };
+  const pick = (input: HTMLInputElement | null) => {
+    if (!input) return;
+    if (typeof input.showPicker === 'function') input.showPicker();
+    else input.click();
+  };
   const name = brandName?.trim() || 'Your brand';
   const media = mediaOf(draft);
   const lengths = counts(caption);
@@ -617,19 +671,79 @@ export function PostPreview({
   );
 
   /* ── When ───────────────────────────────────────────────────────────── */
-  const schedulePane = bestTime ? (
-    <div>
-      <p className="text-15 font-medium text-ink-muted">Schedule</p>
-      <div className="mt-[14px] rounded-[10px] px-[13px] py-[13px]" style={{ background: 'rgba(131,131,131,0.1)' }}>
-        <div
-          className="flex h-[41px] items-center rounded-[10px] px-[30px] text-16 font-semibold"
-          style={{ background: 'rgba(163,65,255,0.2)', color: 'var(--ss-purple)' }}
-        >
-          {bestTime}
+  /*
+    `DP prevText`'s schedule card, 103 tall: its own "Schedule" label inside it
+    at 13,16, the violet time pill at 13,48 with a sparkle 7 in, and two 41px
+    ringed boxes at its right — a calendar and a clock — 8.9 apart and 17 from
+    the edge.
+  */
+  const schedulePane =
+    bestTime || onReschedule ? (
+      <div className="rounded-[10px] px-[13px] pb-[14px] pt-[16px]" style={{ background: 'rgba(131,131,131,0.1)' }}>
+        <p className="text-15 font-medium text-ink-muted">Schedule</p>
+        <div className="mt-[13px] flex items-center gap-[7px] pr-[4px]">
+          <div
+            className="flex h-[41px] min-w-0 flex-1 items-center gap-[6px] rounded-[10px] pl-[7px] pr-[16px] text-16 font-semibold"
+            style={{ background: 'rgba(163,65,255,0.2)', color: 'var(--ss-purple)' }}
+          >
+            <GeneratedIcon className="shrink-0 text-black" />
+            <span className="truncate">{bestTime ?? 'Not scheduled yet'}</span>
+          </div>
+          {onReschedule ? (
+            <>
+              <button
+                type="button"
+                aria-label="Change the date"
+                onClick={() => pick(dateInput.current)}
+                disabled={busy}
+                className="flex h-[41.097px] w-[41.097px] shrink-0 items-center justify-center rounded-[8.251px] text-ink-muted disabled:opacity-50"
+                style={{ boxShadow: 'inset 0 0 0 0.636px rgb(131,131,131)' }}
+              >
+                <CalendarIcon />
+              </button>
+              <button
+                type="button"
+                aria-label="Change the time"
+                onClick={() => pick(timeInput.current)}
+                disabled={busy}
+                className="ml-[1.9px] flex h-[41.097px] w-[41.097px] shrink-0 items-center justify-center rounded-[8.251px] text-ink-muted disabled:opacity-50"
+                style={{ boxShadow: 'inset 0 0 0 1px rgb(131,131,131)' }}
+              >
+                <ClockIcon />
+              </button>
+              <input
+                ref={dateInput}
+                type="date"
+                tabIndex={-1}
+                aria-hidden
+                className="sr-only"
+                onChange={(e) => {
+                  const [y, m, d] = e.target.value.split('-').map(Number);
+                  if (!y || !m || !d) return;
+                  const next = base();
+                  next.setFullYear(y, m - 1, d);
+                  onReschedule(next.toISOString());
+                }}
+              />
+              <input
+                ref={timeInput}
+                type="time"
+                tabIndex={-1}
+                aria-hidden
+                className="sr-only"
+                onChange={(e) => {
+                  const [h, min] = e.target.value.split(':').map(Number);
+                  if (h === undefined || min === undefined || Number.isNaN(h) || Number.isNaN(min)) return;
+                  const next = base();
+                  next.setHours(h, min, 0, 0);
+                  onReschedule(next.toISOString());
+                }}
+              />
+            </>
+          ) : null}
         </div>
       </div>
-    </div>
-  ) : null;
+    ) : null;
 
   /*
     ── Actions ────────────────────────────────────────────────────────────
@@ -640,23 +754,26 @@ export function PostPreview({
     two that are not.
   */
   const actions = (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-[20px]">
+    /* The rule runs the full 940 pane, 21 above the buttons (y975 / y996). */
+    <div className="-mx-[30px] flex flex-wrap items-center justify-between gap-4 border-t border-border px-[30px] pt-[21px]">
+      {/* 190x43: the label in its 97px from 17 in, the arrow at 147. */}
       <button
         type="button"
         onClick={onPublish}
         disabled={busy}
-        className="flex h-[43px] w-[190px] items-center justify-center rounded-[8.457px] bg-ink text-17 font-medium text-white disabled:opacity-60"
+        className="flex h-[43px] w-[190px] items-center rounded-[8.457px] bg-ink pl-[17px] text-17 font-medium text-white disabled:opacity-60"
       >
-        {busy ? <Busy>Publishing…</Busy> : 'Publish now'}
+        <span className="w-[97px] text-center">{busy ? <Busy>Publishing…</Busy> : 'Publish now'}</span>
+        <ArrowUpRightIcon className="ml-[50px] shrink-0" />
       </button>
 
-      <div className="flex items-center gap-[18px]">
+      <div className="flex items-center gap-[15px]">
         {onSchedule ? (
           <button
             type="button"
             onClick={onSchedule}
             disabled={busy}
-            className="flex h-[44px] items-center rounded-[8.457px] px-[20px] text-16 font-medium disabled:opacity-60"
+            className="flex h-[44px] w-[110px] items-center justify-center rounded-[8.457px] text-16 font-medium disabled:opacity-60"
             style={{ background: 'rgba(36,116,237,0.1)', color: '#2474ED', boxShadow: '0 0 0 1px rgb(36,116,237)' }}
           >
             Schedule
@@ -666,25 +783,51 @@ export function PostPreview({
           type="button"
           onClick={onSaveDraft}
           disabled={busy}
-          className="flex h-[44px] items-center rounded-[8.457px] bg-white px-[24px] text-16 font-medium text-ink disabled:opacity-60"
+          className="flex h-[44px] w-[168px] items-center rounded-[8.457px] bg-white pl-[23px] text-16 font-medium text-ink disabled:opacity-60"
         >
-          Save as Draft
+          <SmallPlusIcon className="shrink-0" />
+          <span className="ml-[9px] w-[102px] text-center">Save as Draft</span>
         </button>
       </div>
     </div>
   );
 
   return (
-    <div className="px-[30px] pt-[27px] pb-[30px]">
+    <div className="px-[30px] pt-[18px] pb-[30px]">
       {/*
         "Review your post" — 18/600 ink at 867,63, with the state beside it in
         14/600. The design's word is "Generated", which is true of a post that
         has pixels and false of one that does not, so it is read from the post
         rather than printed unconditionally.
       */}
-      <div className="flex items-baseline gap-[22px]">
+      <div className="flex items-center gap-[17px]">
+        {/* The 39x36 back box, r7.07 in a hairline grey ring, 15 left of the title. */}
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to the editor"
+            className="mr-[-2px] flex h-[36px] w-[39px] shrink-0 items-center justify-center rounded-[7.072px] text-ink-muted"
+            style={{ boxShadow: '0 0 0 0.707px rgb(131,131,131)' }}
+          >
+            <ChevronIcon className="-scale-x-100" />
+          </button>
+        ) : null}
         <h2 className="text-18 font-semibold text-ink">Review your post</h2>
-        <span className="text-14 font-semibold" style={{ color: media.length > 0 ? '#13D711' : '#838383' }}>
+        {/*
+          124x33, r15.76: green at 15% in a solid green ring, a black sparkle 15
+          in. A post with nothing rendered wears the same pill in grey and no
+          sparkle — the design only drew the generated case.
+        */}
+        <span
+          className="flex h-[33px] items-center gap-[5.695px] rounded-[15.758px] px-[15px] text-14 font-semibold"
+          style={
+            media.length > 0
+              ? { background: 'rgba(19,215,17,0.15)', boxShadow: '0 0 0 1px rgb(19,215,17)', color: '#13D711' }
+              : { background: 'rgba(131,131,131,0.1)', boxShadow: '0 0 0 1px rgba(131,131,131,0.4)', color: '#838383' }
+          }
+        >
+          {media.length > 0 ? <GeneratedIcon className="shrink-0 text-black" /> : null}
           {media.length > 0 ? 'Generated' : draft.mediaType === 'text' ? 'Written' : 'Not rendered'}
         </span>
       </div>

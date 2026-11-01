@@ -126,7 +126,8 @@ describe('the preview follows the prototype for its own format', () => {
 
   it('keeps the post card for text, which is what its prototype draws', () => {
     expect(PREVIEW).toContain('PostCard');
-    expect(PREVIEW).toContain("'Like', 'Comment', 'Share'");
+    // Each with the prototype's glyph beside it.
+    for (const action of ['Like', 'Comment', 'Share']) expect(PREVIEW).toContain(`<${action}Icon`);
   });
 
   it('heads the phase the way the design does', () => {

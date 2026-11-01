@@ -16,6 +16,7 @@ import { PostPreview } from './PostPreview';
 import { cn } from '@/lib/utils';
 import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, caption, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
 import { userMessage } from '@/lib/errorCopy';
+import { ArrowUpRightIcon, RegenerateIcon, SmallPlusIcon, SparkleIcon } from './icons';
 
 /**
  * The Draft Panel — plan §6.8's Draft Panel, `ui build/figma-dp/`'s ~20
@@ -1156,6 +1157,39 @@ export function DraftPanel({
     notify.success('Rescheduled for tomorrow at 9:00');
   }
 
+  /**
+   * Put the post at a moment — the preview's calendar and clock boxes, and its
+   * "Schedule" button for the time already shown.
+   *
+   * The same `content.schedule` `rescheduleTomorrow` calls, with the moment the
+   * person picked rather than a fixed one. Idempotent by its own declaration,
+   * so no key: setting the same time twice is the same write.
+   */
+  async function schedulePost(iso: string) {
+    if (!draft || !genomeId || busy) return;
+    setBusy(true);
+    const res = await invoke<{ contentItemId: string; scheduledAt: string }>('content.schedule', {
+      contentItemId: draft.contentItemId,
+      genomeId,
+      scheduledAt: iso,
+    });
+    setBusy(false);
+    if (!notifyResult(res, undefined, 'Couldn’t schedule the post')) return;
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            status: 'scheduled',
+            scheduledAt: res.output.scheduledAt,
+            publishAttempts: 0,
+            lastPublishError: undefined,
+            blockedReason: undefined,
+          }
+        : d,
+    );
+    notify.success(`Scheduled for ${new Date(res.output.scheduledAt).toLocaleString()}`);
+  }
+
   if (!open) return null;
 
   /**
@@ -1166,6 +1200,15 @@ export function DraftPanel({
    * its own frame. Two copies of twenty props is how one of them ends up
    * missing a handler that only some drafts reach.
    */
+  /*
+    One remove and one reorder, shared by every control that does either: the
+    storyboard card's close box and grip, and `BeatRow`'s Move up / Move down
+    (and its own Remove, on the plain list that has no close box).
+  */
+  const removeScene = (id: string) => void runSceneTool('content.scene.remove', { beatId: id }, id);
+  const moveScene = (id: string, toIndex: number) =>
+    void runSceneTool('content.scene.reorder', { beatId: id, toIndex }, id);
+
   function beatRowFor(beat: ResolvedBeat, i: number, chrome: boolean) {
     if (!draft) return null;
     return (
@@ -1190,8 +1233,8 @@ export function DraftPanel({
         isFirst={i === 0}
         isLast={i === draft.beats.length - 1}
         onRetime={(id, seconds) => void runSceneTool('content.scene.retime', { beatId: id, durationSec: seconds }, id)}
-        onRemove={(id) => void runSceneTool('content.scene.remove', { beatId: id }, id)}
-        onMove={(id, toIndex) => void runSceneTool('content.scene.reorder', { beatId: id, toIndex }, id)}
+        onRemove={removeScene}
+        onMove={moveScene}
         onSetVoice={(id, voice) => void runSceneTool('content.scene.voice', { beatId: id, voice }, id)}
         templates={(kitTemplates ?? []).filter((t) => t.category === 'caption' || t.category === 'lower_third')}
         onApplyTemplate={(t, id) => void applyTemplate(t, id)}
@@ -1292,7 +1335,7 @@ export function DraftPanel({
         <div
           className={cn(
             'flex-1 overflow-y-auto',
-            phase === 'trigger' ? '' : 'px-6 py-5',
+            phase === 'trigger' ? '' : 'px-6 pt-[11px] pb-5',
           )}
         >
           {phase === 'loading' ? <SparkLoader label="Loading your draft…" className="min-h-64" /> : null}
@@ -1662,8 +1705,9 @@ export function DraftPanel({
                   type="button"
                   disabled={busy}
                   onClick={() => void redraftThisPost()}
-                  className="text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
+                  className="flex items-center gap-[9.063px] text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
                 >
+                  <RegenerateIcon className="shrink-0" />
                   {busy ? <Busy>Regenerating…</Busy> : 'Regenerate concept'}
                 </button>
               </div>
@@ -1750,12 +1794,16 @@ export function DraftPanel({
                   onAddScene={() => setAddingScene((v) => !v)}
                   addSlot={addingScene ? addSceneForm : null}
                   renderDetail={(beat, i) => beatRowFor(beat, i, false)}
+                  onRemoveScene={removeScene}
+                  onMoveScene={moveScene}
                 />
               ) : draft.mediaType === 'carousel' ? (
                 <CarouselStoryboard
                   beats={draft.beats}
                   busy={busyBeatId !== null}
                   renderDetail={(beat, i) => beatRowFor(beat, i, false)}
+                  onRemoveScene={removeScene}
+                  onMoveScene={moveScene}
                 />
               ) : (
               <ul className="grid grid-cols-1 gap-3">
@@ -1886,6 +1934,41 @@ export function DraftPanel({
               </div>
 
               {error ? <p className="text-13 text-destructive">{error}</p> : null}
+
+              {/*
+                ── The editor's actions, in flow ─────────────────────────────
+
+                Where every `DP` form puts them: under the work, the dark
+                button at the left edge with its sparkle and arrow, the white
+                one at the right with its plus. They were a sticky footer, which
+                no prototype draws.
+
+                The dark one keeps its own words. The prototype's is "Generate
+                Post", which is what the *trigger* form's button does; here the
+                post is already generated and this button moves to the preview,
+                so "Generate Post" would promise a spend it does not make. It
+                is sized to its label rather than the prototype's 190 because
+                this label is longer.
+              */}
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-[6px]">
+                <button
+                  type="button"
+                  onClick={() => setPhase('preview')}
+                  className="flex h-[43px] min-w-[190px] items-center rounded-[8.457px] bg-ink pl-[11px] pr-[16px] text-17 font-medium text-white"
+                >
+                  <SparkleIcon className="shrink-0" />
+                  <span className="ml-[7.421px]">Continue to preview</span>
+                  <ArrowUpRightIcon className="ml-[9px] shrink-0" />
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex h-[44px] w-[168px] items-center rounded-[8.457px] bg-white pl-[27px] text-16 font-medium text-ink hover:underline"
+                >
+                  <SmallPlusIcon className="shrink-0" />
+                  <span className="ml-[9px] w-[102px] text-center">Save as Draft</span>
+                </button>
+              </div>
             </div>
           ) : null}
 
@@ -1911,6 +1994,11 @@ export function DraftPanel({
                 onSelect={(p) => setPlatform(p as (typeof PLATFORMS)[number])}
                 {...(draft.scheduledAt ? { bestTime: new Date(draft.scheduledAt).toLocaleString() } : {})}
                 onEditOutline={() => setPhase('editor')}
+                onBack={() => setPhase('editor')}
+                {...(draft.scheduledAt
+                  ? { scheduledAt: draft.scheduledAt, onSchedule: () => void schedulePost(draft.scheduledAt!) }
+                  : {})}
+                onReschedule={(iso) => void schedulePost(iso)}
                 onPublish={() => void publishNow()}
                 onSaveDraft={onClose}
                 busy={busy}
@@ -2062,29 +2150,13 @@ export function DraftPanel({
           ) : null}
         </div>
 
-        {phase === 'editor' || phase === 'preview' ? (
-          <footer className="flex items-center justify-between border-t border-border px-6 py-4">
-            {phase === 'editor' ? (
-              <>
-                {/* Ink, not the ghost grey: every prototype prints "Save as
-                    Draft" in #0C0C0C. */}
-                <Button variant="ghost" className="text-ink" onClick={onClose}>
-                  Save as draft
-                </Button>
-                <Button onClick={() => setPhase('preview')}>Continue to preview</Button>
-              </>
-            ) : (
-              <>
-                <Button variant="ghost" onClick={() => setPhase('editor')}>
-                  Back to editor
-                </Button>
-                <Button disabled={busy} onClick={() => void publishNow()}>
-                  {busy ? <Busy>Publishing…</Busy> : 'Publish now'}
-                </Button>
-              </>
-            )}
-          </footer>
-        ) : null}
+        {/*
+          No sticky footer. The editor's two actions are in flow at the foot of
+          its content, and the preview carries its own — Publish now, Schedule
+          (once the post has a time), Save as Draft — with the way back to the editor in its header, which
+          is where `DP prevText` draws all four. The footer had repeated two of
+          them a second time under the first.
+        */}
       </>
       )}
     </DraftDrawer>
