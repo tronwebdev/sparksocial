@@ -99,8 +99,8 @@ export function makeContentGenerateAvatarVideo(avatar: AvatarClient) {
       if (!consented) {
         throw new ToolError(
           'FORBIDDEN',
-          'No active likeness-consent record for this genome. Grant one via genome.consent.grant before generating avatar video.',
-          { genomeId: input.genomeId },
+          'No one has given permission for their likeness to be used yet. Record it in Settings → Brand Kit, then try again.',
+          { genomeId: input.genomeId, requires: { kind: 'consent', consent: 'avatar_clone' } },
         );
       }
 

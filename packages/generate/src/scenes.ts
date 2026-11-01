@@ -435,7 +435,7 @@ export const sceneVoice = defineTool({
         throw new ToolError(
           'FORBIDDEN',
           'No active voice consent for this brand — grant one before narrating in its own voice.',
-          { genomeId: input.genomeId },
+          { genomeId: input.genomeId, requires: { kind: 'consent', consent: 'voice_clone' } },
         );
       }
     }

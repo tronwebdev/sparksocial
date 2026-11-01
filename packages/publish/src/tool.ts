@@ -492,6 +492,11 @@ export function makePublishNow(deps: PublishDeps) {
           throw new ToolError('UPSTREAM_FAILED', e.message, {
             platform: e.platform,
             retryable: e.retryable,
+            /* With no connection at all, connecting one is the fix — and the
+               web client can offer it in place rather than naming Settings. */
+            ...(connection
+              ? {}
+              : { requires: { kind: 'connection', genomeId: input.genomeId, platform: connectionPlatform(input.platform) } }),
           });
         }
         throw e;

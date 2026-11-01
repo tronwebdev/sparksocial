@@ -180,16 +180,57 @@ const TILE = {
 const MARK_SCALE: Record<string, number> = { x: 0.837 };
 
 /**
- * The platform tile — the mark and the name, and nothing else, as both designs
- * draw it. State is carried the way the designs carry it: opacity. A tile that
- * cannot be used is at the design's 40%; `title` and the accessible name say
- * why, and `connected` adds the one mark a tile needs to not read as an offer.
+ * What a tile is for, said by a corner badge rather than by opacity alone.
+ *
+ * The designs carry state only as opacity — 100% for chosen, 30-40% for the
+ * rest — and on a real account step that read as a grid of *blurred-out*
+ * logos: unconnected, unchosen and unavailable all looked the same, and none
+ * looked clickable. Each now says what pressing it does.
+ *
+ *   connect      a `+` — press to connect this platform
+ *   on           a filled tick and a ring — included; press to skip it
+ *   off          an empty circle — connected but skipped; press to include it
+ *   connected    a green tick — already connected (Settings: nothing to press)
+ *   unavailable  "Not set up yet" under the name, and only this state is faded
+ */
+export type TileState = 'connect' | 'on' | 'off' | 'connected' | 'unavailable';
+
+const PURPLE = 'var(--ss-accent-purple)';
+
+function TileBadge({ state }: { state: TileState }) {
+  const at = 'absolute right-[8px] top-[8px] flex h-[18px] w-[18px] items-center justify-center rounded-full';
+  // Said under the name instead (see `PlatformTile`): a corner badge wide
+  // enough for the words covered the mark.
+  if (state === 'unavailable') return null;
+  if (state === 'connect') {
+    return (
+      <span aria-hidden className={at} style={{ background: 'rgba(163,65,255,0.1)', boxShadow: `inset 0 0 0 1.2px ${PURPLE}` }}>
+        <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+          <path d="M4.5 1v7M1 4.5h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ color: PURPLE }} />
+        </svg>
+      </span>
+    );
+  }
+  if (state === 'off') {
+    return <span aria-hidden className={at} style={{ background: '#FFFFFF', boxShadow: 'inset 0 0 0 1.4px rgba(12,12,12,0.25)' }} />;
+  }
+  return (
+    <span aria-hidden className={at} style={{ background: state === 'on' ? PURPLE : 'var(--ss-set-online)' }}>
+      <svg width="9" height="8" viewBox="0 0 9 8" fill="none">
+        <path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+/**
+ * The platform tile — the mark and the name, as both designs draw them, and a
+ * corner badge that says what pressing it does (see `TileState`).
  */
 export function PlatformTile({
   platform,
   size = 'settings',
-  dim = false,
-  connected = false,
+  state,
   busy = false,
   disabled = false,
   pressed,
@@ -199,9 +240,7 @@ export function PlatformTile({
 }: {
   platform: string;
   size?: keyof typeof TILE;
-  /** Drawn at the design's reduced opacity. */
-  dim?: boolean | number;
-  connected?: boolean;
+  state?: TileState;
   busy?: boolean;
   disabled?: boolean;
   pressed?: boolean;
@@ -210,7 +249,10 @@ export function PlatformTile({
   onClick?: () => void;
 }) {
   const t = TILE[size];
-  const opacity = typeof dim === 'number' ? dim : dim ? 0.4 : 1;
+  // Only the mark and the name fade, so the badge saying why stays readable.
+  const contentOpacity = state === 'unavailable' ? 0.35 : state === 'off' ? 0.6 : 1;
+  const ring =
+    state === 'on' ? `inset 0 0 0 2px ${PURPLE}` : 'inset 0 0 0 1.053px rgba(12,12,12,0.1)';
   return (
     <button
       type="button"
@@ -219,32 +261,30 @@ export function PlatformTile({
       title={title}
       aria-label={ariaLabel}
       aria-pressed={pressed}
-      className="relative shrink-0 bg-white transition-[opacity,box-shadow] duration-200 enabled:hover:shadow-[inset_0_0_0_1.4px_rgba(12,12,12,0.3)] disabled:cursor-default"
-      style={{ width: t.w, height: t.h, borderRadius: t.r, opacity, boxShadow: 'inset 0 0 0 1.053px rgba(12,12,12,0.1)' }}
+      className="relative shrink-0 bg-white transition-[box-shadow] duration-200 enabled:hover:shadow-[inset_0_0_0_1.4px_rgba(12,12,12,0.3)] disabled:cursor-default"
+      style={{ width: t.w, height: t.h, borderRadius: t.r, boxShadow: ring }}
     >
       <span
-        className="absolute left-1/2 block -translate-x-1/2"
-        style={{ top: t.markTop + (t.mark * (1 - (MARK_SCALE[platform] ?? 1))) / 2 }}
+        className="absolute left-1/2 block -translate-x-1/2 transition-opacity duration-200"
+        style={{ top: t.markTop + (t.mark * (1 - (MARK_SCALE[platform] ?? 1))) / 2, opacity: contentOpacity }}
       >
         <PlatformIcon platform={platform} size={t.mark * (MARK_SCALE[platform] ?? 1)} />
       </span>
       <span
-        className="absolute inset-x-0 block truncate px-[6px] text-center font-semibold leading-none text-black"
-        style={{ top: t.labelTop, fontSize: t.font }}
+        className="absolute inset-x-0 block truncate px-[6px] text-center font-semibold leading-none text-black transition-opacity duration-200"
+        style={{ top: t.labelTop, fontSize: t.font, opacity: busy ? 1 : contentOpacity }}
       >
         {busy ? <Busy size={14}>Opening…</Busy> : platformLabel(platform)}
       </span>
-      {connected ? (
+      {state === 'unavailable' ? (
         <span
-          aria-hidden
-          className="absolute right-[8px] top-[8px] flex h-[16px] w-[16px] items-center justify-center rounded-full"
-          style={{ background: 'var(--ss-set-online)' }}
+          className="absolute inset-x-0 block text-center text-11 font-medium leading-none"
+          style={{ top: t.labelTop + t.font + 3, color: '#838383' }}
         >
-          <svg width="8" height="7" viewBox="0 0 9 8" fill="none">
-            <path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          Not set up yet
         </span>
       ) : null}
+      {state && !busy ? <TileBadge state={state} /> : null}
     </button>
   );
 }

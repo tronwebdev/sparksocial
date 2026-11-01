@@ -128,12 +128,14 @@ export function AccountsSection() {
     const canvaResult = params.get('canva');
     if (!social && !canvaResult) return;
     window.history.replaceState(null, '', window.location.pathname);
-    /* Onboarding's consent popup lands here too; hand the result back and close. */
+    /* A consent popup (onboarding, a campaign, a recipe) lands here too; hand
+       the result back to the screen that opened it and close. */
+    const result = social ?? canvaResult;
     if (
-      social &&
+      result &&
       handBackToOpener({
-        social: social === 'connected' || social === 'denied' ? social : 'failed',
-        provider: params.get('provider'),
+        social: result === 'connected' || result === 'denied' ? result : 'failed',
+        provider: social ? params.get('provider') : 'canva',
         reason: params.get('reason'),
       })
     ) {
@@ -300,8 +302,7 @@ export function AccountsSection() {
               <li key={p.platform}>
                 <PlatformTile
                   platform={p.platform}
-                  dim={!available && !connected}
-                  connected={connected}
+                  state={connected ? 'connected' : !available ? 'unavailable' : 'connect'}
                   busy={busy === target}
                   disabled={connected || !available || busy !== null}
                   onClick={() => void connect(target)}

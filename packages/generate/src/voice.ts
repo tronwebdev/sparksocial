@@ -127,8 +127,8 @@ export function makeContentGenerateVoiceover(voice: VoiceClient) {
         if (!consented) {
           throw new ToolError(
             'FORBIDDEN',
-            'No active voice-consent record for this genome. Grant one via genome.consent.grant before using its own voice.',
-            { genomeId: input.genomeId },
+            'No one has given permission for their voice to be used yet. Record it in Settings → Brand Kit, then try again.',
+            { genomeId: input.genomeId, requires: { kind: 'consent', consent: 'voice_clone' } },
           );
         }
 

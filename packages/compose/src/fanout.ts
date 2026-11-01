@@ -108,8 +108,9 @@ export function makeComposeFanout(deps: ComposeFanoutDeps = {}) {
       if (!connection) {
         throw new ToolError(
           'FORBIDDEN',
-          'This genome has not connected a Canva account. Use brand.oauth.connect (Canva) first.',
-          { genomeId: input.genomeId },
+          // Named for the person, not the tool: this reached a toast as "Use brand.oauth.connect".
+          'This brand has not connected its Canva account yet. Connect it in Settings → Account Connection, then try again.',
+          { genomeId: input.genomeId, requires: { kind: 'canva', genomeId: input.genomeId } },
         );
       }
       // No token-refresh path exists yet (packages/agency/src/canva.ts tracks

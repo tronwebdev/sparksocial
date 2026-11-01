@@ -10,6 +10,7 @@ import { invoke } from '@/lib/tools';
 import { platformLabel } from '@/lib/platforms';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { userMessage } from '@/lib/errorCopy';
+import { openConsentPopup, useConsentPopupResult } from '@/lib/oauthPopup';
 
 /**
  * "Target account(s)" — connecting *and* choosing, on the wizard step itself.
@@ -108,17 +109,16 @@ export function AccountPicker({
     void load();
   }, [load]);
 
-  /* Back from the consent tab — the redirect lands on the API, so this is the
-     only signal this component gets that anything changed. */
-  useEffect(() => {
-    if (!awaiting) return;
-    const onFocus = () => {
-      setAwaiting(false);
-      void load();
-    };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [awaiting, load]);
+  /* Back from the consent popup (or, if the consent page cut the link to this
+     window, back to this window): re-read, and include what was just connected —
+     connecting it from here was the choice to post to it. */
+  useConsentPopupResult((result) => {
+    setAwaiting(false);
+    void load();
+    if (result?.social === 'connected' && result.provider && !selected.includes(result.provider)) {
+      onSelected([...selected, result.provider]);
+    }
+  }, awaiting);
 
   async function connect(platform: string) {
     if (busy) return;
@@ -133,10 +133,12 @@ export function AccountPicker({
       return next;
     });
 
-    const res = await invoke<{ authorizeUrl: string }>('integration.connect', { genomeId, provider: platform });
-    setBusy(null);
-
-    if (res.status !== 'succeeded') {
+    /* A popup, not this tab: the wizard is mid-flight and a redirect would
+       throw away every step already filled in. It was a `noopener` tab, which
+       finished on Settings and left this wizard behind in the first one. */
+    const opened = await openConsentPopup(async () => {
+      const res = await invoke<{ authorizeUrl: string }>('integration.connect', { genomeId, provider: platform });
+      if (res.status === 'succeeded') return res.output.authorizeUrl;
       setNotes((n) => ({
         ...n,
         [platform]:
@@ -144,13 +146,10 @@ export function AccountPicker({
             ? userMessage(res.error)
             : (res.decision?.reason ?? 'Connecting an account needs an owner or admin.'),
       }));
-      return;
-    }
-
-    /* A new tab, not this one: the wizard is mid-flight and a redirect would
-       throw away every step already filled in. */
-    setAwaiting(true);
-    window.open(res.output.authorizeUrl, '_blank', 'noopener,noreferrer');
+      return null;
+    });
+    setBusy(null);
+    if (opened === 'opened') setAwaiting(true);
   }
 
   const toggle = (platform: string) =>
@@ -310,7 +309,7 @@ export function AccountPicker({
 
       {awaiting ? (
         <p className="mt-[12px] text-14" style={{ color: '#5B5B5B' }}>
-          Finish on the platform&rsquo;s tab, then come back — this list refreshes itself.
+          Finish in the sign-in window — this list updates as soon as it closes.
         </p>
       ) : null}
 

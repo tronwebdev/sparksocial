@@ -1,5 +1,7 @@
 import { ToolError } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
+import { genomeRequirement } from '@sparksocial/shared/genomeRequirements';
+import { genomeFieldRequirement } from '@sparksocial/shared/setupRequirement';
 import type { Playbook } from '@sparksocial/playbooks';
 import { parseBeatSource, readGenomePath, type PlannedBeat, type RenderPlan } from '@sparksocial/assemble';
 
@@ -40,10 +42,16 @@ export function buildSynthesizePlan(playbook: Playbook, genome: Genome): RenderP
 
       const text = readGenomePath(genome, source.path);
       if (!text) {
-        throw new ToolError('NOT_FOUND', `The genome has no value at "${source.path}".`, {
-          genomePath: source.path,
-          beatId: beat.id,
-        });
+        /* The same words as the assemble path (`packages/assemble/src/plan.ts`):
+           this one said `The genome has no value at "offer.primary_cta".` to a
+           business owner. */
+        const requirement = genomeRequirement(source.path);
+        throw new ToolError(
+          'NOT_FOUND',
+          `This post ends with ${requirement.label}, and your brand has not set one yet. ` +
+            `Add it in ${requirement.fixWith} and open this again.`,
+          { genomePath: source.path, beatId: beat.id, requires: genomeFieldRequirement(genome.genome_id, source.path) },
+        );
       }
       return { kind: 'text', beatId: beat.id, durationSec: beat.duration_sec, text, genomePath: source.path };
     }

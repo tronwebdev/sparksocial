@@ -46,6 +46,7 @@ import { userMessage } from '@/lib/errorCopy';
 import { notify, notifyResult } from '@/lib/notify';
 import { Busy } from '@/components/brand/SparkLoader';
 import { CredentialConnectModal } from '@/components/settings/CredentialConnectModal';
+import { openConsentPopup, useConsentPopupResult } from '@/lib/oauthPopup';
 
 /**
  * `CMP-01` — the campaign wizard, PRD §8.4.
@@ -233,6 +234,10 @@ export function CampaignWizard({
   const [credentialFor, setCredentialFor] = useState<string | null>(null);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  /** Whether the first read has preselected; later reads must not undo the person's ticks. */
+  const selectionMade = useRef(false);
+  /** The platform the consent popup just connected, to include on the next read. */
+  const justConnected = useRef<string | null>(null);
 
   // CMP-01.5
   const [approvalMode, setApprovalMode] = useState<string>('review_first_week');
@@ -349,6 +354,23 @@ export function CampaignWizard({
       }
       const connected = res.output.platforms.filter((p) => p.connected);
       setPlatforms(res.output.platforms);
+      /*
+       * A re-read after connecting keeps what the person had already ticked
+       * and adds the account they just connected (and anything posting through
+       * it). Only the first read preselects everything.
+       */
+      const added = justConnected.current;
+      justConnected.current = null;
+      if (selectionMade.current) {
+        if (added) {
+          const riding = connected
+            .filter((p) => p.platform === added || p.connectedVia === added)
+            .map((p) => p.platform);
+          setSelected((s) => [...new Set([...s, ...riding])]);
+        }
+        return;
+      }
+      selectionMade.current = true;
       // Preselect everything connected — §8.4 calls for an "AI preselect", and
       // "all the accounts you have actually connected" is the honest version of
       // that rather than a guess dressed up as a recommendation.
@@ -618,24 +640,39 @@ export function CampaignWizard({
       return;
     }
     setConnecting(platform);
-    // `{ genomeId, provider }` — the tool's schema. This sent `{ platform }`,
-    // which matches neither field; see `AccountsSection.connect`.
-    const res = await invoke<{ authorizeUrl: string }>('integration.connect', {
-      genomeId,
-      provider: platform,
+    /*
+     * In a popup, so this campaign stays on screen.
+     *
+     * This was a new tab with `noopener`: the consent finished there, the
+     * platform sent that tab to Settings, and the campaign being built sat in
+     * the first tab with nothing to say an account had been connected. The
+     * popup reports back and closes — see `oauthPopup.ts`.
+     */
+    await openConsentPopup(async () => {
+      // `{ genomeId, provider }` — the tool's schema. This sent `{ platform }`,
+      // which matches neither field; see `AccountsSection.connect`.
+      const res = await invoke<{ authorizeUrl: string }>('integration.connect', {
+        genomeId,
+        provider: platform,
+      });
+      return notifyResult(res, undefined, 'Couldn’t connect that account') ? res.output.authorizeUrl : null;
     });
     setConnecting(null);
-    if (!notifyResult(res, undefined, 'Couldn’t connect that account')) return;
-    window.open(res.output.authorizeUrl, '_blank', 'noopener');
   }
 
-  /* Coming back from a provider's consent screen should show the new account. */
-  useEffect(() => {
-    if (step !== 4) return;
-    const refresh = () => setPlatforms(null);
-    window.addEventListener('focus', refresh);
-    return () => window.removeEventListener('focus', refresh);
-  }, [step]);
+  /*
+   * Back from the consent popup: re-read the grid, and include what was just
+   * connected — connecting it from *this* step was the choice to post to it.
+   * Stories and Facebook post through another platform's account, so the
+   * platforms that ride on it come in with it.
+   */
+  useConsentPopupResult((result) => {
+    if (result?.social === 'connected' && result.provider) {
+      const provider = result.provider;
+      justConnected.current = provider;
+    }
+    setPlatforms(null);
+  }, step === 4);
 
   const goalLabel =
     GOAL_CARDS.find((c) => c.key === goalKey)?.title ??

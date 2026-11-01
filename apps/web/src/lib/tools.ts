@@ -8,12 +8,19 @@
  * distinction is the whole point of the autonomy model.
  */
 
+import type { SetupRequirement } from '@sparksocial/shared';
 import { userMessage } from './errorCopy';
+import { askToFix, startedByAPerson } from './setupPrompt';
 
 export type ToolResult<T> =
   | { status: 'succeeded'; callId: string; output: T; why?: unknown }
   | { status: 'gated'; callId: string; decision: { kind: string; reason?: string } }
-  | { status: 'failed'; callId?: string; error: { code: string; message: string } };
+  | {
+      status: 'failed';
+      callId?: string;
+      /** `requires`: missing setup that can be filled in on the spot — see `lib/setupPrompt.ts`. */
+      error: { code: string; message: string; requires?: SetupRequirement };
+    };
 
 /** Where Clerk parks a session that has not finished choosing an organization. */
 const TASKS_URL = '/sign-in/tasks';
@@ -44,6 +51,28 @@ const SIGN_IN_URL = '/sign-in';
  * the key for a non-idempotent tool, because the compiler cannot see it.
  */
 export async function invoke<T>(name: string, input: unknown, idempotencyKey?: string): Promise<ToolResult<T>> {
+  const byAPerson = startedByAPerson();
+  const first = await invokeOnce<T>(name, input, idempotencyKey);
+
+  /*
+   * Missing setup, asked for in place.
+   *
+   * The refusal says what is missing (`error.requires`); the person is asked
+   * for it in a small dialog over whatever they were doing, and the call runs
+   * once more if they give it. Retrying with the same idempotency key is safe:
+   * a failed run releases its key (`packages/tools/src/invoke.ts`), so this is
+   * a genuine second attempt and not a replay of the failure.
+   *
+   * Once, not in a loop: a second refusal — for a different thing — is
+   * returned to the caller as it stands.
+   */
+  if (first.status === 'failed' && first.error.requires && byAPerson) {
+    if (await askToFix(first.error.requires)) return invokeOnce<T>(name, input, idempotencyKey);
+  }
+  return first;
+}
+
+async function invokeOnce<T>(name: string, input: unknown, idempotencyKey?: string): Promise<ToolResult<T>> {
   const res = await fetch(`/api/tools/${encodeURIComponent(name)}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -98,7 +127,11 @@ export async function invoke<T>(name: string, input: unknown, idempotencyKey?: s
    * ended there instead of routing anywhere, which is what "unauthenticated
    * access doesn't redirect to sign-in" looked like from the outside.
    */
-  if (code === 'FORBIDDEN' && typeof window !== 'undefined') {
+  // A refusal for missing setup (consent, Canva) can carry FORBIDDEN too, and is
+  // about the brand, not the session — sending that person to sign in again
+  // would be the wrong door entirely.
+  const requiresSetup = Boolean(body && 'error' in body && (body.error as { requires?: unknown } | undefined)?.requires);
+  if (code === 'FORBIDDEN' && !requiresSetup && typeof window !== 'undefined') {
     /**
      * At most one redirect per browsing session, and here is why.
      *

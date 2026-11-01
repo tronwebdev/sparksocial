@@ -119,6 +119,11 @@ export function AccountsStep({
       <span className="absolute left-[25px] top-[292px] whitespace-nowrap text-18 font-medium leading-none text-ink">
         + Add Accounts
       </span>
+      {/* Not in the design, which leaves the tiles to explain themselves —
+          and at 30% opacity they did not. One line, beside the heading. */}
+      <span className="absolute left-[160px] top-[294px] whitespace-nowrap text-14 leading-none" style={{ color: 'rgb(131,131,131)' }}>
+        Tap + to connect · tap a connected one to include or skip it
+      </span>
 
       {platforms === null ? (
         // 323, not 330: the 30px mark centres on the line, 7px above where the text sat.
@@ -140,7 +145,7 @@ export function AccountsStep({
               <PlatformTile
                 platform={p.platform}
                 size="campaign"
-                dim={p.connected && on ? 1 : 0.3}
+                state={!available ? 'unavailable' : !p.connected ? 'connect' : on ? 'on' : 'off'}
                 busy={connecting === target}
                 disabled={!available}
                 pressed={p.connected ? on : undefined}

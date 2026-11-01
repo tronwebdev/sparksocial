@@ -1,5 +1,6 @@
 import { ClerkProvider } from '@clerk/nextjs';
 import { NotificationProvider } from '@/lib/notifications';
+import { SetupPromptHost } from '@/components/setup/SetupPromptHost';
 import { NotificationToasts } from '@/components/notifications/NotificationToasts';
 
 /**
@@ -75,6 +76,8 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <NotificationProvider>
         {children}
         <NotificationToasts />
+        {/* Missing setup — a CTA, an account, consent — asked for in place. See `lib/setupPrompt.ts`. */}
+        <SetupPromptHost />
       </NotificationProvider>
     </ClerkProvider>
   );

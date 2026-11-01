@@ -1,5 +1,6 @@
 import { assetRoleWordList, type ContentPillar, type GenerationMode } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
+import { genomeRequirementWordList } from '@sparksocial/shared/genomeRequirements';
 import { resolve, type AssetInventory, type ResolvedPlaybook } from '@sparksocial/playbooks';
 import type { Trend } from './trend.js';
 
@@ -96,6 +97,9 @@ function buildIntent(trend: Pick<Trend, 'topic'>, r: ResolvedPlaybook): string {
   // "footage" only when footage is actually what is missing — a brand kit or a
   // testimonial screenshot is a file, and calling it footage sends the owner to
   // fetch a camera for something already on their laptop.
+  /* An answer, not a file: with only the CTA missing this read "needs  uploaded
+     first" — an empty list of roles, and a promise of an upload that would not help. */
+  if (r.unlockedBy === 'answer') return `${base} — needs ${genomeRequirementWordList(r.missingGenomePaths)} first`;
   return r.unlockedBy === 'capture'
     ? `${base} — needs footage first (${assetRoleWordList(r.missingRoles)})`
     : `${base} — needs ${assetRoleWordList(r.missingRoles)} uploaded first`;

@@ -5,6 +5,7 @@ import { registerStripeWebhook, type StripeWebhookDeps } from './stripe-webhook.
 import { mightHaveMediaUrls, refreshMediaUrls } from './media-urls.js';
 import { streamSSE } from 'hono/streaming';
 import { ToolError } from '@sparksocial/shared/types';
+import { readSetupRequirement } from '@sparksocial/shared/setupRequirement';
 import {
   agentManifest,
   allTools,
@@ -192,11 +193,24 @@ export function createApp(deps: AppDeps) {
           },
           result.decision.kind === 'deny' ? 403 : 202, // 202: staged, awaiting a human
         );
-      case 'failed':
+      case 'failed': {
+        /*
+         * `meta` stays server-side — it carries ids, vendor bodies and paths
+         * nobody should see. The one exception is `requires`, validated against
+         * its schema so nothing else rides along: it is what lets the browser
+         * offer to fix a missing CTA or account in place instead of naming
+         * Settings. See `packages/shared/src/setupRequirement.ts`.
+         */
+        const requires = readSetupRequirement(result.error.meta);
         return c.json(
-          { status: 'failed', callId: result.call.id, error: { code: result.error.code, message: result.error.message } },
+          {
+            status: 'failed',
+            callId: result.call.id,
+            error: { code: result.error.code, message: result.error.message, ...(requires ? { requires } : {}) },
+          },
           httpStatusFor(result.error.code),
         );
+      }
     }
   });
 

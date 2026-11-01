@@ -14,6 +14,7 @@ import { configFor, draftFromRecipe, emptyDraft, intervalMinutesFor, type Wizard
 import { KIND_META, type RecipeKind } from './recipeMeta';
 import { useAutomation, type ManageRow, type QueueRow, type RecipeItem } from './useAutomation';
 import { userMessage } from '@/lib/errorCopy';
+import { openConsentPopup, useConsentPopupResult } from '@/lib/oauthPopup';
 
 /**
  * Automation Recipes — `ui build/SparkSocial Automation.dc.html`.
@@ -122,16 +123,25 @@ export function AutomationScreen() {
     };
   }, [genomeId, draft?.kind]);
 
+  /* Back from Canva's consent popup: no need to press Continue to find out. */
+  useConsentPopupResult((result) => {
+    if (result?.provider !== 'canva') return;
+    setConnectNote(null);
+    if (result.social === 'connected') setCanvaConnected(true);
+  }, draft?.kind === 'bulk_connector');
+
   async function connectCanva() {
     if (!genomeId || connecting) return;
     setConnecting(true);
     setConnectNote(null);
-    const res = await invoke<{ authorizeUrl: string }>('brand.oauth.connect', { genomeId, provider: 'canva' });
+    /* A popup: the wizard is mid-flight. Canva's callback lands on the
+       accounts page, which hands the result back here and closes. */
+    const opened = await openConsentPopup(async () => {
+      const res = await invoke<{ authorizeUrl: string }>('brand.oauth.connect', { genomeId, provider: 'canva' });
+      return notifyResult(res, undefined, 'Couldn’t open Canva') ? res.output.authorizeUrl : null;
+    });
     setConnecting(false);
-    if (!notifyResult(res, undefined, 'Couldn’t open Canva')) return;
-    /* A new tab: the wizard is mid-flight, and Canva redirects to the API. */
-    window.open(res.output.authorizeUrl, '_blank', 'noopener,noreferrer');
-    setConnectNote('Finish in the Canva tab, then come back — press Continue to re-check.');
+    if (opened === 'opened') setConnectNote('Finish in the Canva window — then press Continue.');
   }
 
   function openWizard(next: WizardDraft, recipe: RecipeItem | null) {

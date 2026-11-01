@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { platformLabel } from '@/lib/platforms';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
-import { notify, notifyResult } from '@/lib/notify';
+import { notifyResult } from '@/lib/notify';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { AccountChip, PlatformTile } from '@/components/accounts/AccountParts';
 import { CredentialConnectModal } from '@/components/settings/CredentialConnectModal';
-import { OAUTH_POPUP_NAME, type OAuthPopupResult } from '@/lib/oauthPopup';
+import { openConsentPopup, useConsentPopupResult } from '@/lib/oauthPopup';
 
 /**
  * `ONB-04` — *"Connect Social Accounts (connected profiles list + OAuth popup)"*.
@@ -105,25 +105,7 @@ export function ConnectAccountsStep({
 
   /* The consent popup lands on the accounts page, which reports back here and
      closes itself — see `oauthPopup.ts`. */
-  useEffect(() => {
-    const onMessage = (e: MessageEvent<OAuthPopupResult>) => {
-      if (e.origin !== window.location.origin || e.data?.type !== 'spark-oauth') return;
-      const label = e.data.provider ? platformLabel(e.data.provider) : 'The platform';
-      if (e.data.social === 'connected') notify.success(`${label} connected`);
-      else if (e.data.social === 'denied') notify.info(`${label} connection cancelled`);
-      else notify.error(`Couldn’t connect ${label}`, { body: 'The connection did not go through. Try again.' });
-      void load();
-    };
-    /* When the popup could not hand back (some consent pages cut the link to
-       this window), coming back to this window is the signal instead. */
-    const onFocus = () => void load();
-    window.addEventListener('message', onMessage);
-    window.addEventListener('focus', onFocus);
-    return () => {
-      window.removeEventListener('message', onMessage);
-      window.removeEventListener('focus', onFocus);
-    };
-  }, [load]);
+  useConsentPopupResult(() => void load());
 
   async function connect(platform: string) {
     if (platforms?.find((p) => p.platform === platform)?.connectMethod === 'credentials') {
@@ -131,18 +113,14 @@ export function ConnectAccountsStep({
       return;
     }
     setBusy(platform);
-    const res = await invoke<{ authorizeUrl: string }>('integration.connect', { genomeId, provider: platform });
+    await openConsentPopup(async () => {
+      const res = await invoke<{ authorizeUrl: string }>('integration.connect', { genomeId, provider: platform });
+      // The common case here is "not configured for native publishing yet",
+      // which the tool refuses by name. Shown verbatim as the detail — it is a
+      // better explanation than anything this component could paraphrase.
+      return notifyResult(res, undefined, `Couldn’t connect ${platformLabel(platform)}`) ? res.output.authorizeUrl : null;
+    });
     setBusy(null);
-    // The common case here is "not configured for native publishing yet",
-    // which the tool refuses by name. Shown verbatim as the detail — it is a
-    // better explanation than anything this component could paraphrase.
-    if (!notifyResult(res, undefined, `Couldn’t connect ${platformLabel(platform)}`)) return;
-    const win = window.open(res.output.authorizeUrl, OAUTH_POPUP_NAME, 'width=600,height=760');
-    if (!win) {
-      notify.warning('Your browser blocked the sign-in window', {
-        body: 'Allow pop-ups for this site, then try again.',
-      });
-    }
   }
 
   async function recheck() {
@@ -193,6 +171,7 @@ export function ConnectAccountsStep({
                 <li key={p.platform}>
                   <PlatformTile
                     platform={p.platform}
+                    state="connect"
                     busy={busy === p.platform}
                     disabled={busy !== null}
                     onClick={() => void connect(p.platform)}

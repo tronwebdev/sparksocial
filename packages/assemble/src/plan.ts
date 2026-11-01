@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { genomeRequirement, readGenomePath } from '@sparksocial/shared/genomeRequirements';
+import { genomeFieldRequirement } from '@sparksocial/shared/setupRequirement';
 import { AssetRole, ToolError } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import type { Beat, Playbook } from '@sparksocial/playbooks';
@@ -227,7 +228,8 @@ function planBeat(
           'NOT_FOUND',
           `This post ends with ${requirement.label}, and your brand has not set one yet. ` +
             `Add it in ${requirement.fixWith} and open this again.`,
-          { genomePath: source.path, beatId: beat.id },
+          // `requires`: the web client asks for it on the spot and runs this again.
+          { genomePath: source.path, beatId: beat.id, requires: genomeFieldRequirement(genome.genome_id, source.path) },
         );
       }
       return { kind: 'text', beatId: beat.id, durationSec: beat.duration_sec, text, genomePath: source.path };
