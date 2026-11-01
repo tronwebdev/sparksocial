@@ -1,9 +1,9 @@
 'use client';
 
-import { PlatformIcon } from '@/components/common/PlatformIcon';
+import { AccountChip, PlatformTile, accountName } from '@/components/accounts/AccountParts';
 import { InfoIcon, PANEL_CLIP, StepPanel } from './campaignChrome';
 import { platformLabel } from '@/lib/platforms';
-import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `Step 4 — Add Social Account`.
@@ -20,12 +20,13 @@ import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
  * filled from `integration.health` instead — the fourteen the publisher
  * actually supports — in the design's geometry.
  *
- * The design's tile has one state, opacity. A real tile has two facts to carry:
- * whether the account is *connected* and whether this campaign is *posting to
- * it*. Opacity carries the second, as designed. The first is a hairline ring
- * and a "Connect" affordance, because a tile that dims and undims while
- * nothing is connected behind it would let someone finish the wizard having
- * chosen four accounts that cannot receive a post.
+ * The design's tile has one state, opacity, and the design's chips are the
+ * selection: a tile toggles its account in and out, and a chip's × takes it
+ * out. Both are drawn that way here, with the shared `AccountChip` and
+ * `PlatformTile`. A tile for a platform with nothing connected behind it is
+ * never selectable — pressing it starts connecting it instead — so the wizard
+ * cannot be finished with accounts that cannot receive a post. One that
+ * cannot be connected on this deployment is disabled and says why on hover.
  */
 
 export interface PlatformStatus {
@@ -33,6 +34,7 @@ export interface PlatformStatus {
   connected: boolean;
   accountLabel?: string;
   supported: boolean;
+  accountAvatarUrl?: string;
   /** Posts through another platform's connection; Connect goes to that one. */
   connectedVia?: string;
   /** `credentials` is a handle and app password (Bluesky), not a consent screen. */
@@ -57,10 +59,14 @@ export function AccountsStep({
   onConnect: (platform: string) => void;
   connecting: string | null;
 }) {
-  /* Accounts, not platforms: Stories and Facebook post through Instagram's
-     connection, and two of the design's two chips spent on one account said
-     less than one would. */
-  const connected = (platforms ?? []).filter((p) => p.connected && !p.connectedVia);
+  const byPlatform = new Map((platforms ?? []).map((p) => [p.platform, p]));
+  /* The chips are the selection, as the design draws them. A platform that
+     posts through another's account (Stories, Facebook) is still its own
+     target here, so it gets its own chip, named for the account it uses. */
+  const chosen = selected
+    .map((platform) => byPlatform.get(platform))
+    .filter((p): p is PlatformStatus => Boolean(p?.connected));
+  const anyConnected = (platforms ?? []).some((p) => p.connected);
   const grid = (platforms ?? []).filter((p) => p.supported);
 
   return (
@@ -77,38 +83,37 @@ export function AccountsStep({
       </span>
       <InfoIcon className="absolute left-[218px] top-[156px]" title="Everything you have connected is selected to start. Untick any this campaign should skip." />
 
-      {connected.length === 0 ? (
+      {chosen.length === 0 ? (
         <p className="absolute left-[24px] top-[196px] w-[440px] text-16 font-normal leading-[1.35]" style={{ color: 'rgb(131,131,131)' }}>
-          Nothing is connected yet. Pick a platform below and connect it — a campaign with no account
-          has nowhere to publish.
+          {anyConnected
+            ? 'No account is selected. Pick the ones this campaign posts to from the platforms below.'
+            : 'Nothing is connected yet. Pick a platform below and connect it — a campaign with no account has nowhere to publish.'}
         </p>
       ) : (
-        connected.slice(0, 2).map((p, i) => (
-          <div
-            key={p.platform}
-            className="absolute h-[68px] w-[221px] rounded bg-white"
-            style={{ left: i === 0 ? 24 : 257, top: 193, boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
-          >
-            <span
-              className="absolute left-[11px] top-[9px] flex h-[47px] w-[47px] items-center justify-center rounded-full"
-              style={{ background: '#F8F8F8', boxShadow: 'inset 0 0 0 1.188px rgba(120,120,120,0.28)' }}
-            >
-              <PlatformIcon platform={p.platform} size={28} />
-            </span>
-            <span className="absolute left-[73px] top-[25px] block max-w-[120px] truncate text-16 font-semibold leading-none text-black">
-              {p.accountLabel ?? platformLabel(p.platform)}
-            </span>
-            <button
-              type="button"
-              onClick={() => onToggle(p.platform)}
-              aria-label={`${selected.includes(p.platform) ? 'Remove' : 'Add'} ${platformLabel(p.platform)}`}
-              className="absolute left-[195px] top-[9px] flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-full text-13 leading-none transition-colors hover:bg-surface-200"
-              style={{ color: 'rgb(131,131,131)' }}
-            >
-              {selected.includes(p.platform) ? '✕' : '+'}
-            </button>
-          </div>
-        ))
+        /* 24,193 and 257,193 in the design — two chips on a 233 pitch. More
+           than two scroll sideways in the same row rather than pushing the
+           tiles down. */
+        <ul className="absolute left-[24px] top-[193px] flex w-[544px] gap-[12px] overflow-x-auto pb-[4px]">
+          {chosen.map((p) => {
+            const owner = p.connectedVia ? byPlatform.get(p.connectedVia) : undefined;
+            const account = {
+              platform: p.platform,
+              accountLabel: owner
+                ? `${accountName(owner)} · ${platformLabel(p.platform)}`
+                : p.accountLabel,
+              accountAvatarUrl: p.accountAvatarUrl ?? owner?.accountAvatarUrl,
+            };
+            return (
+              <li key={p.platform}>
+                <AccountChip
+                  account={account}
+                  onRemove={() => onToggle(p.platform)}
+                  removeLabel={`Don’t post to ${accountName(account)}`}
+                />
+              </li>
+            );
+          })}
+        </ul>
       )}
 
       <span className="absolute left-[25px] top-[292px] whitespace-nowrap text-18 font-medium leading-none text-ink">
@@ -124,52 +129,42 @@ export function AccountsStep({
           /* What Connect actually connects: Stories and Facebook post through
              another platform's account, and asking for their own was refused. */
           const target = p.connectedVia ?? p.platform;
-          const owner = (platforms ?? []).find((x) => x.platform === target);
+          const owner = byPlatform.get(target);
           const available = p.connected || owner?.available !== false;
           return (
-            <button
+            <span
               key={p.platform}
-              type="button"
-              onClick={() => (p.connected ? onToggle(p.platform) : onConnect(target))}
-              disabled={!available}
-              title={available ? undefined : `${platformLabel(p.platform)} isn’t set up for this workspace yet.`}
-              aria-pressed={p.connected ? on : undefined}
-              className="absolute h-cmp-tile-h w-cmp-tile cursor-pointer rounded bg-white transition-opacity duration-200 disabled:cursor-default"
-              style={{
-                left: TILE_X[i % 4],
-                top: TILE_Y[Math.floor(i / 4)],
-                opacity: p.connected && on ? 1 : 0.3,
-                boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = 'inset 0 0 0 1.4px rgba(12,12,12,0.3)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'inset 0 0 0 1px rgba(12,12,12,0.1)';
-              }}
+              className="absolute"
+              style={{ left: TILE_X[i % 4], top: TILE_Y[Math.floor(i / 4)] }}
             >
-              <span className="absolute left-1/2 top-[14px] block -translate-x-1/2">
-                <PlatformIcon platform={p.platform} size={44} />
-              </span>
-              <span className="absolute inset-x-0 top-[65px] block truncate px-[6px] text-center text-14 font-semibold leading-none text-black">
-                {platformLabel(p.platform)}
-              </span>
-              {/* The one fact the design's tile has no room for, and the one
-                  that decides whether choosing it means anything. */}
-              {!p.connected ? (
-                <span className="absolute inset-x-0 top-[81px] block text-center text-11 font-medium" style={{ color: 'rgb(131,131,131)' }}>
-                  {connecting === target ? (
-                    <Busy size={14}>Opening…</Busy>
-                  ) : !available ? (
-                    'Not available yet'
-                  ) : p.connectedVia ? (
-                    `Connects with ${platformLabel(p.connectedVia)}`
-                  ) : (
-                    'Connect'
-                  )}
-                </span>
-              ) : null}
-            </button>
+              <PlatformTile
+                platform={p.platform}
+                size="campaign"
+                dim={p.connected && on ? 1 : 0.3}
+                busy={connecting === target}
+                disabled={!available}
+                pressed={p.connected ? on : undefined}
+                onClick={() => (p.connected ? onToggle(p.platform) : onConnect(target))}
+                title={
+                  !available
+                    ? `${platformLabel(p.platform)} isn’t set up for this workspace yet.`
+                    : !p.connected
+                      ? p.connectedVia
+                        ? `Connect ${platformLabel(p.connectedVia)} — ${platformLabel(p.platform)} posts through it.`
+                        : `Connect ${platformLabel(p.platform)}`
+                      : on
+                        ? `Posting to ${platformLabel(p.platform)} — press to skip it`
+                        : `Not posting to ${platformLabel(p.platform)} — press to include it`
+                }
+                ariaLabel={
+                  !available
+                    ? `${platformLabel(p.platform)} is not available yet`
+                    : !p.connected
+                      ? `Connect ${platformLabel(target)}`
+                      : `${on ? 'Skip' : 'Post to'} ${platformLabel(p.platform)}`
+                }
+              />
+            </span>
           );
         })
       )}

@@ -9,7 +9,7 @@ import { CredentialConnectModal } from './CredentialConnectModal';
 import { userMessage } from '@/lib/errorCopy';
 import { notify, notifyResult } from '@/lib/notify';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
-import { PlatformIcon } from '@/components/common/PlatformIcon';
+import { AccountChip, PlatformTile, accountName } from '@/components/accounts/AccountParts';
 import { ModalShell } from '@/components/common/ModalShell';
 import { handBackToOpener } from '@/lib/oauthPopup';
 
@@ -263,13 +263,14 @@ export function AccountsSection() {
         ) : (
           <ul className="mt-[16px] flex flex-wrap gap-[12px]">
             {chips.map((p) => (
-              <AccountChip
-                key={p.platform}
-                p={p}
-                busy={busy === p.platform}
-                onDisconnect={() => setConfirmOff(p)}
-                onReconnect={() => void connect(p.platform)}
-              />
+              <li key={p.platform}>
+                <AccountChip
+                  account={p}
+                  onRemove={() => setConfirmOff(p)}
+                  removeLabel={`Disconnect ${accountName(p)}`}
+                  status={chipStatus(p, busy === p.platform, () => void connect(p.platform))}
+                />
+              </li>
             ))}
           </ul>
         )}
@@ -284,49 +285,35 @@ export function AccountsSection() {
             const available = owner?.available !== false;
             const connected = p.connected;
             const target = p.connectedVia ?? p.platform;
+            /* Said on hover and to a screen reader — the design's tile carries
+               nothing but the mark and the name. */
             const state = connected
               ? p.connectedVia
-                ? `With ${platformLabel(p.connectedVia)}`
+                ? `Posts through your ${platformLabel(p.connectedVia)} connection`
                 : 'Connected'
               : !available
-                ? 'Not available yet'
+                ? `${platformLabel(p.platform)} isn’t set up for this workspace yet`
                 : p.connectedVia
                   ? `Connects with ${platformLabel(p.connectedVia)}`
-                  : 'Connect';
+                  : `Connect ${platformLabel(p.platform)}`;
             return (
               <li key={p.platform}>
-                <button
-                  type="button"
-                  onClick={() => void connect(target)}
+                <PlatformTile
+                  platform={p.platform}
+                  dim={!available && !connected}
+                  connected={connected}
+                  busy={busy === target}
                   disabled={connected || !available || busy !== null}
-                  title={
-                    !available
-                      ? `${platformLabel(p.platform)} isn’t set up for this workspace yet.`
-                      : p.connectedVia && !connected
-                        ? `${platformLabel(p.platform)} posts through your ${platformLabel(p.connectedVia)} connection.`
-                        : undefined
-                  }
-                  aria-label={
+                  onClick={() => void connect(target)}
+                  title={state}
+                  ariaLabel={
                     connected
                       ? `${platformLabel(p.platform)} is connected`
                       : !available
                         ? `${platformLabel(p.platform)} is not available yet`
                         : `Connect ${platformLabel(target)}`
                   }
-                  className="flex h-[103.2px] w-[129.5px] flex-col items-center rounded-[10.53px] bg-white pt-[14.7px] transition-shadow enabled:hover:shadow-[0_10px_26px_-18px_rgba(12,12,12,0.45)] disabled:cursor-default"
-                  style={{ boxShadow: 'inset 0 0 0 1.053px rgba(12,12,12,0.1)', opacity: available ? 1 : 0.4 }}
-                >
-                  <PlatformIcon platform={p.platform} size={40} />
-                  <span className="mt-[6px] max-w-full truncate px-[6px] text-center text-15 font-semibold text-black">
-                    {platformLabel(p.platform)}
-                  </span>
-                  <span
-                    className="mt-[3px] max-w-full truncate px-[4px] text-12 font-medium"
-                    style={{ color: connected ? 'var(--ss-green-700)' : 'rgb(131,131,131)' }}
-                  >
-                    {busy === target ? <Busy size={16}>Opening…</Busy> : state}
-                  </span>
-                </button>
+                />
               </li>
             );
           })}
@@ -438,88 +425,24 @@ export function AccountsSection() {
   );
 }
 
-/** One connected account, in the design's chip — plus the health it does not draw. */
-function AccountChip({
-  p,
-  busy,
-  onDisconnect,
-  onReconnect,
-}: {
-  p: Platform;
-  busy: boolean;
-  onDisconnect: () => void;
-  onReconnect: () => void;
-}) {
-  const [avatarFailed, setAvatarFailed] = useState(false);
+/**
+ * The line a chip only gets when its access is running out — expired, or
+ * expiring inside the warning window — with Reconnect on it. A healthy chip
+ * is the design's chip, with nothing added.
+ */
+function chipStatus(p: Platform, busy: boolean, onReconnect: () => void): React.ReactNode {
+  if (p.status !== 'expired' && p.status !== 'expiring') return undefined;
   const left = p.hoursUntilExpiry !== null ? expiresInWords(p.hoursUntilExpiry * 3_600_000) : null;
-  const health =
-    p.status === 'expired'
-      ? { text: 'Access expired', color: 'var(--ss-danger)' }
-      : p.status === 'expiring'
-        ? { text: left ? `Expires in ${left}` : 'Expiring soon', color: 'var(--ss-warn)' }
-        : { text: 'Connected', color: 'var(--ss-green-700)' };
-
+  const text = p.status === 'expired' ? 'Access expired' : left ? `Expires in ${left}` : 'Expiring soon';
   return (
-    <li
-      className="relative flex h-[68px] w-[221px] items-center rounded-[10px] bg-white pl-[11px] pr-[28px]"
-      style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
+    <button
+      type="button"
+      onClick={onReconnect}
+      disabled={busy}
+      className="font-semibold underline underline-offset-2"
+      style={{ color: p.status === 'expired' ? 'var(--ss-danger)' : 'var(--ss-warn)' }}
     >
-      <span className="relative block h-[51.6px] w-[53.2px] shrink-0">
-        <span
-          className="absolute left-0 top-0 flex h-[47px] w-[47px] items-center justify-center overflow-hidden rounded-full"
-          style={{ background: '#F8F8F8', boxShadow: 'inset 0 0 0 1.188px rgba(120,120,120,0.28)' }}
-        >
-          {p.accountAvatarUrl && !avatarFailed ? (
-            // eslint-disable-next-line @next/next/no-img-element -- a provider's avatar URL, not a local asset
-            <img
-              src={p.accountAvatarUrl}
-              alt=""
-              referrerPolicy="no-referrer"
-              onError={() => setAvatarFailed(true)}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <PlatformIcon platform={p.platform} size={28} />
-          )}
-        </span>
-        <span className="absolute left-[26.7px] top-[25.1px] flex h-[26.5px] w-[26.5px] items-center justify-center rounded-full bg-white">
-          <PlatformIcon platform={p.platform} size={22} />
-        </span>
-      </span>
-
-      <span className="ml-[9px] min-w-0">
-        <span className="block truncate text-16 font-semibold text-black" title={p.accountLabel ?? platformLabel(p.platform)}>
-          {p.accountLabel ?? platformLabel(p.platform)}
-        </span>
-        {p.status === 'expired' || p.status === 'expiring' ? (
-          <button
-            type="button"
-            onClick={onReconnect}
-            disabled={busy}
-            className="mt-[3px] block text-12 font-semibold underline underline-offset-2"
-            style={{ color: health.color }}
-          >
-            {busy ? <Busy size={14}>Opening…</Busy> : `${health.text} · Reconnect`}
-          </button>
-        ) : (
-          <span className="mt-[3px] flex items-center gap-[6px] text-12" style={{ color: health.color }}>
-            <span aria-hidden className="block h-[7px] w-[7px] rounded-full" style={{ background: 'var(--ss-set-online)' }} />
-            {health.text}
-          </span>
-        )}
-      </span>
-
-      <button
-        type="button"
-        onClick={onDisconnect}
-        aria-label={`Disconnect ${platformLabel(p.platform)}${p.accountLabel ? ` (${p.accountLabel})` : ''}`}
-        title="Disconnect"
-        className="absolute right-[9px] top-[9px] flex h-[18px] w-[18px] items-center justify-center rounded-full transition-colors hover:bg-[rgba(131,131,131,0.15)]"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
-          <path d="M1 1l8 8M9 1 1 9" stroke="rgb(131,131,131)" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </button>
-    </li>
+      {busy ? <Busy size={14}>Opening…</Busy> : `${text} · Reconnect`}
+    </button>
   );
 }

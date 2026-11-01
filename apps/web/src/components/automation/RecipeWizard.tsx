@@ -1,5 +1,6 @@
 'use client';
 
+import { AccountAvatar } from '@/components/accounts/AccountParts';
 import { Busy } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
 import { platformLabel } from '@/lib/platforms';
@@ -283,7 +284,17 @@ function SummaryRail({ draft, step }: { draft: WizardDraft; step: StepKind }) {
                 <span className="block text-14 font-medium" style={{ color: '#838383' }}>
                   {k}
                 </span>
-                <span className="mt-[3px] block break-words text-16 font-bold text-ink">{v}</span>
+                {/* The design's "Selected Account:" — the accounts as 46px discs
+                    with the platform in a 17px square, not a list of names. */}
+                {k === 'Accounts' && draft.targetPlatforms.length > 0 ? (
+                  <span className="mt-[10px] flex flex-wrap gap-[10px]" title={v}>
+                    {draft.targetPlatforms.map((platform) => (
+                      <AccountAvatar key={platform} account={{ platform }} size={46} badge="square" />
+                    ))}
+                  </span>
+                ) : (
+                  <span className="mt-[3px] block break-words text-16 font-bold text-ink">{v}</span>
+                )}
               </span>
             </li>
           ))}

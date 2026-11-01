@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { platformLabel } from '@/lib/platforms';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notify, notifyResult } from '@/lib/notify';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
+import { AccountChip, PlatformTile } from '@/components/accounts/AccountParts';
 import { CredentialConnectModal } from '@/components/settings/CredentialConnectModal';
 import { OAUTH_POPUP_NAME, type OAuthPopupResult } from '@/lib/oauthPopup';
 
@@ -54,6 +54,7 @@ interface PlatformStatus {
   connected: boolean;
   status: ConnectionStatus;
   accountLabel?: string;
+  accountAvatarUrl?: string;
   supported: boolean;
   connectedVia?: string;
   connectMethod: 'oauth' | 'credentials' | 'derived';
@@ -162,30 +163,46 @@ export function ConnectAccountsStep({
       {platforms === null && !error ? (
         <SparkLoader label="Loading your connected accounts…" />
       ) : (
-        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {(platforms ?? []).map((p) => (
-            <li
-              key={p.platform}
-              className="flex items-center justify-between gap-3 rounded-xl border border-border p-4"
-            >
-              <div className="min-w-0">
-                <p className="text-15 font-medium text-ink">{platformLabel(p.platform)}</p>
-                <p className="text-13 text-ink-muted">
-                  {p.connected ? (p.accountLabel ?? 'Connected') : 'Not connected'}
-                </p>
-              </div>
-              {p.connected ? (
-                <Badge variant={p.status === 'ok' ? 'success' : 'warn'}>
-                  {p.status === 'ok' ? 'connected' : p.status}
-                </Badge>
-              ) : (
-                <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => void connect(p.platform)}>
-                  {busy === p.platform ? <Busy size={16}>Opening…</Busy> : 'Connect'}
-                </Button>
-              )}
-            </li>
-          ))}
-        </ul>
+        <>
+          {/* The same chips and tiles as Settings → Account Connection, so an
+              account looks like one thing wherever it is connected. */}
+          {(platforms ?? []).some((p) => p.connected) ? (
+            <ul className="flex flex-wrap gap-[12px]">
+              {(platforms ?? [])
+                .filter((p) => p.connected)
+                .map((p) => (
+                  <li key={p.platform}>
+                    <AccountChip
+                      account={p}
+                      status={
+                        p.status === 'expired' || p.status === 'expiring' ? (
+                          <span style={{ color: p.status === 'expired' ? 'var(--ss-danger)' : 'var(--ss-warn)' }}>
+                            {p.status === 'expired' ? 'Access expired' : 'Expiring soon'}
+                          </span>
+                        ) : undefined
+                      }
+                    />
+                  </li>
+                ))}
+            </ul>
+          ) : null}
+          <ul className="flex flex-wrap gap-[15.8px]">
+            {(platforms ?? [])
+              .filter((p) => !p.connected)
+              .map((p) => (
+                <li key={p.platform}>
+                  <PlatformTile
+                    platform={p.platform}
+                    busy={busy === p.platform}
+                    disabled={busy !== null}
+                    onClick={() => void connect(p.platform)}
+                    title={`Connect ${platformLabel(p.platform)}`}
+                    ariaLabel={`Connect ${platformLabel(p.platform)}`}
+                  />
+                </li>
+              ))}
+          </ul>
+        </>
       )}
 
       {credentialFor ? (

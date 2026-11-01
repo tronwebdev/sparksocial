@@ -1,5 +1,6 @@
 'use client';
 
+import { AccountAvatar } from '@/components/accounts/AccountParts';
 import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useEffect, useState } from 'react';
 import { useClerk, useUser } from '@clerk/nextjs';
@@ -25,6 +26,7 @@ interface Health {
     connected: boolean;
     status: 'not_connected' | 'ok' | 'expiring' | 'expired';
     accountLabel?: string;
+    accountAvatarUrl?: string;
     supported: boolean;
     connectedVia?: string;
   }>;
@@ -138,10 +140,13 @@ export function ConnectedSection() {
                 className="flex flex-wrap items-center justify-between gap-[16px] rounded bg-white px-[22px] py-[16px]"
                 style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
               >
-                <span className="min-w-0">
+                <span className="flex min-w-0 items-center gap-[14px]">
+                  <AccountAvatar account={p} />
+                  <span className="min-w-0">
                   <span className="block text-18 font-semibold text-ink">{platformLabel(p.platform)}</span>
                   <span className="mt-[4px] block truncate text-16" style={{ color: 'rgb(131,131,131)' }}>
                     {p.accountLabel ?? 'Connected'}
+                  </span>
                   </span>
                 </span>
                 <span className="flex items-center gap-[8px] text-16 font-semibold" style={{ color: STATE[p.status].color }}>

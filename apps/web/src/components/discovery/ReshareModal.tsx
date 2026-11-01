@@ -1,5 +1,6 @@
 'use client';
 
+import { AccountAvatar } from '@/components/accounts/AccountParts';
 import { useCallback, useEffect, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
 import { Busy } from '@/components/brand/SparkLoader';
@@ -47,6 +48,7 @@ interface PlatformRow {
   platform: string;
   connected: boolean;
   accountLabel?: string;
+  accountAvatarUrl?: string;
 }
 
 /** The six the tool takes, in the owner's words rather than the enum's. */
@@ -337,9 +339,11 @@ export function ReshareModal({
               return (
                 <span
                   key={p}
-                  className="flex h-[34px] items-center gap-[8px] rounded-[9px] bg-white pl-[10px] pr-[8px] text-14 font-semibold text-ink"
+                  className="flex h-[34px] items-center gap-[8px] rounded-[9px] bg-white pl-[5px] pr-[8px] text-14 font-semibold text-ink"
                   style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
                 >
+                  {/* The same account picture every other screen shows. */}
+                  <AccountAvatar account={row ?? { platform: p }} size={24} badge="none" />
                   {row ? label(row) : PLATFORM_LABEL[p] ?? p}
                   <button
                     type="button"

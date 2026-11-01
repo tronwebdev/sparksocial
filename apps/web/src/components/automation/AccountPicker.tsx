@@ -1,5 +1,6 @@
 'use client';
 
+import { AccountAvatar } from '@/components/accounts/AccountParts';
 import { CredentialConnectModal } from '@/components/settings/CredentialConnectModal';
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
@@ -50,6 +51,7 @@ export interface PlatformRow {
   connected: boolean;
   status: 'not_connected' | 'ok' | 'expiring' | 'expired';
   accountLabel?: string;
+  accountAvatarUrl?: string;
   hoursUntilExpiry: number | null;
   supported: boolean;
   connectedVia?: string;
@@ -78,6 +80,8 @@ export function AccountPicker({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [credentialFor, setCredentialFor] = useState<string | null>(null);
+  /* The design's "Add New" pill opens the list of accounts to connect. */
+  const [adding, setAdding] = useState(false);
   /** Per-platform message from `integration.connect` — usually "not configured". */
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [awaiting, setAwaiting] = useState(false);
@@ -193,11 +197,11 @@ export function AccountPicker({
   return (
     <div className="mt-[10px]">
       {connected.length === 0 ? (
-        <p className="text-15" style={{ color: '#838383' }}>
-          No account is connected yet. Connect one below and it becomes selectable here.
+        <p className="mb-[12px] text-15" style={{ color: '#838383' }}>
+          No account is connected yet. Connect one and it becomes selectable here.
         </p>
-      ) : (
-        <div className="flex flex-wrap gap-[13px]">
+      ) : null}
+      <div className="flex flex-wrap gap-[13px]">
           {connected.map((r) => {
             const on = selected.includes(r.platform);
             const note = STATUS_NOTE[r.status];
@@ -211,9 +215,8 @@ export function AccountPicker({
                 className="flex h-[58px] items-center gap-[11px] rounded-[13px] bg-white pl-[9px] pr-[18px] transition-shadow"
                 style={{ boxShadow: on ? 'inset 0 0 0 1.4px #0C0C0C' : 'inset 0 0 0 1.2px rgba(131,131,131,0.4)' }}
               >
-                <span aria-hidden className="flex h-[41px] w-[41px] shrink-0 items-center justify-center rounded-full" style={{ background: '#F8F8F8' }}>
-                  <PlatformIcon platform={r.platform} size={22} />
-                </span>
+                {/* 41 disc, the mark in a 16 white circle at right/bottom −2. */}
+                <AccountAvatar account={r} size={41} badge="pill" />
                 <span className="text-left">
                   <span className="block whitespace-nowrap text-16 font-semibold text-ink">
                     {r.accountLabel ?? platformLabel(r.platform)}
@@ -238,18 +241,27 @@ export function AccountPicker({
               </button>
             );
           })}
-        </div>
-      )}
+          {/* The design's "Add New": 58 tall, r13, a 1.2 grey ring, a plus and
+              15.5/600 — the end of the same row, not a box underneath it. */}
+          {rest.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setAdding((v) => !v)}
+              aria-expanded={adding}
+              className="flex h-[58px] items-center gap-[10px] rounded-[13px] bg-white px-[20px] transition-shadow hover:shadow-[inset_0_0_0_1.5px_#838383]"
+              style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.4)' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
+                <path d="M7 1v12M1 7h12" stroke="#0C0C0C" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+              <span className="whitespace-nowrap text-15 font-semibold text-ink">Add New</span>
+            </button>
+          ) : null}
+      </div>
 
       {/* ── connect the rest, here ────────────────────────────────────────── */}
-      {rest.length > 0 ? (
-        <details className="mt-[14px] group">
-          <summary className="flex h-[46px] w-fit cursor-pointer list-none items-center gap-[10px] rounded-[12px] bg-white px-[18px] text-15 font-semibold text-ink transition-shadow hover:shadow-[inset_0_0_0_1.5px_#838383]" style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.4)' }}>
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
-              <path d="M7 1v12M1 7h12" stroke="#0C0C0C" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-            Connect another account
-          </summary>
+      {rest.length > 0 && adding ? (
+        <div className="mt-[14px]">
 
           <ul className="mt-[12px] flex flex-col gap-[8px]">
             {rest.map((r) => (
@@ -281,7 +293,7 @@ export function AccountPicker({
               </li>
             ))}
           </ul>
-        </details>
+        </div>
       ) : null}
 
       {credentialFor ? (
