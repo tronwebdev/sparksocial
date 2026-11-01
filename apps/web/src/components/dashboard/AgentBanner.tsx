@@ -256,13 +256,15 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
                     l.spin && 'animate-spin-slow motion-reduce:animate-none',
                   )}
                 >
+                  {/* The design's refresh arc in white at 75%, the same colour
+                      as the label — not a cyan-on-white-25% progress ring. */}
                   <svg width="19" height="19" viewBox="0 0 19 19" fill="none">
-                    <circle cx="9.5" cy="9.5" r="8" stroke="rgba(255,255,255,0.25)" strokeWidth="1.6" />
                     <path
-                      d="M17.5 9.5a8 8 0 0 0-8-8"
-                      stroke="#6CE8FF"
-                      strokeWidth="1.6"
+                      d="M16.6 9.5a7.1 7.1 0 1 1-2.05-5M16.9 1.6v3.3h-3.3"
+                      stroke={WHITE_75}
+                      strokeWidth="1.5"
                       strokeLinecap="round"
+                      strokeLinejoin="round"
                     />
                   </svg>
                 </span>
@@ -290,13 +292,17 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
                 'hover:bg-white/[0.08] disabled:opacity-50',
               )}
             >
+              {/* The design's glyph is outlined: a white 1.3 ring around two
+                  stroked bars. Resume keeps the ring, with a play mark. */}
               {paused ? (
-                <svg width="12" height="14" viewBox="0 0 12 14" fill="none" aria-hidden>
-                  <path d="M1 1.2v11.6L11 7 1 1.2Z" fill="currentColor" />
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                  <circle cx="8" cy="8" r="7" stroke="#FFFFFF" strokeWidth="1.3" />
+                  <path d="M6.4 5.3v5.4L10.7 8 6.4 5.3Z" fill="#FFFFFF" />
                 </svg>
               ) : (
-                <svg width="12" height="14" viewBox="0 0 12 14" fill="none" aria-hidden>
-                  <path d="M1.5 1h3v12h-3zM7.5 1h3v12h-3z" fill="currentColor" />
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                  <circle cx="8" cy="8" r="7" stroke="#FFFFFF" strokeWidth="1.3" />
+                  <path d="M6.2 5.5v5M9.8 5.5v5" stroke="#FFFFFF" strokeWidth="1.4" strokeLinecap="round" />
                 </svg>
               )}
               {busy ? <Busy size={16}>{paused ? 'Resuming…' : 'Pausing…'}</Busy> : paused ? 'Resume Agent' : 'Pause Agent'}

@@ -230,7 +230,8 @@ export default function WorkspacesPage() {
               built yet". It is now, and this is the same component the app
               header carries — see `components/notifications/NotificationBell`. */}
           <span className="hidden shrink-0 sm:block">
-            <NotificationBell />
+            {/* Account Home draws its bell in `#5B5B5B` at 1.6, not ink. */}
+            <NotificationBell glyph={{ stroke: '#5B5B5B', strokeWidth: 1.6 }} />
           </span>
 
           {/* 254×56 chip. Under `sm` the name drops and it is the avatar plus

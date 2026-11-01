@@ -13,7 +13,7 @@ import { useAccountPrefs } from './prefs';
  * groups.
  *
  * The switch is the same 45x24.324 control as everywhere else in the product
- * (`#3EC332` on, `rgba(131,131,131,0.3)` off, the knob at 23.108 / 3).
+ * (`#3EC332` on, `rgba(131,131,131,0.2)` off, the knob at 23.108 / 3).
  *
  * ── Which of these do anything today ──────────────────────────────────────
  *

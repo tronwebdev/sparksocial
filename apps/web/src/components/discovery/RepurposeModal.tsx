@@ -264,9 +264,12 @@ export function RepurposeModal({
                 <div
                   key={h}
                   className="rounded-[10px] bg-white px-[14px] py-[10px]"
-                  style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.22)' }}
+                  /* The design's hook card is lifted, not ringed —
+                     `0 12px 30px -24px rgba(12,12,12,.25)` — and labelled in
+                     `#A341FF`, not a grey no Discovery screen uses. */
+                  style={{ boxShadow: '0 12px 30px -24px rgba(12,12,12,0.25)' }}
                 >
-                  <p className="text-12" style={{ color: '#9A9A9A' }}>
+                  <p className="text-12" style={{ color: '#A341FF' }}>
                     Hook Idea {i + 1}
                   </p>
                   <p className="mt-[2px] text-15 font-medium text-ink">&ldquo;{h}&rdquo;</p>

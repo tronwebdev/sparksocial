@@ -222,7 +222,9 @@ export function OverviewSection() {
               background: gov?.logoUrl
                 ? `url('${gov.logoUrl}') center/cover no-repeat`
                 : 'radial-gradient(circle at 50% 40%, #D6F1FF 0%, #A6D8FF 58%, #7FC3F7 100%)',
-              boxShadow: '0 0 0 6px rgba(255,255,255,0.9)',
+              // The design's hairline: `inset 0 0 0 0.971px rgba(0,0,0,0.25)` —
+              // no white halo around the mark.
+              boxShadow: 'inset 0 0 0 0.971px rgba(0,0,0,0.25)',
             }}
           />
 
@@ -277,7 +279,8 @@ export function OverviewSection() {
                       zIndex: 4 - i,
                       background: AVATAR_FILLS[i % AVATAR_FILLS.length],
                       color: '#0C0C0C',
-                      boxShadow: '0 0 0 2px #FFFFFF',
+                      // The design's three photos sit edge to edge with no
+                      // white separating ring.
                     }}
                   >
                     {label}
@@ -319,9 +322,18 @@ export function OverviewSection() {
                   className="inline-flex h-[32px] items-center gap-[8px] rounded-[88.266px] px-[10px] text-19 font-medium text-ink"
                   style={{ background: compliant ? 'var(--ss-cyan)' : 'rgba(131,131,131,0.18)' }}
                 >
+                  {/* Compliant: the design's solid `#13D711` badge with a white
+                      tick. Standard has no design; it keeps the ink outline. */}
                   <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-                    <circle cx="11" cy="11" r="9.4" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="m6.8 11.3 3 3 5.4-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle
+                      cx="11"
+                      cy="11"
+                      r="9.4"
+                      fill={compliant ? 'var(--ss-green-500)' : 'none'}
+                      stroke={compliant ? 'var(--ss-green-500)' : 'currentColor'}
+                      strokeWidth="1.6"
+                    />
+                    <path d="m6.8 11.3 3 3 5.4-6" stroke={compliant ? '#FFFFFF' : 'currentColor'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   {compliant ? 'Compliant' : 'Standard'}
                 </span>
@@ -355,7 +367,8 @@ export function OverviewSection() {
                   onChange={(e) => setName(e.target.value)}
                   maxLength={120}
                   aria-label="Work name"
-                  className="h-full w-full bg-transparent text-18 font-medium text-ink outline-none"
+                  /* The design sets the value in `#838383`, like the URL's. */
+                  className="h-full w-full bg-transparent text-18 font-medium text-ink-muted outline-none"
                 />
               </Field>
 
@@ -365,8 +378,9 @@ export function OverviewSection() {
                   hint="Set from this brand's ID, so it can't be edited."
                   icon={
                     <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-                      <path d="M9 13a3.6 3.6 0 0 0 5.1 0l2.9-2.9a3.6 3.6 0 0 0-5.1-5.1l-1 1" stroke="rgb(12,12,12)" strokeWidth="1.5" strokeLinecap="round" />
-                      <path d="M13 9a3.6 3.6 0 0 0-5.1 0L5 11.9a3.6 3.6 0 0 0 5.1 5.1l1-1" stroke="rgb(12,12,12)" strokeWidth="1.5" strokeLinecap="round" />
+                      {/* `rgb(0,0,0)` in the design, not the ink `#0C0C0C`. */}
+                      <path d="M9 13a3.6 3.6 0 0 0 5.1 0l2.9-2.9a3.6 3.6 0 0 0-5.1-5.1l-1 1" stroke="rgb(0,0,0)" strokeWidth="1.5" strokeLinecap="round" />
+                      <path d="M13 9a3.6 3.6 0 0 0-5.1 0L5 11.9a3.6 3.6 0 0 0 5.1 5.1l1-1" stroke="rgb(0,0,0)" strokeWidth="1.5" strokeLinecap="round" />
                     </svg>
                   }
                 >
@@ -389,7 +403,7 @@ export function OverviewSection() {
                 value={oneLiner}
                 onChange={(e) => setOneLiner(e.target.value)}
                 placeholder={initial.oneLiner || 'Enter short description'}
-                className="mt-[13px] h-[177px] w-full resize-none rounded-[10px] px-[23px] py-[20px] text-18 font-medium text-ink outline-none"
+                className="mt-[13px] h-[177px] w-full resize-none rounded-[10px] px-[23px] py-[20px] text-18 font-medium text-ink-muted outline-none"
                 style={{ background: FIELD_BG }}
               />
               <p className="mt-[8px] text-16" style={{ color: 'rgb(131,131,131)' }}>

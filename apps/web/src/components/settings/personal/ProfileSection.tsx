@@ -154,14 +154,14 @@ export function ProfileSection() {
 
   return (
     <>
-      {/* The design's 1295x198 banner. */}
+      {/* The design's 1295x198 banner. It is a photograph, not a gradient —
+          `figma-set/assets/6f0dc2ff50bb32dd.png`, a dark grain fading to pink
+          and violet, drawn `center / cover`. The pastel cyan-to-peach ramp that
+          stood in for it was nowhere in the prototype. */}
       <div
         aria-hidden
         className="h-[198px] rounded-xl"
-        style={{
-          background:
-            'linear-gradient(135deg, rgba(108,232,255,0.55) 0%, rgba(245,107,255,0.35) 48%, rgba(254,222,181,0.6) 100%)',
-        }}
+        style={{ background: "url('/settings/profile-banner.png') center / cover no-repeat" }}
       />
 
       {/* avatar row — the design overlaps it onto the banner. */}

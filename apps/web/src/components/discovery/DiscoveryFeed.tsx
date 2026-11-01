@@ -535,7 +535,9 @@ export function DiscoveryFeed() {
             ) : null}
           </div>
 
-          <label className="relative flex h-[38px] items-center gap-[9px] rounded-lg bg-white px-[13px] text-15 font-medium text-ink" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}>
+          {/* `#5B5B5B`, like the pills beside it — the design's `feedSorts`
+              draw "Region: Global" in the same grey as "Sort: Velocity". */}
+          <label className="relative flex h-[38px] items-center gap-[9px] rounded-lg bg-white px-[13px] text-15 font-medium" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)', color: '#5B5B5B' }}>
             <span className="sr-only">Region</span>
             <select
               value={region}

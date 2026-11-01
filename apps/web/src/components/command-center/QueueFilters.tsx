@@ -296,7 +296,7 @@ export function QueueCardHeader({
       <span
         title={hint}
         className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
-        style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
+        style={{ boxShadow: 'inset 0 0 0 1.2px #838383' }}
       >
         i
       </span>

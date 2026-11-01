@@ -7,8 +7,10 @@ import { cn } from '@/lib/utils';
  *
  * `Settings WS Team Users` draws Users / Groups, and `Settings WS Export` draws
  * Export / Import / Clone Workspace — the same control both times, measured on
- * the Team screen: a 218x50 r10.828 white pill holding 42-tall r9.425 tabs at
- * 17.643/500, the active one on `#6CE8FF` with `#0C0C0C` text.
+ * the Team screen: a 218x50 r10.828 pill holding 42-tall r9.425 tabs at
+ * 17.643/500, the active one on `#6CE8FF` with `#0C0C0C` text. The pill has no
+ * fill — only an `inset 0 0 0 1.103px #838383` ring — and the idle tabs are
+ * `#0C0C0C` too: the cyan fill alone marks the selection.
  *
  * These are tabs and not routes because that is what the prototype makes them:
  * its own router treats Users and Groups as two screens, but they share a
@@ -41,8 +43,8 @@ export function SettingsTabs<T extends string>({
         `auto` as well, and the tabs sit a pixel taller than the strip — so a
         vertical scrollbar's arrows were drawn beside the last tab.
       */
-      className="inline-flex h-[50px] max-w-full items-center gap-[5px] overflow-x-auto overflow-y-hidden rounded-[10.828px] bg-white p-[5px]"
-      style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.15)' }}
+      className="inline-flex h-[50px] max-w-full items-center gap-[5px] overflow-x-auto overflow-y-hidden rounded-[10.828px] p-[5px]"
+      style={{ boxShadow: 'inset 0 0 0 1.103px #838383' }}
     >
       {tabs.map((t) => {
         const on = t.id === value;
@@ -57,7 +59,7 @@ export function SettingsTabs<T extends string>({
               'flex h-[42px] items-center justify-center rounded-[9.425px] px-[22px] text-18 font-medium leading-[1.25] transition-colors',
               /* The design's active tab is CYAN with dark text, not a black
                  pill — the same `#6CE8FF` the nav's active row fades to. */
-              on ? 'bg-[var(--ss-cyan)] text-ink' : 'text-ink-muted hover:text-ink',
+              on ? 'bg-[var(--ss-cyan)] text-ink' : 'text-ink',
             )}
           >
             {t.label}

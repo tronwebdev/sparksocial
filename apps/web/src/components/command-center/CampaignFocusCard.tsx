@@ -189,8 +189,9 @@ export function CampaignFocusCard({
           className="flex h-[36.6px] w-[150px] items-center justify-center gap-2 rounded-[7.43px] text-14 font-medium text-ink"
           style={{ background: 'rgba(255,255,255,0.4)', boxShadow: 'inset 0 0 0 0.57px #0C0C0C' }}
         >
+          {/* The design strokes this pencil `#000000`, not the label's ink. */}
           <svg width="13" height="13" viewBox="0 0 20 20" fill="none" aria-hidden>
-            <path d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z" stroke="#000000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           Edit Campaign
         </button>

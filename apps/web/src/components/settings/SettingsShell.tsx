@@ -91,7 +91,8 @@ export function SettingsShell({
   }, []);
 
   return (
-    <div className="min-h-screen bg-white p-[15px] pt-[18px]">
+    // `ss-settings` scopes the settings prototypes' own placeholder colour (tokens.css).
+    <div className="ss-settings min-h-screen bg-white p-[15px] pt-[18px]">
       <div className="relative min-h-[calc(100vh-36px)] overflow-hidden rounded-[30px] bg-set-card">
         {/* ── header ──────────────────────────────────────────────────── */}
         {/*
@@ -249,7 +250,10 @@ function SettingsTreeSwitch({ tree }: { tree: SettingsTree }) {
               // and ran 4px out of an equal third below 1366, where the icons
               // also go so the three fit the pill.
               'flex h-set-seg-h min-w-0 flex-auto items-center justify-center gap-[6px] whitespace-nowrap rounded-[76.383px] px-[10px] text-15 font-medium leading-[1.26] transition-colors max-[1365px]:[&>svg]:hidden',
-              on ? 'bg-ink text-white' : 'text-ink-muted hover:text-ink',
+              /* The idle segment differs by side in all thirteen prototypes:
+                 Personal sits in `#838383` on the workspace pages, Workspace
+                 in `#0C0C0C` on the personal ones — label and glyph alike. */
+              on ? 'bg-ink text-white' : it.key === 'brand' ? 'text-ink' : 'text-ink-muted hover:text-ink',
             )}
           >
             {it.key === 'brand' ? (
@@ -327,7 +331,8 @@ function SettingsNavPanel({
 }
 
 /**
- * The save bar — Cancel 147.869x44.809 r9.704 beside "Save Changes"
+ * The save bar — Cancel 147.869x44.809 r9.704 on `rgba(131,131,131,0.2)` with
+ * no ring (Profile and Password both draw it so) beside "Save Changes"
  * 167.585x44.809 on `#0C0C0C`, both at the card's bottom-left.
  *
  * The design spells it "Sava Changes". That is a typo in the file, not a
@@ -353,8 +358,8 @@ export function SettingsSaveBar({
         type="button"
         onClick={onCancel}
         disabled={busy || !dirty}
-        className="h-[44.809px] w-[147.869px] rounded-[9.704px] bg-white text-16 font-medium transition-colors hover:bg-surface-200 disabled:opacity-50"
-        style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: 'rgb(131,131,131)' }}
+        className="h-[44.809px] w-[147.869px] rounded-[9.704px] bg-[rgba(131,131,131,0.2)] text-16 font-medium transition-colors hover:bg-[rgba(131,131,131,0.3)] disabled:opacity-50"
+        style={{ color: 'rgb(131,131,131)' }}
       >
         Cancel
       </button>

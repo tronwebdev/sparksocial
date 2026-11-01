@@ -362,7 +362,7 @@ export function PlanQueue({
                   : `${filtered.length} of ${items.length} queued match the filters.`
           }
           className="mt-1 flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
-          style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
+          style={{ boxShadow: 'inset 0 0 0 1.2px #838383' }}
         >
           i
         </span>
@@ -511,9 +511,11 @@ export function PlanQueue({
                     )}
                   </p>
                   <p className="mt-2.5 flex items-center gap-2.5 text-18 font-medium text-ink">
+                    {/* `#838383` in the design, beside an ink date — it took the
+                        date's colour through `currentColor`. */}
                     <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden>
-                      <rect x="2" y="3.2" width="14" height="12.6" rx="2.2" stroke="currentColor" strokeWidth="1.4" />
-                      <path d="M2 7h14M6 1.8v2.6M12 1.8v2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      <rect x="2" y="3.2" width="14" height="12.6" rx="2.2" stroke="#838383" strokeWidth="1.4" />
+                      <path d="M2 7h14M6 1.8v2.6M12 1.8v2.6" stroke="#838383" strokeWidth="1.4" strokeLinecap="round" />
                     </svg>
                     {item.scheduledAt ? when(item.scheduledAt) : 'No slot yet'}
                   </p>
@@ -547,7 +549,11 @@ export function PlanQueue({
 
                 <span
                   className="flex h-[41px] w-fit items-center rounded-lg px-[18px] text-15 font-medium"
-                  style={{ background: chip.bg, boxShadow: `inset 0 0 0 1.06px ${chip.ring}`, color: chip.fg }}
+                  style={{
+                    background: TABLE_CHIP_BG[item.status] ?? chip.bg,
+                    boxShadow: `inset 0 0 0 1.06px ${chip.ring}`,
+                    color: chip.fg,
+                  }}
                 >
                   {chip.label}
                 </span>
@@ -559,9 +565,11 @@ export function PlanQueue({
                     onClick={() => onOpen(item.contentItemId)}
                     style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
                   >
+                    {/* `#838383`, as the design's preview eye is on both its
+                        tables (Command Center and Calendar) — not ink. */}
                     <svg width="16" height="12" viewBox="0 0 18 12" fill="none" aria-hidden>
-                      <path d="M1 6s2.9-5 8-5 8 5 8 5-2.9 5-8 5-8-5-8-5Z" stroke="#0C0C0C" strokeWidth="1.4" strokeLinejoin="round" />
-                      <circle cx="9" cy="6" r="2.2" stroke="#0C0C0C" strokeWidth="1.4" />
+                      <path d="M1 6s2.9-5 8-5 8 5 8 5-2.9 5-8 5-8-5-8-5Z" stroke="#838383" strokeWidth="1.4" strokeLinejoin="round" />
+                      <circle cx="9" cy="6" r="2.2" stroke="#838383" strokeWidth="1.4" />
                     </svg>
                   </RowAction>
                   {/* Wired the same as the rows layout below. This one was left
@@ -584,6 +592,7 @@ export function PlanQueue({
                   >
                     <svg width="13" height="15" viewBox="0 0 14 16" fill="none" aria-hidden>
                       <path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M5.6 6.8v4.6M8.4 6.8v4.6" stroke="#F35525" strokeWidth="1.4" strokeLinecap="round" />
                     </svg>
                   </RowAction>
                 </div>
@@ -799,9 +808,10 @@ export function PlanQueue({
                   onClick={() => onOpen(item.contentItemId)}
                   style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
                 >
+                  {/* The design's preview eye is `#838383`, not ink. */}
                   <svg width="16" height="12" viewBox="0 0 18 12" fill="none" aria-hidden>
-                    <path d="M1 6s2.9-5 8-5 8 5 8 5-2.9 5-8 5-8-5-8-5Z" stroke="#0C0C0C" strokeWidth="1.4" strokeLinejoin="round" />
-                    <circle cx="9" cy="6" r="2.2" stroke="#0C0C0C" strokeWidth="1.4" />
+                    <path d="M1 6s2.9-5 8-5 8 5 8 5-2.9 5-8 5-8-5-8-5Z" stroke="#838383" strokeWidth="1.4" strokeLinejoin="round" />
+                    <circle cx="9" cy="6" r="2.2" stroke="#838383" strokeWidth="1.4" />
                   </svg>
                 </RowAction>
                 <RowAction
@@ -820,6 +830,7 @@ export function PlanQueue({
                 >
                   <svg width="13" height="15" viewBox="0 0 14 16" fill="none" aria-hidden>
                     <path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M5.6 6.8v4.6M8.4 6.8v4.6" stroke="#F35525" strokeWidth="1.4" strokeLinecap="round" />
                   </svg>
                 </RowAction>
                 </div>
@@ -943,6 +954,18 @@ const STATUS_CHIP: Record<string, { label: string; bg: string; ring: string; fg:
   optimized: { label: 'Optimized', bg: '#E9F9E7', ring: '#13D711', fg: '#13A711' },
   published: { label: 'Published', bg: '#E9F9E7', ring: '#13D711', fg: '#13A711' },
   blocked: { label: 'Stopped', bg: '#FDE9E2', ring: '#F35525', fg: '#D2470F' },
+};
+
+/**
+ * The table's two fills that differ from the rows'. Both tables in the design —
+ * the Agent Calendar tab (`Command Center.dc.html` `calRows`) and the Calendar
+ * screen's list — draw Scheduled on `rgba(94,100,244,0.06)` and Waiting for
+ * approval on `#FFF6E9`, where the Overview's rows use `#EEEEFE` / `#FFF0DC`.
+ * Rings and text are the same in both, so only the fill is overridden.
+ */
+const TABLE_CHIP_BG: Record<string, string> = {
+  scheduled: 'rgba(94,100,244,0.06)',
+  needs_review: '#FFF6E9',
 };
 
 /** One of the row's four 37x37 buttons. */

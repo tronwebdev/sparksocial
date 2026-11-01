@@ -138,8 +138,9 @@ export function AutomationHome({
         </button>
 
         {/* The design's six floating source marks. Decoration, so they go under
-            `xl` where the hero's own copy needs the width. */}
-        <span aria-hidden className="absolute left-[112px] top-[104px] hidden h-[64px] w-[64px] items-center justify-center rounded-full bg-white/10 xl:flex">
+            `xl` where the hero's own copy needs the width. The round discs are
+            `rgba(255,255,255,.08)` and only the folder's square is `.1`. */}
+        <span aria-hidden className="absolute left-[112px] top-[104px] hidden h-[64px] w-[64px] items-center justify-center rounded-full bg-white/[0.08] xl:flex">
           <span className="relative block h-[40px] w-[34px] rounded-[7px]" style={{ background: '#AFC6E9' }}>
             <span className="absolute inset-x-0 bottom-[5px] text-center text-9 font-extrabold" style={{ color: '#3B5B8C' }}>
               CSV
@@ -157,8 +158,18 @@ export function AutomationHome({
             <path d="m16 9-4.4 6h3l-1.2 4.6 4.8-6.4h-3L16 9Z" fill="#E8582B" />
           </svg>
         </span>
-        <span aria-hidden className="absolute right-[64px] top-[32px] hidden h-[52px] w-[52px] items-center justify-center rounded-full bg-white/10 xl:flex" style={{ color: '#F49B33' }}>
-          <RecipeGlyph kind="rss" size={24} />
+        <span aria-hidden className="absolute right-[64px] top-[32px] hidden h-[52px] w-[52px] items-center justify-center rounded-full bg-white/[0.08] xl:flex" style={{ color: '#F49B33' }}>
+          {/* Not `RecipeGlyph`: the hero's RSS mark alone has a solid
+              `#F49B33` dot under its arcs (r 2.4 at 3.2,20.8). */}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M3 21a2.6 2.6 0 1 0 0-5.2A2.6 2.6 0 0 0 3 21ZM1 8.6A14.4 14.4 0 0 1 15.4 23M1 1.4A21.6 21.6 0 0 1 22.6 23"
+              stroke="currentColor"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+            />
+            <circle cx="3.2" cy="20.8" r="2.4" fill="currentColor" />
+          </svg>
         </span>
       </div>
 

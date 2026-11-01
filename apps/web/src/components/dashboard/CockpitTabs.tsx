@@ -118,7 +118,7 @@ export function CockpitTabs({
         <span
           title="What your agent has lined up, how the last week performed, and who is showing buying intent."
           className="relative z-10 ml-auto flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
-          style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
+          style={{ boxShadow: 'inset 0 0 0 1.2px #838383' }}
         >
           i
         </span>

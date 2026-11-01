@@ -58,6 +58,27 @@ createServer((req, res) => {
     res.end(readFileSync(join(process.cwd(), 'scripts', 'fidelity', `${script[1]}.js`), 'utf8'));
     return;
   }
+  if (req.method === 'GET' && /^\/relay(\?|$)/.test(req.url ?? '')) {
+    /*
+     * For a browser that will not let a public page reach localhost at all —
+     * the desktop app's pane refuses even the preflight. The live page opens
+     * this in a window (`window.open` is navigation, which that rule does not
+     * cover), the two talk by `postMessage`, and this page — being on
+     * localhost — posts each dump here.
+     */
+    res.writeHead(200, { 'content-type': 'text/html', 'cache-control': 'no-store' });
+    res.end(`<!doctype html><meta charset="utf-8"><title>fidelity relay</title><p>relay ready</p><script>
+addEventListener('message', async (e) => {
+  if (!e.data || e.data.type !== 'fx-dump') return;
+  const r = await fetch('/dump?name=' + encodeURIComponent(e.data.name), { method: 'POST', body: e.data.json });
+  document.body.insertAdjacentHTML('beforeend', '<div>' + e.data.name + ' ' + r.status + '</div>');
+  e.source.postMessage({ type: 'fx-ack', name: e.data.name, status: r.status }, '*');
+});
+const peer = opener || (parent !== window ? parent : null);
+if (peer) peer.postMessage({ type: 'fx-ready' }, '*');
+</script>`);
+    return;
+  }
   if (req.method === 'GET') {
     res.writeHead(200, { ...cors, 'content-type': 'text/plain' });
     res.end('fidelity collector up\n');

@@ -42,9 +42,15 @@ export function KitSection({
   style,
   headerRight,
   rule,
+  titleColor,
   children,
 }: {
   title: string;
+  /**
+   * The heading's colour where the design departs from ink: Strict Compliance
+   * sets it in `#838383`, Watermark in pure `#000000`.
+   */
+  titleColor?: string;
   hint?: string;
   className?: string;
   style?: CSSProperties;
@@ -86,7 +92,9 @@ export function KitSection({
         <div className="min-w-0">
           {/* 600, where the four ruled kit cards are 500: Brand Knowledge and
               Templates are 20/600 in the design, Strict Compliance 20/700. */}
-          <h3 className="text-20 font-semibold leading-[1.3] text-ink">{title}</h3>
+          <h3 className="text-20 font-semibold leading-[1.3] text-ink" style={titleColor ? { color: titleColor } : undefined}>
+            {title}
+          </h3>
           {hint ? <p className="mt-[6px] text-13 text-ink-muted">{hint}</p> : null}
         </div>
         {headerRight ? <div className="shrink-0">{headerRight}</div> : null}

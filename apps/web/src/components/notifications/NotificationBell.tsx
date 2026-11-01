@@ -28,7 +28,19 @@ import { TOPIC, TopicTile } from './topics';
  * Read rows stay, greyed: a token-expiry warning from yesterday is exactly what
  * you want to find again today.
  */
-export function NotificationBell({ compact = false }: { compact?: boolean }) {
+/**
+ * The glyph's paint, for the screens whose prototype draws its own bell.
+ *
+ * Most screens' designs have no bell at all and take the default ink stroke.
+ * The two that do draw one each paint it differently — Account Home strokes it
+ * `#5B5B5B` at 1.6, Agency Portal fills and strokes it `#2FC5DE` at 1.4 — so
+ * the colour is the caller's, not this component's.
+ */
+export type BellGlyph = { stroke: string; fill?: string; strokeWidth?: number };
+
+const DEFAULT_GLYPH: BellGlyph = { stroke: '#0C0C0C', strokeWidth: 1.5 };
+
+export function NotificationBell({ compact = false, glyph = DEFAULT_GLYPH }: { compact?: boolean; glyph?: BellGlyph }) {
   const { items, unreadCount, loading, refresh, markAllRead, markRead, requestOsPermission, osPermission } =
     useNotifications();
   const [open, setOpen] = useState(false);
@@ -77,11 +89,18 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
         <svg width="19" height="20" viewBox="0 0 19 20" fill="none" aria-hidden>
           <path
             d="M9.5 2.2a5.6 5.6 0 0 0-5.6 5.6c0 3.6-1.4 4.8-1.4 4.8h14s-1.4-1.2-1.4-4.8A5.6 5.6 0 0 0 9.5 2.2Z"
-            stroke="#0C0C0C"
-            strokeWidth="1.5"
+            fill={glyph.fill ?? 'none'}
+            stroke={glyph.stroke}
+            strokeWidth={glyph.strokeWidth ?? 1.5}
             strokeLinejoin="round"
           />
-          <path d="M11.3 15.4a2 2 0 0 1-3.6 0" stroke="#0C0C0C" strokeWidth="1.5" strokeLinecap="round" />
+          {/* The clapper is 1.6 in both prototypes that draw a bell. */}
+          <path
+            d="M11.3 15.4a2 2 0 0 1-3.6 0"
+            stroke={glyph.stroke}
+            strokeWidth={glyph === DEFAULT_GLYPH ? 1.5 : 1.6}
+            strokeLinecap="round"
+          />
         </svg>
         {unreadCount > 0 ? (
           <span

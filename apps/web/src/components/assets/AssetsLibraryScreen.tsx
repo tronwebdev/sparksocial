@@ -110,6 +110,17 @@ type DateSort = (typeof DATE_SORTS)[number]['key'];
  */
 const UNFILED = '__unfiled__';
 
+/**
+ * The card's wash, painted with the `background` shorthand.
+ *
+ * `--ss-grad-lib` ends in a bare `#F7F7F7`, which is legal as the last layer of
+ * `background` (the prototype's own declaration) but not of `background-image`
+ * — and `bg-lib-wash` emits `background-image`, so the whole value was dropped
+ * and the shared canvas's -157/-198deg wash showed through instead of this
+ * screen's 115/245deg one.
+ */
+const LIB_WASH = '[background:var(--ss-grad-lib)]';
+
 export function AssetsLibraryScreen() {
   const { genome, loading: genomeLoading, error: genomeError } = useSelectedGenome();
   const genomeId = genome?.genomeId;
@@ -345,7 +356,7 @@ export function AssetsLibraryScreen() {
 
   if (genomeLoading) {
     return (
-      <div className="h-full w-full bg-lib-wash">
+      <div className={cn('h-full w-full', LIB_WASH)}>
         <SparkLoader label="Opening your library…" className="min-h-[60vh]" />
       </div>
     );
@@ -353,14 +364,14 @@ export function AssetsLibraryScreen() {
 
   if (genomeError || !genomeId) {
     return (
-      <div className="h-full w-full bg-lib-wash px-lib-inset pt-[34px]">
+      <div className={cn('h-full w-full px-lib-inset pt-[34px]', LIB_WASH)}>
         <p className="text-16 text-ink-muted">{genomeError ?? 'No brand selected.'}</p>
       </div>
     );
   }
 
   return (
-    <div className="relative h-full w-full overflow-y-auto bg-lib-wash pb-[40px]">
+    <div className={cn('relative h-full w-full overflow-y-auto pb-[40px]', LIB_WASH)}>
       {/* ── header band ──────────────────────────────────────────────── */}
       {/*
         A fixed 98px band, not "whatever the tallest child measures".

@@ -170,7 +170,7 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
           <span
             title="Every tool call SPARK is holding because your approval mode requires a person. Approving replays the original call; rejecting drops it."
             className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
-            style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
+            style={{ boxShadow: 'inset 0 0 0 1.2px #838383' }}
           >
             i
           </span>
@@ -262,7 +262,7 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
           <span
             title="Each line here is checked against this brand's state rather than printed unconditionally — see this file's header."
             className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
-            style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
+            style={{ boxShadow: 'inset 0 0 0 1.2px #838383' }}
           >
             i
           </span>

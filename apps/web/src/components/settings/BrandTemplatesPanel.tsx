@@ -35,6 +35,9 @@ import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 type Category = 'intro' | 'outro' | 'bumper' | 'caption' | 'lower_third';
 
+const TAB_ON = { background: 'rgba(108,232,255,0.47)' } as const;
+const TAB_OFF = { background: 'rgba(131,131,131,0.1)', boxShadow: 'inset 0 0 0 1.213px rgba(131,131,131,0.2)' } as const;
+
 interface KitTemplate {
   id: string;
   category: Category;
@@ -149,15 +152,18 @@ export function BrandTemplatesPanel() {
         a draft&rsquo;s storyboard.
       </p>
 
+      {/* The design's tab paints: the selected one on `rgba(108,232,255,0.47)`,
+          the rest on `rgba(131,131,131,0.1)` inside an
+          `inset 0 0 0 1.213px rgba(131,131,131,0.2)` ring — all with `#0C0C0C`
+          labels, never a black pill with white text. */}
       <div className="mt-3 flex flex-wrap gap-1.5">
         {TABS.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
-            className={`rounded-full px-3 py-1 text-13 ${
-              tab === t.key ? 'bg-ink text-surface' : 'bg-surface-muted text-ink-muted'
-            }`}
+            className="rounded-full px-3 py-1 text-13 text-ink"
+            style={tab === t.key ? TAB_ON : TAB_OFF}
           >
             {t.label}
             {templates.filter((x) => x.category === t.key).length > 0
@@ -168,9 +174,8 @@ export function BrandTemplatesPanel() {
         <button
           type="button"
           onClick={() => setTab('versioning')}
-          className={`rounded-full px-3 py-1 text-13 ${
-            tab === 'versioning' ? 'bg-ink text-surface' : 'bg-surface-muted text-ink-muted'
-          }`}
+          className="rounded-full px-3 py-1 text-13 text-ink"
+          style={tab === 'versioning' ? TAB_ON : TAB_OFF}
         >
           Versioning &amp; approvals
         </button>

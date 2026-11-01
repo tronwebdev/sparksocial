@@ -360,9 +360,16 @@
      -157/-198deg with 0.2 alphas, and this card is 115/245deg with 0.35 and
      0.3 over `#F7F7F7` — a warmer, stronger pair. Kept apart rather than
      reconciled, because changing the shared token would repaint every other
-     screen. */
+     screen.
+
+     The base is a one-colour gradient, not a bare `#f7f7f7`: a colour is valid
+     as the last layer of the `background` shorthand but not of
+     `background-image`, which is what the `bg-lib-wash` utility emits — so the
+     browser dropped the whole value and the shared canvas showed through. Same
+     shape as `--ss-grad-canvas`. */
   --ss-grad-lib: linear-gradient(115deg, rgba(108, 232, 255, 0.35) 0%, rgba(238, 251, 253, 0.3) 28%, rgba(255, 255, 255, 0) 52%),
-    linear-gradient(245deg, rgba(245, 107, 255, 0.3) 0%, rgba(252, 238, 252, 0.3) 28%, rgba(255, 255, 255, 0) 52%), #f7f7f7;
+    linear-gradient(245deg, rgba(245, 107, 255, 0.3) 0%, rgba(252, 238, 252, 0.3) 28%, rgba(255, 255, 255, 0) 52%),
+    linear-gradient(#f7f7f7, #f7f7f7);
   /* Create-folder modal, and the upload modal's four-stop cyan fall. */
   --ss-grad-lib-create: linear-gradient(180deg, #fcfcfd 0%, #f3f4f7 100%);
   --ss-grad-lib-upload: linear-gradient(180deg, #7fe5f8 0%, #b9effa 12%, #eafafd 30%, #ffffff 52%);
@@ -827,6 +834,19 @@
   outline-width: 1.5px;
   outline-color: var(--ss-danger);
   outline-offset: -1.5px;
+}
+
+/*
+ * Settings placeholders. All 26 Settings prototypes declare
+ * `input::placeholder, textarea::placeholder { color: #838383 }` in their own
+ * stylesheet; the rest of the product's prototypes keep `#B0B0B0`, which is
+ * what `--ss-fg-placeholder` holds. So the rule is scoped the way the designs
+ * scope it — to the settings shell — rather than changing the token. One
+ * more element than `placeholder:` utilities on each field, so it wins.
+ */
+.ss-settings input::placeholder,
+.ss-settings textarea::placeholder {
+  color: #838383;
 }
 
 /* The workspace card's corner arrow. Inline styles cannot carry a hover, and

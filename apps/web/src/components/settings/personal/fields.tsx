@@ -115,7 +115,12 @@ export function PrefRow({
       >
         <span
           className="absolute inset-0 block rounded-[121.6px] transition-colors duration-200"
-          style={{ background: on ? 'var(--ss-green-600)' : 'rgba(131,131,131,0.3)' }}
+          // `Settings PS Notifications` / `Accessibility`: `#3EC332` on,
+          // `rgba(131,131,131,0.2)` off, both in a `0 0 0 0.77px #FFF` ring.
+          style={{
+            background: on ? 'var(--ss-green-600)' : 'rgba(131,131,131,0.2)',
+            boxShadow: '0 0 0 0.77px rgb(255,255,255)',
+          }}
         />
         <span
           className="absolute top-[2.435px] block h-[19.459px] w-[19.459px] rounded-full bg-white transition-[left] duration-200"

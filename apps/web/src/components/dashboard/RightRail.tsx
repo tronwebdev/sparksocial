@@ -127,15 +127,17 @@ export function RightRail({
                 "done"; the design's glyph is the send icon, which is what
                 publishing a post is. */}
             <svg width="19" height="19" viewBox="0 0 20 20" fill="none" aria-hidden className="[@container(max-width:400px)]:hidden">
+              {/* `railPubIconColor`: the glyph is `#0C0C0C` when active, while
+                  the label beside it is `#000000` — two different values. */}
               <path
                 d="M18 2 2 8.6l6.4 2.4L18 2Z"
-                stroke={seg === 'published' ? '#000000' : '#838383'}
+                stroke={seg === 'published' ? '#0C0C0C' : '#838383'}
                 strokeWidth="1.6"
                 strokeLinejoin="round"
               />
               <path
                 d="M18 2 8.4 11l1.2 6.6L18 2Z"
-                stroke={seg === 'published' ? '#000000' : '#838383'}
+                stroke={seg === 'published' ? '#0C0C0C' : '#838383'}
                 strokeWidth="1.6"
                 strokeLinejoin="round"
               />
@@ -230,10 +232,11 @@ function Published({ posts }: { posts: UpcomingPost[] | null }) {
                 className="flex h-[36.2px] w-[36.2px] shrink-0 items-center justify-center rounded-full"
                 style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(9.05px)' }}
               >
+                {/* The design's open-arrow is `#838383`. */}
                 <svg width="13" height="13" viewBox="0 0 10 10" fill="none" aria-hidden>
                   <path
                     d="M1 9 9 1M9 1H3M9 1v6"
-                    stroke="#0C0C0C"
+                    stroke="#838383"
                     strokeWidth="1.4"
                     strokeLinecap="round"
                     strokeLinejoin="round"

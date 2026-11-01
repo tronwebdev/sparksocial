@@ -367,7 +367,10 @@ export function CalendarMonthGrid({
                   background:
                     variant === 'screen' && post
                       ? tint.bg
-                      : otherMonth || past
+                      : // The Calendar screen's design keeps out-of-month
+                        // cells white in their 0.18 ring and greys only the
+                        // number; the card variant tints them.
+                        (otherMonth && variant !== 'screen') || past
                         ? 'rgba(131,131,131,0.06)'
                         : '#FFFFFF',
                   boxShadow:

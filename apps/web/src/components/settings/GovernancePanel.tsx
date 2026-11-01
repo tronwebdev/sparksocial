@@ -321,7 +321,11 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
             them a section of their own directly under the four, named after
             the toggle that decides whether a violation blocks or merely holds.
           */}
-          <KitSection title="Enable Strict Compliance" hint="Checked on every post before it goes out.">
+          <KitSection
+            title="Enable Strict Compliance"
+            hint="Checked on every post before it goes out."
+            titleColor="rgb(131,131,131)"
+          >
             {/* ── What SPARK may not say ─────────────────────────────────── */}
             <div className="grid grid-cols-1 gap-4">
               <div>
@@ -406,7 +410,14 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
             logo field is wired to nothing.
           */}
           {logoUrl ? (
-            <KitSection title="Watermark" hint="What gets stamped onto rendered images and video.">
+            <KitSection
+              title="Watermark"
+              hint="What gets stamped onto rendered images and video."
+              // The design's watermark card is the one section with a ring —
+              // `inset 0 0 0 1px rgba(12,12,12,0.1)` — and a `#000` title.
+              titleColor="rgb(0,0,0)"
+              style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
+            >
               {/*
                 `Activate Watermark`, next to the logo because that is what it acts
                 on. Until 25 August this toggle existed only in the design: both

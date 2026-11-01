@@ -225,16 +225,19 @@ function UsersTab({ reloads, onPeople }: { reloads: number; onPeople: (m: Member
           className="flex h-[43px] w-[333px] items-center gap-[10px] rounded-[10px] bg-white px-[19px]"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
         >
+          {/* Glyph `#838383`; and the design's stylesheet sets every
+              placeholder to `#838383`, which beats the input's own
+              `rgba(12,12,12,0.4)`. */}
           <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden>
-            <circle cx="8" cy="8" r="6.2" stroke="rgba(12,12,12,0.4)" strokeWidth="1.6" />
-            <path d="m12.6 12.6 3.4 3.4" stroke="rgba(12,12,12,0.4)" strokeWidth="1.6" strokeLinecap="round" />
+            <circle cx="8" cy="8" r="6.2" stroke="rgb(131,131,131)" strokeWidth="1.6" />
+            <path d="m12.6 12.6 3.4 3.4" stroke="rgb(131,131,131)" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search team"
             aria-label="Search team"
-            className="w-full bg-transparent text-16 font-medium text-ink outline-none placeholder:text-[rgba(12,12,12,0.4)]"
+            className="w-full bg-transparent text-16 font-medium text-ink outline-none placeholder:text-ink-muted"
           />
         </label>
       </div>
@@ -283,7 +286,8 @@ function UsersTab({ reloads, onPeople }: { reloads: number; onPeople: (m: Member
                     <span
                       aria-hidden
                       className="block h-[24px] w-[24px] rounded-[5.63px]"
-                      style={{ boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.2)' }}
+                      // The design's unchecked box: `inset 0 0 0 1px rgba(12,12,12,0.4)`.
+                      style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.4)' }}
                     />
 
                     <span

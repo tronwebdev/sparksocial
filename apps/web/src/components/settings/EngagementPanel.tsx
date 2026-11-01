@@ -290,7 +290,7 @@ export function EngagementPanel() {
           <span aria-hidden className="relative mx-auto mt-[0px] block h-[301px] w-[345px] max-cq-canvas:hidden">
             <span className="absolute left-[32px] top-[22px] block h-[279px] w-[279px] rounded-full" style={{ background: 'rgba(108,232,255,0.12)' }} />
             <span className="absolute left-[74px] top-[63px] block h-[196px] w-[196px] rounded-full" style={{ background: 'rgba(132,201,214,0.19)' }} />
-            <span className="absolute left-[108px] top-[102px] flex h-[127px] w-[127px] items-center justify-center rounded-full" style={{ background: 'rgba(255,255,255,0.2)' }}>
+            <span className="absolute left-[108px] top-[102px] flex h-[127px] w-[127px] items-center justify-center rounded-full" style={{ background: 'rgba(255,255,255,0.2)', boxShadow: 'inset 0 0 12.702px -2.54px rgb(233,239,245)' }}>
               <span className="relative block h-[75px] w-[83px]">
                 <span className="absolute left-[31px] top-0 block h-[34px] w-[34px] rounded-full" style={{ background: 'rgb(245,107,255)' }} />
                 <span className="absolute left-0 top-[5px] block h-[50px] w-[50px] rounded-full" style={{ background: 'rgb(108,232,255)' }} />

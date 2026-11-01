@@ -173,8 +173,10 @@ export function SparkRail({
           className="flex h-[47px] w-[218px] shrink-0 items-center gap-2.5 rounded-xl bg-white px-4 text-16 font-semibold text-ink"
           style={{ boxShadow: '0 6px 18px -8px rgba(12,12,12,0.25)' }}
         >
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
-            <path d="M10 1.6 12.2 7l5.8.4-4.4 3.8 1.3 5.7L10 13.9 5.1 16.9l1.3-5.7L2 7.4 7.8 7 10 1.6Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+          {/* The design's glyph is an orange bolt, filled and stroked
+              `#FF9C41` — it was an ink outline star. */}
+          <svg width="16" height="20" viewBox="0 0 16 20" fill="none" aria-hidden className="shrink-0">
+            <path d="M9.5 1 2 11.5h5L6.5 19 14 8.5H9L9.5 1Z" fill="#FF9C41" stroke="#FF9C41" strokeWidth="1" strokeLinejoin="round" />
           </svg>
           <span className="flex-1 text-left">Quick Actions</span>
           <svg
@@ -215,11 +217,14 @@ export function SparkRail({
       */}
       <div
         className="relative mx-[10px] h-[660px] overflow-hidden rounded-[33.46px]"
-        // style={{
-        //   background:
-        //     'linear-gradient(207.202deg, rgba(108,232,255,0.15) 5.49%, rgba(163,65,255,0.15) 92.87%)',
-        //   boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.6)',
-        // }}
+        /* The design's glass (`Command Center.dc.html:651`): cyan-to-purple at
+           15% in a 1px black-60% ring. It had been commented out, which left
+           the orb sitting on the bare rail. */
+        style={{
+          background:
+            'linear-gradient(207.202deg, rgba(108,232,255,0.15) 5.49%, rgba(163,65,255,0.15) 92.87%)',
+          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.6)',
+        }}
       >
         {/* The orb on the gradient, above the white card. 166.2 at 110.4,42.2 —
             4.5px left of centre in the design, which reads as centred. */}

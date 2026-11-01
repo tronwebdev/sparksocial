@@ -21,8 +21,23 @@
 
 const MAX_Y = 4000;
 
+/**
+ * Whitespace collapsed, not removed. Removing it turned the app's token
+ * colours — `color(srgb 0.047 0.047 0.047)`, what `color-mix()` computes to —
+ * into `color(srgb0.04705880.04705880.0470588)`, which no parser can split,
+ * so every token colour was silently left out of every comparison.
+ */
 function rgbOf(value) {
-  return value.replace(/\s+/g, '');
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function mirrored(el) {
+  let flip = false;
+  for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+    const t = getComputedStyle(n).transform;
+    if (t.startsWith('matrix(') && parseFloat(t.slice(7)) < 0) flip = !flip;
+  }
+  return flip;
 }
 
 function visible(el, cs, r) {
@@ -91,7 +106,8 @@ export async function run(name, collector = 'http://localhost:4388') {
     if (!painted) continue;
     const r = el.getBoundingClientRect();
     if (!visible(el, cs, r)) continue;
-    if (r.width * r.height < 1500) continue;
+    // Small enough to keep status pills, swatches and badges — their colour is the point.
+    if (r.width * r.height < 120) continue;
     const y = r.top + scrollY;
     if (y > MAX_Y) continue;
     boxes.push({
@@ -100,10 +116,49 @@ export async function run(name, collector = 'http://localhost:4388') {
       w: Math.round(r.width),
       h: Math.round(r.height),
       bg: rgbOf(bg),
-      grad: cs.backgroundImage && cs.backgroundImage !== 'none' ? cs.backgroundImage.slice(0, 120) : undefined,
+      // Whole, for `colours.mjs`: a gradient cut at 120 characters loses its
+      // last stops, which are the ones that drift.
+      grad: cs.backgroundImage && cs.backgroundImage !== 'none' && !cs.backgroundImage.startsWith('url(') ? cs.backgroundImage : undefined,
       r: cs.borderTopLeftRadius,
-      sh: cs.boxShadow && cs.boxShadow !== 'none' ? cs.boxShadow.slice(0, 80) : undefined,
+      sh: cs.boxShadow && cs.boxShadow !== 'none' ? cs.boxShadow : undefined,
+      bc:
+        parseFloat(cs.borderTopWidth) > 0 && cs.borderTopStyle !== 'none'
+          ? `${cs.borderTopWidth} ${rgbOf(cs.borderTopColor)}`
+          : undefined,
+      // A few words from inside, so a report can say which card a colour is on.
+      inner: (el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 40) || undefined,
+      // Mirrored by a `scaleX(-1)` on it or an ancestor: its gradient angles are
+      // then drawn reflected, and `colours.mjs` compares them that way. The
+      // prototype mirrors the whole canvas card this way.
+      flip: mirrored(el) || undefined,
     });
+  }
+
+  /*
+   * Icons. An SVG's paint is in its children's `fill` / `stroke`, which no box
+   * or text records — and a mark drawn in the wrong grey is as wrong as a
+   * label in the wrong grey.
+   */
+  const icons = [];
+  for (const svg of Array.from(document.body.querySelectorAll('svg'))) {
+    const r = svg.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8) continue;
+    const cs = getComputedStyle(svg);
+    if (!visible(svg, cs, r)) continue;
+    const y = r.top + scrollY;
+    if (y > MAX_Y) continue;
+    const paints = new Set();
+    // Shapes only, not the <svg> itself: its own computed fill is the inherited
+    // default (black) whether or not anything is painted with it, and counting
+    // it reported every stroke icon as "filled black".
+    for (const node of Array.from(svg.querySelectorAll('path,circle,rect,line,polyline,polygon,ellipse,text,use'))) {
+      const ncs = getComputedStyle(node);
+      if (ncs.fill && ncs.fill !== 'none' && !ncs.fill.startsWith('url(')) paints.add(`f:${rgbOf(ncs.fill)}`);
+      if (ncs.stroke && ncs.stroke !== 'none' && !ncs.stroke.startsWith('url(')) paints.add(`s:${rgbOf(ncs.stroke)}`);
+      if (ncs.fill && ncs.fill.startsWith('url(')) paints.add('f:gradient');
+      if (paints.size > 8) break;
+    }
+    icons.push({ x: Math.round(r.left + scrollX), y: Math.round(y), w: Math.round(r.width), h: Math.round(r.height), paints: [...paints] });
   }
 
   const dump = {
@@ -114,6 +169,7 @@ export async function run(name, collector = 'http://localhost:4388') {
     at: new Date().toISOString(),
     texts,
     boxes,
+    icons,
   };
 
   const res = await fetch(`${collector}/dump?name=${encodeURIComponent(name)}`, {
@@ -121,5 +177,5 @@ export async function run(name, collector = 'http://localhost:4388') {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(dump),
   });
-  return { status: res.status, texts: texts.length, boxes: boxes.length, viewport: dump.viewport };
+  return { status: res.status, texts: texts.length, boxes: boxes.length, icons: icons.length, viewport: dump.viewport };
 }

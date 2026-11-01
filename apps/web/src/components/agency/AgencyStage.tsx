@@ -270,7 +270,8 @@ function AgencyBell() {
       className="flex h-[56px] w-[56px] items-center justify-center rounded-full bg-white"
       style={{ boxShadow: '0 10px 26px -16px rgba(12,12,12,0.3)' }}
     >
-      <NotificationBell compact />
+      {/* The portal's bell is solid `#2FC5DE`, fill and 1.4 stroke alike. */}
+      <NotificationBell compact glyph={{ fill: '#2FC5DE', stroke: '#2FC5DE', strokeWidth: 1.4 }} />
     </span>
   );
 }

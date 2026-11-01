@@ -122,7 +122,8 @@ export function BrandSwitcher() {
       */}
       <DropdownMenuTrigger className="group -ml-2.5 flex h-11 items-center gap-[13px] rounded-md pl-2.5 pr-4 text-left outline-none transition-colors hover:bg-[rgba(131,131,131,0.08)]">
         <span className="text-26 font-semibold leading-[1.27] text-black">{active.name}</span>
-        <ChevronDown className="h-[14px] w-[14px] shrink-0 text-ink transition-transform group-data-[state=open]:rotate-180" />
+        {/* `#5B5B5B` at width 2 — the design's chevron is not ink (`Dashboard.dc.html:76`). */}
+        <ChevronDown className="h-[14px] w-[14px] shrink-0 text-[#5B5B5B] transition-transform group-data-[state=open]:rotate-180" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" className="w-[348px]">
