@@ -97,9 +97,9 @@ export function CalendarScreenChrome({
         {/*
           99 tall, so the hairline lands on the design's 117 (the card starts at
           18). The design's header height comes from its 64px orb at 26..90; with
-          the orb and the stat pill hidden — see the page on why the 89% claim is
-          not rendered — the row would otherwise collapse to the wordmark and
-          pull the divider and the title up 30px with it.
+          the orb and the stat pill hidden — they are, whenever the page has no
+          month-over-month change to state — the row would otherwise collapse to
+          the wordmark and pull the divider and the title up 30px with it.
 
           `px-[17px]` because the design's wordmark is at 32 on the stage and the
           card's left edge is 15. Every inset here is an x minus 15.

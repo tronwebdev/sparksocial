@@ -325,6 +325,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
             title="Enable Strict Compliance"
             hint="Checked on every post before it goes out."
             titleColor="rgb(131,131,131)"
+            titleClassName="font-bold"
           >
             {/* ── What SPARK may not say ─────────────────────────────────── */}
             <div className="grid grid-cols-1 gap-4">
@@ -416,6 +417,8 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
               // The design's watermark card is the one section with a ring —
               // `inset 0 0 0 1px rgba(12,12,12,0.1)` — and a `#000` title.
               titleColor="rgb(0,0,0)"
+              // 16/600, not the 20 every other section heading is.
+              titleClassName="text-16"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
             >
               {/*

@@ -9,9 +9,9 @@ import { backdropOf, clock, type ResolvedBeat } from './types';
  *
  * ── Measured off the rendered prototypes at 1728 ──────────────────────────
  *
- * Video, inside a white r20 container at x821 y948, 875 wide:
+ * Video, inside a white r20 container at x821 y948, 875 wide, ringed grey 20%:
  *
- *   scene card    x840 · 837 wide · r15 · rgba(131,131,131,0.05)
+ *   scene card    x840 · 837 wide · r15 · rgba(131,131,131,0.05), ringed grey 30%
  *   accent bar    x840 · 7x280 · r15 — cyan by default, warm when overridden
  *   "Scene 1"     x895 (+55) · 15/500 grey
  *   "0:00–0:04"   x965 · 15/500 grey
@@ -19,9 +19,9 @@ import { backdropOf, clock, type ResolvedBeat } from './types';
  *   description   x895 · +55 from the card top · 18/500 ink
  *   script card   x891 · 771 wide · r14.06 · white
  *     "Voiceover script" 15.51/500 grey, voice name right 12.57/500 grey
- *     script box  x910 · 729x87 · r10.158 · white, body 16/500 ink
+ *     script box  x910 · 729x87 · r10.158 · white on a violet glow, body 16/500 ink
  *     footer      "~3.2s · fits scene length" left; Rewrite; Audio override
- *   add scene     837x65 · r10 · rgba(131,131,131,0.1), label centred 18/500
+ *   add scene     837x65 · r10 · rgba(131,131,131,0.1), ringed grey 30%, label centred 18/500
  *
  * Carousel, with no container around it:
  *
@@ -167,7 +167,7 @@ export function VideoStoryboard({
 
   let elapsed = 0;
   return (
-    <div className="mt-[16px] rounded-[20px] bg-white p-[19px]">
+    <div className="mt-[16px] rounded-[20px] bg-white p-[19px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.2)]">
       <ul className="flex flex-col gap-[20px]">
         {beats.map((beat, i) => {
           const from = elapsed;
@@ -232,7 +232,10 @@ function SceneCard({
   const overridden = beat.voice !== undefined;
 
   return (
-    <div className="relative overflow-hidden rounded-[15px] py-[17px] pl-[55px] pr-[15px]" style={{ background: 'rgba(131,131,131,0.05)' }}>
+    <div
+      className="relative overflow-hidden rounded-[15px] py-[17px] pl-[55px] pr-[15px]"
+      style={{ background: 'rgba(131,131,131,0.05)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
+    >
       {/* The 7px bar down the left edge, warm when the scene departs from the
           post's default audio — the design's own signal for that. */}
       <span
@@ -240,6 +243,7 @@ function SceneCard({
         className="absolute left-0 top-[6px] bottom-[6px] w-[7px] rounded-[15px]"
         style={{ background: overridden ? 'var(--ss-scene-bar-warm)' : 'var(--ss-cyan)' }}
       />
+      <ColumnRule />
 
       <div className="flex flex-wrap items-center gap-x-[14px] gap-y-[6px]">
         <span className="text-15 font-medium text-ink-muted">Scene {index + 1}</span>
@@ -304,7 +308,7 @@ function SceneCard({
             </span>
           </div>
 
-          <div className="mt-[14px] rounded-[10.158px] bg-white px-[17px] py-[12px] shadow-[0_0_0_1px_rgba(131,131,131,0.18)]">
+          <div className="mt-[14px] rounded-[10.158px] bg-white px-[17px] py-[12px] shadow-[0_4px_15px_0_rgba(163,65,255,0.2)]">
             <p className="text-16 font-medium leading-[1.3] text-ink">{script}</p>
           </div>
 
@@ -326,7 +330,7 @@ function SceneCard({
                   type="button"
                   onClick={() => onAudioOverride(beat.beatId)}
                   disabled={busy}
-                  className={cn('text-15 font-medium hover:underline disabled:opacity-50')}
+                  className={cn('text-15 font-medium text-ink-muted hover:underline disabled:opacity-50')}
                   style={overridden ? { color: HUE.override } : undefined}
                 >
                   Audio override
@@ -456,17 +460,27 @@ function SlideCard({
       : // A slide whose words kept their place and gained a picture behind them.
         // The commonest case by far, and the one nothing used to draw.
         (backdropOf(beat)?.urls[0] ?? null);
+  /* Each tint carries a 1.29px inset ring of its own hue: solid cyan on the
+     hook, the tint's hue at 10% otherwise. */
   const tint =
-    hue === 'hook' ? 'rgba(108,232,255,0.3)' : hue === 'cta' ? 'rgba(31,175,19,0.2)' : 'rgba(131,131,131,0.2)';
+    hue === 'hook'
+      ? { background: 'rgba(108,232,255,0.3)', boxShadow: 'inset 0 0 0 1.29px rgb(108,232,255)' }
+      : hue === 'cta'
+        ? { background: 'rgba(31,175,19,0.2)', boxShadow: 'inset 0 0 0 1.29px rgba(31,175,19,0.1)' }
+        : { background: 'rgba(131,131,131,0.2)', boxShadow: 'inset 0 0 0 1.29px rgba(131,131,131,0.1)' };
 
   return (
-    <div className="rounded-[15px] px-[55px] py-[17px]" style={{ background: 'rgba(131,131,131,0.05)' }}>
+    <div
+      className="relative rounded-[15px] px-[55px] py-[17px]"
+      style={{ background: 'rgba(131,131,131,0.05)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
+    >
+      <ColumnRule />
       <div className="flex gap-[20px]">
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" className="h-[147px] w-[124px] shrink-0 rounded-[10px] object-cover" />
       ) : (
-        <span aria-hidden className="h-[147px] w-[124px] shrink-0 rounded-[10px]" style={{ background: tint }} />
+        <span aria-hidden className="h-[147px] w-[124px] shrink-0 rounded-[10px]" style={tint} />
       )}
 
       <div className="min-w-0 flex-1 pt-[8px]">
@@ -550,8 +564,31 @@ function note(beat: ResolvedBeat): string {
   return rest;
 }
 
+/**
+ * The 1px rule at x35 down a scene or slide card — the edge of the column the
+ * design keeps for its drag handle. Grey at 25%, absolutely placed so it adds
+ * nothing to the card's layout.
+ */
+function ColumnRule() {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute bottom-0 left-[35px] top-0 w-px"
+      style={{ background: 'rgba(131,131,131,0.25)' }}
+    />
+  );
+}
+
+/**
+ * A badge's fill, as a share of its hue. Every badge in the prototypes is its
+ * hue at 10% inside a 1px ring of the hue at 40% — except Hook, which fills at
+ * 20%, and "No voiceover", which is the ring alone.
+ */
+const FILL: Partial<Record<Hue, number>> = { hook: 20, silent: 0 };
+
 function Badge({ text, hue }: { text: string; hue: Hue }) {
   const colour = HUE[hue];
+  const fill = FILL[hue] ?? 10;
   return (
     <span
       className="flex h-[26px] items-center rounded-[12.381px] px-[12px] text-12 font-medium"
@@ -561,7 +598,11 @@ function Badge({ text, hue }: { text: string; hue: Hue }) {
         in `DraftDrawer`. `color-mix` in a style attribute is evaluated by the
         browser, not by a class-name escaper.
       */
-      style={{ color: colour, background: `color-mix(in srgb, ${colour} 14%, transparent)` }}
+      style={{
+        color: colour,
+        background: fill ? `color-mix(in srgb, ${colour} ${fill}%, transparent)` : 'transparent',
+        boxShadow: `0 0 0 1px color-mix(in srgb, ${colour} 40%, transparent)`,
+      }}
     >
       {text}
     </span>
@@ -575,7 +616,7 @@ function AddStrip({ label, onClick, busy }: { label: string; onClick: () => void
       onClick={onClick}
       disabled={busy}
       className="mt-[16px] flex h-[65px] w-full items-center justify-center gap-[10px] rounded-[10px] text-18 font-medium text-ink disabled:opacity-50"
-      style={{ background: 'rgba(131,131,131,0.1)' }}
+      style={{ background: 'rgba(131,131,131,0.1)', boxShadow: '0 0 0 1px rgba(131,131,131,0.3)' }}
     >
       <span aria-hidden className="text-20 leading-none">+</span>
       {label}

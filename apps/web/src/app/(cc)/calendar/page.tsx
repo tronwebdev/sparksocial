@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { invoke } from '@/lib/tools';
 import { CalendarBoard } from '@/components/calendar/CalendarBoard';
 import { CalendarMonthGrid } from '@/components/command-center/CalendarMonthGrid';
 import { PlanQueue } from '@/components/command-center/PlanQueue';
@@ -96,6 +97,33 @@ export default function CalendarPage() {
   const [scheduleRev, setScheduleRev] = useState(0);
   const scheduleChanged = useCallback(() => setScheduleRev((n) => n + 1), []);
 
+  /*
+    The stat pill's number: `analytics.brand_series` over 30 days, which
+    returns the same 30 immediately before it and the change between them.
+    Engagements — likes, comments, shares and saves — because "doing better" is
+    about how posts landed, not how many went out. Null when the earlier month
+    had none, and then there is no pill: "better than nothing" is not a
+    percentage. A trailing 30 days rather than the calendar month, because a
+    month-to-date on the 2nd would compare one day against thirty.
+  */
+  const [changePct, setChangePct] = useState<number | null>(null);
+  useEffect(() => {
+    const genomeId = genome?.genomeId;
+    setChangePct(null);
+    if (!genomeId) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await invoke<{ changePct: { engagements: number | null } }>('analytics.brand_series', {
+        genomeId,
+        windowDays: 30,
+      });
+      if (!cancelled && res.status === 'succeeded') setChangePct(res.output.changePct.engagements);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [genome?.genomeId]);
+
   return (
     <CalendarScreenChrome
       layout={layout}
@@ -105,16 +133,21 @@ export default function CalendarPage() {
       /*
         The prototype hardcodes "7 Post from 1st April 2026 to 30th April 2026"
         and "Post this month is doing 89% better than last month". Both are
-        claims about real data — the second is a comparison nothing on this
-        screen measures — so the summary is filled by the board's own slots via
-        the callback below, and the stat pill is left out until there is a
-        month-over-month number behind it. A made-up 89% on the calendar is the
-        kind of thing that makes the honest numbers unreadable.
+        claims about real data, so the summary is filled by the board's own
+        slots via the callback below, and the stat pill by `changePct` above —
+        absent, with its orb, whenever there is no comparison to make. A
+        made-up 89% on the calendar is the kind of thing that makes the honest
+        numbers unreadable. Flat is no news, so it is no pill either.
       */
       summary={
         span === 'month' || spanCount === null
           ? undefined
           : `${spanCount} post${spanCount === 1 ? '' : 's'} ${span === 'week' ? 'this week' : 'on this day'}`
+      }
+      headline={
+        changePct === null || changePct === 0
+          ? undefined
+          : `Post this month is doing ${Math.abs(changePct)}% ${changePct > 0 ? 'better' : 'worse'} than last month`
       }
     >
       {/*

@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
  *   rail        637…788 · 151 wide
  *   content     x788 · 940x1063 · r24.38
  *   rail labels y302 · 429 · 555 · 682  → 126.7 pitch, 14/500
- *   rail tiles  75x75 · r15.69 · active rgba(108,232,255,0.2), idle grey 5%
+ *   rail tiles  75x75 · r15.69 · idle grey 5% + 10% ring; active white, hued inner square
  *   orb         x651 y40 · 126x126
  *   "Post Type" y183 · 14/600 · ink-500
  *   tab chip    x820 y52 · 174x44 · r10 · #6CE8FF
@@ -91,7 +91,7 @@ export function DraftDrawer({
         type="button"
         aria-label="Close draft"
         onClick={onClose}
-        className="absolute inset-0 h-full w-full cursor-default bg-black/20 backdrop-blur-[6px]"
+        className="absolute inset-0 h-full w-full cursor-default bg-black/30 backdrop-blur-[10px]"
       />
 
       {/*
@@ -124,15 +124,39 @@ export function DraftDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="absolute -left-[32px] top-1/2 flex h-[96px] w-[23px] -translate-y-1/2 items-center justify-center rounded-l-[8px] bg-white/90 text-18 font-medium text-ink shadow-[0_2px_12px_rgba(12,12,12,0.12)]"
-            style={{ writingMode: 'vertical-rl', transform: 'translateY(-50%) rotate(180deg)' }}
+            className="absolute -left-[32px] top-1/2 flex h-[96px] w-[23px] -translate-y-1/2 items-center justify-center rounded-l-[8px] text-18 font-medium text-ink"
+            style={{
+              writingMode: 'vertical-rl',
+              transform: 'translateY(-50%) rotate(180deg)',
+              // White at the outer edge falling to a pale cyan against the
+              // drawer — the prototype's own fill. Written pre-rotation, so the
+              // cyan stop is on the left here and lands on the right on screen.
+              background: 'linear-gradient(90deg, rgb(214,242,248) 1.96%, rgb(255,255,255) 98.03%)',
+            }}
           >
             Close Draft
           </button>
 
+          {/*
+            The drawer's ground is one wash under both the rail and the content.
+
+            `DP image` paints its 1089x1063 body with a pink rising from the
+            bottom left over a cyan falling from the top right, on white, and
+            sets the content pane on top as a white r24.38 card — so the rail
+            shows the wash and the content does not. The rail used to carry a
+            gradient of its own, which no prototype draws. The violet glow
+            round the edge is the prototype's own shadow.
+          */}
           <div
-            className="flex h-full w-full overflow-hidden bg-white"
-            style={{ borderRadius: '24.38px 10.158px 10.158px 24.38px' }}
+            className="flex h-full w-full overflow-hidden"
+            style={{
+              borderRadius: '24.38px 10.158px 10.158px 24.38px',
+              background:
+                'linear-gradient(236.713deg, rgba(255,255,255,0) 21.77%, rgba(245,107,255,0.2) 90.50%), ' +
+                'linear-gradient(229.925deg, rgb(213,248,255) 6.28%, rgba(255,255,255,0) 81.45%), ' +
+                'rgb(255,255,255)',
+              boxShadow: '0px 4px 30px 0px rgb(163,65,255)',
+            }}
           >
             {/*
               The list is the one state with no rail.
@@ -146,7 +170,14 @@ export function DraftDrawer({
               <PostTypeRail active={postType} onSelect={onPostType} fixed={typeFixed ?? false} />
             )}
 
-            <div className="flex min-w-0 flex-1 flex-col">
+            {/* White beside the rail; the list has no rail and sits on the wash
+                itself, as `DP list` draws it. */}
+            <div
+              className={cn(
+                'flex min-w-0 flex-1 flex-col',
+                tab === 'list' ? '' : 'overflow-hidden rounded-[24.378px] bg-white',
+              )}
+            >
               <DrawerTabs tab={tab} onTab={onTab} />
               <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
             </div>
@@ -200,13 +231,8 @@ function PostTypeRail({
   return (
     <nav
       aria-label="Post type"
+      // Transparent: the wash behind it belongs to the drawer — see `DraftDrawer`.
       className="flex w-[151px] shrink-0 flex-col items-center px-[14px] pt-[13px]"
-      style={{
-        // The rail's own wash, measured off the prototype: cyan at the top
-        // falling to the violet the drawer uses for emphasis.
-        background:
-          'linear-gradient(180deg, rgba(108,232,255,0.20) 0%, rgba(163,65,255,0.10) 55%, rgba(255,255,255,0) 100%)',
-      }}
     >
       {/* The Spark orb — 126x126 at y40, 13px below the drawer's top edge. It
           was a gradient ball with no face; it is the mark. */}
@@ -234,12 +260,14 @@ function PostTypeRail({
                 {/*
                   A 75x75 tile, r15.69 — measured, not a card.
 
-                  The first build made the active item a white card with a
-                  shadow. The design does something quieter: every tile carries a
-                  fill, grey at 5% when idle and the brand cyan at 20% when
-                  active, so the selection reads as a tint rather than a raised
-                  surface. The label stays 14/500 throughout and only its colour
-                  changes.
+                  Idle, every tile is grey at 5% inside a 1.165px grey ring.
+                  Chosen, the tile turns white and carries a 58.5px r12.33
+                  square tinted in the type's own hue, with the glyph in that
+                  hue at full strength — amber for video, violet for image,
+                  blue for carousel, magenta for text, one per prototype. The
+                  cyan-at-20% this used to use is `DP prevText`'s *generated*
+                  badge on a tile, not its selection. The label stays 14/500
+                  throughout and only its colour changes.
                 */}
                 <span
                   aria-hidden
@@ -257,11 +285,28 @@ function PostTypeRail({
                     is the worst way for it to fail. The focus card sets its own
                     rgba the same way for the same reason.
                   */
-                  style={{ background: on ? 'rgba(108,232,255,0.2)' : 'rgba(131,131,131,0.05)' }}
+                  style={
+                    on
+                      ? { background: 'rgb(255,255,255)' }
+                      : { background: 'rgba(131,131,131,0.05)', boxShadow: 'inset 0 0 0 1.165px rgba(131,131,131,0.1)' }
+                  }
                 >
-                  <TypeIcon type={t.id} active={on} />
+                  {on ? (
+                    <span
+                      className="flex h-[58.547px] w-[58.547px] items-center justify-center rounded-[12.326px]"
+                      style={{ background: TYPE_HUE[t.id].tint }}
+                    >
+                      <TypeIcon type={t.id} active stroke={TYPE_HUE[t.id].ink} />
+                    </span>
+                  ) : (
+                    <TypeIcon type={t.id} active={false} />
+                  )}
                 </span>
-                <span className={cn('text-14 font-medium', on ? 'text-ink' : 'text-ink-muted')}>{t.label}</span>
+                <span
+                  className={cn('text-14 font-medium', on && TYPE_HUE[t.id].label === 'ink' ? 'text-ink' : 'text-ink-muted')}
+                >
+                  {t.label}
+                </span>
               </button>
             </li>
           );
@@ -271,9 +316,27 @@ function PostTypeRail({
   );
 }
 
+/**
+ * The chosen tile's hue per type — the inner square's tint and the glyph's ink.
+ *
+ * Read off the four prototypes whose rail chooses each one: `DP image`,
+ * `DP video`, `DP carousel`, `DP text`. Image's tint is the one that differs in
+ * alpha as well as hue (0.4 against 0.2), and that is the export's, not a typo.
+ *
+ * `label` is the chosen tile's caption colour, which the four disagree on: ink
+ * under Image and Video, grey under Carousel and Text. Followed as drawn — the
+ * tile itself is what marks the choice in all four.
+ */
+const TYPE_HUE: Record<PostType, { tint: string; ink: string; label: 'ink' | 'muted' }> = {
+  image: { tint: 'rgba(232,207,255,0.4)', ink: 'rgb(134,45,218)', label: 'ink' },
+  video: { tint: 'rgba(237,173,46,0.2)', ink: 'rgb(219,157,33)', label: 'ink' },
+  carousel: { tint: 'rgba(45,86,219,0.2)', ink: 'rgb(45,86,219)', label: 'muted' },
+  text: { tint: 'rgba(224,33,220,0.2)', ink: 'rgb(224,33,220)', label: 'muted' },
+};
+
 /** The four rail glyphs, drawn rather than imported — each is a few lines. */
-export function TypeIcon({ type, active }: { type: PostType; active: boolean }) {
-  const stroke = active ? 'var(--ss-ink-900)' : 'var(--ss-ink-500)';
+export function TypeIcon({ type, active, stroke: ink }: { type: PostType; active: boolean; stroke?: string }) {
+  const stroke = ink ?? (active ? 'var(--ss-ink-900)' : 'var(--ss-ink-500)');
   const common = { width: 26, height: 26, viewBox: '0 0 24 24', fill: 'none', stroke, strokeWidth: 1.6 } as const;
   if (type === 'image') {
     return (
@@ -311,13 +374,18 @@ export function TypeIcon({ type, active }: { type: PostType; active: boolean }) 
  * Current Draft · Drafts List.
  *
  * The active tab is a cyan chip (174x44, r10, `#6CE8FF`) with 18/600 type; the
- * inactive one is 18/500 in ink-500 with no chip at all. The prototype gives
- * the inactive tab no surface, so a hover tint is the only thing added here —
- * without one the control reads as a label rather than a button.
+ * inactive one is 18/500 in ink-500 with no fill, only a 1px grey ring at 40%
+ * — `DP video` and `DP list` both draw it. A hover tint is added on top.
+ *
+ * The row closes on the prototype's hairline at 25% grey, painted as a shadow
+ * so it adds no height.
  */
 function DrawerTabs({ tab, onTab }: { tab: DrawerTab; onTab: (next: DrawerTab) => void }) {
   return (
-    <div className="flex shrink-0 items-center gap-[14px] px-[32px] pt-[25px] pb-[18px]">
+    <div
+      className="flex shrink-0 items-center gap-[14px] px-[32px] pt-[25px] pb-[18px]"
+      style={{ boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.25)' }}
+    >
       {([
         { id: 'current' as const, label: 'Current Draft' },
         { id: 'list' as const, label: 'Drafts List' },
@@ -336,6 +404,7 @@ function DrawerTabs({ tab, onTab }: { tab: DrawerTab; onTab: (next: DrawerTab) =
               'flex h-[44px] items-center gap-[10px] rounded-[10px] pl-[14px] pr-[16px] text-18 transition-colors',
               on ? 'bg-brand-cyan font-semibold text-ink' : 'font-medium text-ink-muted hover:bg-surface-muted',
             )}
+            style={on ? undefined : { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
           >
             <TabGlyph tab={t.id} />
             {t.label}

@@ -166,9 +166,11 @@ export function ImageDraftForm({
   return (
     <div className={cn(COLUMN, 'pt-[27px] pb-[30px]')}>
       {/* ── Focus card — y139, 240 tall ─────────────────────────────────── */}
+      {/* A cyan wash at 8% inside a 1px sky ring at 40%. The 40% sky was being
+          used as the fill, which painted the card several shades too dark. */}
       <section
         className="flex min-h-[240px] flex-col rounded-[15px] px-[25px] pt-[13px] pb-[18px]"
-        style={{ background: 'rgba(100,195,213,0.4)' }}
+        style={{ background: 'rgba(108,232,255,0.08)', boxShadow: 'inset 0 0 0 1px rgba(100,195,213,0.4)' }}
       >
         <div className="flex flex-wrap items-center gap-[8px]">
           <span className="text-14 font-medium text-ink">Current Focus</span>
@@ -180,7 +182,10 @@ export function ImageDraftForm({
               — printing it for a post opened from the calendar would be the
               card stating something untrue. */}
           {source ? (
-            <span className="rounded-full bg-white/60 px-[12px] py-[4px] text-14 font-medium text-ink">
+            <span
+              className="rounded-full bg-white px-[12px] py-[4px] text-14 font-medium text-ink"
+              style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
+            >
               From: {source}
             </span>
           ) : null}
@@ -221,7 +226,7 @@ export function ImageDraftForm({
                 key={p}
                 title={p}
                 className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-11 font-semibold uppercase text-ink-muted"
-                style={{ background: 'var(--ss-surface-100)' }}
+                style={{ background: 'var(--ss-surface-100)', boxShadow: 'inset 0 0 0 0.761px rgba(120,120,120,0.28)' }}
               >
                 {p.slice(0, 2)}
               </span>
@@ -261,7 +266,14 @@ export function ImageDraftForm({
         value={intent}
         onChange={(e) => onIntent(e.target.value)}
         placeholder="Announce the new pricing plan"
-        className="mt-[12px] h-[67px] w-full rounded-[10.158px] bg-white px-[25px] text-18 font-medium text-ink shadow-[0_1px_0_rgba(12,12,12,0.06),0_0_0_1px_rgba(131,131,131,0.18)] outline-none placeholder:text-ink-placeholder focus:shadow-[0_0_0_2px_var(--ss-ring)]"
+        className={cn(
+          'mt-[12px] h-[67px] w-full rounded-[10.158px] bg-white px-[25px] text-18 font-medium text-ink outline-none placeholder:text-ink-placeholder focus:shadow-[0_0_0_2px_var(--ss-ring)]',
+          /* The prototypes split here: image and text lift the field on a
+             violet glow, video and carousel outline it in grey at 30%. */
+          postType === 'video' || postType === 'carousel'
+            ? 'shadow-[inset_0_0_0_1px_rgba(131,131,131,0.3)]'
+            : 'shadow-[0_4px_15px_0_rgba(163,65,255,0.2)]',
+        )}
       />
 
       {/*
@@ -276,7 +288,7 @@ export function ImageDraftForm({
         <>
           <div
             className="mt-[18px] rounded-[10px] px-[21px] py-[19px]"
-            style={{ background: 'rgba(131,131,131,0.05)' }}
+            style={{ background: 'rgba(131,131,131,0.05)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
           >
             <div className="flex flex-wrap items-center gap-[36px]">
               <Chip label="9:16" mark="ratio" />
@@ -292,7 +304,7 @@ export function ImageDraftForm({
                 and different contents is an authoring slip in the export, not a
                 spec — so the music card is titled for what it holds.
               */}
-              <DefaultCard title="Music (default)" pill="Ai Music" value={music} />
+              <DefaultCard title="Music (default)" pill="Ai Music" value={music} ringed />
             </div>
 
             <p className="mt-[14px] text-14 font-medium text-ink-muted">
@@ -361,7 +373,7 @@ export function ImageDraftForm({
 
       <div
         className="mt-[13px] min-h-[114px] rounded-[10px] px-[19px] py-[14px]"
-        style={{ background: 'rgba(131,131,131,0.1)' }}
+        style={{ background: 'rgba(131,131,131,0.1)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
       >
         {/* The card has a heading of its own — 20/500 ink at y648, above the
             grey body at y686. */}
@@ -380,7 +392,9 @@ export function ImageDraftForm({
         onChange={(e) => onPrompt(e.target.value)}
         rows={3}
         placeholder="Describe the shot: subject, light, framing."
-        className="mt-[12px] min-h-[111px] w-full resize-y rounded-[10px] bg-white px-[25px] py-[18px] text-18 font-medium leading-[1.28] text-ink-muted shadow-[0_0_0_1px_rgba(131,131,131,0.18)] outline-none placeholder:text-ink-placeholder focus:shadow-[0_0_0_2px_var(--ss-ring)]"
+        /* White and unringed, as `DP image` draws it — the design separates
+           this box from the pane by its label alone. */
+        className="mt-[12px] min-h-[111px] w-full resize-y rounded-[10px] bg-white px-[25px] py-[18px] text-18 font-medium leading-[1.28] text-ink-muted outline-none placeholder:text-ink-placeholder focus:shadow-[0_0_0_2px_var(--ss-ring)]"
       />
 
       <div className="mt-[17px] flex flex-wrap items-center gap-[22px]">
@@ -452,18 +466,27 @@ function Fact({ label, value }: { label: string; value?: string }) {
  * an inner 387x64 r10 card carrying a 48px avatar, a name and a description.
  * Renders nothing when the post has no such default rather than an empty card,
  * since the settings block above it already says the post has none.
+ *
+ * `ringed` because the two cards differ: every video prototype draws the voice
+ * card bare and the music card inside a 1px grey ring at 20%. The inner card
+ * carries that ring in both.
  */
 function DefaultCard({
   title,
   pill,
   value,
+  ringed,
 }: {
   title: string;
   pill: string;
   value?: { name: string; description?: string };
+  ringed?: boolean;
 }) {
   return (
-    <div className="rounded-[13.839px] bg-white px-[10px] pb-[10px] pt-[13px]">
+    <div
+      className="rounded-[13.839px] bg-white px-[10px] pb-[10px] pt-[13px]"
+      style={ringed ? { boxShadow: '0 0 0 1px rgba(131,131,131,0.2)' } : undefined}
+    >
       <div className="flex items-center justify-between gap-3 px-[22px]">
         <span className="text-15 font-medium text-ink">{title}</span>
         <span
@@ -475,7 +498,10 @@ function DefaultCard({
       </div>
 
       {value ? (
-        <div className="mt-[14px] flex items-center gap-[10px] rounded-[10px] bg-white px-[9px] py-[8px]">
+        <div
+          className="mt-[14px] flex items-center gap-[10px] rounded-[10px] bg-white px-[9px] py-[8px]"
+          style={{ boxShadow: '0 0 0 1px rgba(131,131,131,0.2)' }}
+        >
           <span
             aria-hidden
             className="h-[48px] w-[48px] shrink-0 rounded-[13.331px]"
@@ -563,11 +589,15 @@ function ChipMark({ mark }: { mark: ChipMarkKind }) {
 }
 
 /**
- * A status chip — 35 tall, r7.78, on white at 62%.
+ * A status chip — 35 tall, r7.78.
  *
- * The design's "Completed" green is #1FAF13 and the app's is `--ss-success`
- * (#13D711). The token wins: one green for one meaning beats a second green
- * that exists only on this panel.
+ * Two grounds, as the design draws them: a chip with something happening sits
+ * on white at 62% inside a 10% ink ring, in black ("Generating") or the
+ * design's #1FAF13 green ("Completed"); an idle "No post" sits on sky at 21%
+ * inside a 10% grey ring, in grey. The green is the prototype's, not
+ * `--ss-success` (#13D711) — the two are visibly different side by side, and
+ * #1FAF13 is already this panel's green (`--ss-scene-cta`). The glyph takes the
+ * chip's text colour.
  */
 function StatusChip({
   label,
@@ -581,25 +611,24 @@ function StatusChip({
   return (
     <span
       className={cn(
-        'flex h-[35px] items-center gap-[7px] rounded-[7.776px] bg-white/[0.62] px-[14px] text-14 font-medium',
-        tone === 'done' ? 'text-success' : tone === 'work' ? 'text-ink' : 'text-ink-muted',
+        'flex h-[35px] items-center gap-[7px] rounded-[7.776px] px-[14px] text-14 font-medium',
+        tone === 'done' ? 'text-[color:var(--ss-scene-cta)]' : tone === 'work' ? 'text-black' : 'text-ink-muted',
       )}
+      style={
+        tone === 'idle'
+          ? { background: 'rgba(105,186,201,0.21)', boxShadow: 'inset 0 0 0 0.885px rgba(131,131,131,0.1)' }
+          : { background: 'rgba(255,255,255,0.62)', boxShadow: 'inset 0 0 0 0.885px rgba(12,12,12,0.1)' }
+      }
       // Four chips reading "No post" are indistinguishable without it. The
       // design gives each one a leading glyph and this is which type it is.
       title={type ? `${type[0]!.toUpperCase()}${type.slice(1)}` : undefined}
     >
       {type ? (
         <span className="shrink-0 [&>svg]:h-[17px] [&>svg]:w-[17px]">
-          <TypeIcon type={type} active={tone !== 'idle'} />
+          <TypeIcon type={type} active={tone !== 'idle'} stroke="currentColor" />
         </span>
       ) : (
-        <span
-          aria-hidden
-          className={cn(
-            'h-[9px] w-[9px] rounded-full',
-            tone === 'done' ? 'bg-success' : tone === 'work' ? 'bg-ink' : 'bg-ink-muted',
-          )}
-        />
+        <span aria-hidden className="h-[9px] w-[9px] rounded-full bg-current" />
       )}
       {label}
     </span>

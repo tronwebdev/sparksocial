@@ -1636,7 +1636,18 @@ export function DraftPanel({
                   onChange={(e) => setIntent(e.target.value)}
                   rows={2}
                   placeholder={summariseBeats(draft.beats) ?? 'What this post is about'}
-                  className="mt-[10px] w-full resize-y rounded-[10px] border border-border bg-input px-[16px] py-[12px] text-16 text-ink placeholder:text-ink-placeholder"
+                  /*
+                    White, never the grey field fill. The edge is the format's:
+                    `DP video` / `DP carousel` ring it in grey at 30%, `DP image`
+                    / `DP text` drop the ring and lift it on a violet glow. The
+                    border stays (transparent) so the box keeps its size.
+                  */
+                  className={cn(
+                    'mt-[10px] w-full resize-y rounded-[10px] border bg-white px-[16px] py-[12px] text-16 text-ink placeholder:text-ink-placeholder',
+                    draft.mediaType === 'video' || draft.mediaType === 'carousel'
+                      ? 'border-ink-muted/30'
+                      : 'border-transparent shadow-[0_4px_15px_0_rgba(163,65,255,0.2)]',
+                  )}
                 />
               </section>
 
@@ -1662,8 +1673,13 @@ export function DraftPanel({
                 the server is the only party that knows what a beat with no
                 duration of its own falls back to.
               */}
+              {/* Painted as `DP video`'s settings card — grey at 5% inside a 30%
+                  grey edge — since this is where its "0:24 total" lives. */}
               {draft.mediaType === 'video' ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-4 py-3">
+                <div
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-muted/30 px-4 py-3"
+                  style={{ background: 'rgba(131,131,131,0.05)' }}
+                >
                   <div className="flex flex-wrap items-baseline gap-3">
                     <p className="text-13 font-medium text-ink">Storyboard</p>
                     <span className="text-12 tabular-nums text-ink-muted">
@@ -2050,7 +2066,9 @@ export function DraftPanel({
           <footer className="flex items-center justify-between border-t border-border px-6 py-4">
             {phase === 'editor' ? (
               <>
-                <Button variant="ghost" onClick={onClose}>
+                {/* Ink, not the ghost grey: every prototype prints "Save as
+                    Draft" in #0C0C0C. */}
+                <Button variant="ghost" className="text-ink" onClick={onClose}>
                   Save as draft
                 </Button>
                 <Button onClick={() => setPhase('preview')}>Continue to preview</Button>

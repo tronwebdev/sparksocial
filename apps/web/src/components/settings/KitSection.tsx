@@ -43,6 +43,7 @@ export function KitSection({
   headerRight,
   rule,
   titleColor,
+  titleClassName,
   children,
 }: {
   title: string;
@@ -51,6 +52,11 @@ export function KitSection({
    * sets it in `#838383`, Watermark in pure `#000000`.
    */
   titleColor?: string;
+  /**
+   * Where the design's heading leaves the 20/600 default: Strict Compliance is
+   * 700, Watermark 16. Merged over the default by `cn`.
+   */
+  titleClassName?: string;
   hint?: string;
   className?: string;
   style?: CSSProperties;
@@ -91,8 +97,12 @@ export function KitSection({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           {/* 600, where the four ruled kit cards are 500: Brand Knowledge and
-              Templates are 20/600 in the design, Strict Compliance 20/700. */}
-          <h3 className="text-20 font-semibold leading-[1.3] text-ink" style={titleColor ? { color: titleColor } : undefined}>
+              Templates are 20/600 in the design, Strict Compliance 20/700
+              and Watermark 16/600 — those two pass `titleClassName`. */}
+          <h3
+            className={cn('text-20 font-semibold leading-[1.3] text-ink', titleClassName)}
+            style={titleColor ? { color: titleColor } : undefined}
+          >
             {title}
           </h3>
           {hint ? <p className="mt-[6px] text-13 text-ink-muted">{hint}</p> : null}

@@ -266,9 +266,10 @@ export function AgencyClientTable({
             className="absolute top-[38px] flex h-[40px] w-[40px] items-center justify-center rounded-[10px] transition-colors hover:bg-white"
             style={{ left: 1508, boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
           >
+            {/* `#5B5B5B`, as the Agency Portal prototype strokes this eye — not ink. */}
             <svg width="16" height="12" viewBox="0 0 18 12" fill="none" aria-hidden>
-              <path d="M1 6s2.9-5 8-5 8 5 8 5-2.9 5-8 5-8-5-8-5Z" stroke="rgb(12,12,12)" strokeWidth="1.4" strokeLinejoin="round" />
-              <circle cx="9" cy="6" r="2.2" stroke="rgb(12,12,12)" strokeWidth="1.4" />
+              <path d="M1 6s2.9-5 8-5 8 5 8 5-2.9 5-8 5-8-5-8-5Z" stroke="rgb(91,91,91)" strokeWidth="1.4" strokeLinejoin="round" />
+              <circle cx="9" cy="6" r="2.2" stroke="rgb(91,91,91)" strokeWidth="1.4" />
             </svg>
           </Link>
 

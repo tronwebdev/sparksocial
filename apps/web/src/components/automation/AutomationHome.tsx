@@ -145,7 +145,14 @@ export function AutomationHome({
             <span className="absolute inset-x-0 bottom-[5px] text-center text-9 font-extrabold" style={{ color: '#3B5B8C' }}>
               CSV
             </span>
+            <span className="absolute left-[8px] top-[7px] h-[4px] w-[4px] rounded-full" style={{ background: '#3B5B8C' }} />
+            <span className="absolute left-[20px] top-[7px] h-[4px] w-[4px] rounded-full" style={{ background: '#3B5B8C' }} />
           </span>
+        </span>
+        <span aria-hidden className="absolute left-[302px] top-[26px] hidden h-[48px] w-[48px] items-center justify-center rounded-full bg-white/[0.08] xl:flex">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M11 20V7M11 7 5.5 12.5M11 7l5.5 5.5M3 2h16" stroke="#57D4E8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </span>
         <span aria-hidden className="absolute left-[420px] top-[172px] hidden h-[52px] w-[52px] items-center justify-center rounded-[12px] xl:flex" style={{ background: 'linear-gradient(135deg,#21C4C8 0%,#7A5FE0 100%)' }}>
           <span className="text-26 font-bold italic text-white" style={{ fontFamily: 'Georgia, serif' }}>
@@ -156,6 +163,13 @@ export function AutomationHome({
           <svg width="30" height="26" viewBox="0 0 30 26" fill="none">
             <path d="M2 6.4A3.4 3.4 0 0 1 5.4 3h5.2l3 3.4h11A3.4 3.4 0 0 1 28 9.8v9.8a3.4 3.4 0 0 1-3.4 3.4H5.4A3.4 3.4 0 0 1 2 19.6V6.4Z" fill="#F0C987" />
             <path d="m16 9-4.4 6h3l-1.2 4.6 4.8-6.4h-3L16 9Z" fill="#E8582B" />
+          </svg>
+        </span>
+        <span aria-hidden className="absolute right-[170px] top-[190px] hidden h-[48px] w-[48px] items-center justify-center rounded-full bg-white/[0.08] xl:flex">
+          <svg width="26" height="24" viewBox="0 0 26 24" fill="none">
+            <path d="m9 2 8 .02L26 16l-4 7-9-15.5L9 2Z" fill="#FFCF3E" />
+            <path d="M9 2 0 16.5 4 23l9-15.5L9 2Z" fill="#34A853" />
+            <path d="M4.4 23h17.4l4-7H8.6l-4.2 7Z" fill="#4285F4" />
           </svg>
         </span>
         <span aria-hidden className="absolute right-[64px] top-[32px] hidden h-[52px] w-[52px] items-center justify-center rounded-full bg-white/[0.08] xl:flex" style={{ color: '#F49B33' }}>

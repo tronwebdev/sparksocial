@@ -29,14 +29,16 @@ import { SparkMark } from '@/components/brand/SparkMark';
 export function BrandPanel({ compact = false }: { compact?: boolean } = {}) {
   return (
     <div className="relative flex-[0_0_53.9%] overflow-hidden bg-[--ss-ink-900] max-lg:hidden" style={{ minWidth: compact ? 0 : 620 }}>
-      {/* The teal bloom behind the rings. Sampled at #1A2C2F top-left against a
-          #0C0C0C ground, fading out well before the panel's bottom edge. */}
+      {/* The teal bloom behind the rings, as `SparkSocial Auth.dc.html` draws
+          it: a 900px disc centred at 50%/44% carrying its own radial gradient.
+          It had been approximated as a panel-wide gradient sampled by eye
+          (0.30/0.09 at 38%), which sat higher and fainter than the design. */}
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute left-1/2 top-[44%] h-[900px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full"
         aria-hidden
         style={{
           background:
-            'radial-gradient(circle at 50% 38%, rgba(11,170,199,0.30) 0%, rgba(11,170,199,0.09) 34%, rgba(12,12,12,0) 64%)',
+            'radial-gradient(circle at 50% 46%, rgba(11,170,199,0.34) 0%, rgba(11,170,199,0.1) 34%, rgba(12,12,12,0) 66%)',
         }}
       />
 

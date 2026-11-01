@@ -35,7 +35,13 @@ function mirrored(el) {
   let flip = false;
   for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
     const t = getComputedStyle(n).transform;
-    if (t.startsWith('matrix(') && parseFloat(t.slice(7)) < 0) flip = !flip;
+    // A reflection, not any negative `a`: rotate(180deg) is matrix(-1,0,0,-1)
+    // and flips nothing. The sign of the determinant says which it is.
+    const m = /^matrix\(([^)]+)\)/.exec(t);
+    if (m) {
+      const [a, b, c, d] = m[1].split(',').map(Number);
+      if (a * d - b * c < 0) flip = !flip;
+    }
   }
   return flip;
 }

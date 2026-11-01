@@ -57,16 +57,37 @@ interface ContentListItem {
  * two can actually tell apart; inventing "Outline ready" as distinct from
  * "Copy drafted" would be a label no state ever produces.
  */
-function stageOf(item: ContentListItem): { label: string; hue: string; action: string; actionable: boolean } {
+function stageOf(item: ContentListItem): {
+  label: string;
+  hue: string;
+  action: string;
+  actionable: boolean;
+  /** The action's own colour, where the design does not reuse the stage's. */
+  actionHue?: string;
+} {
   switch (item.status) {
     case 'published':
       return { label: 'Published', hue: 'var(--ss-scene-cta)', action: 'Completed', actionable: false };
     case 'scheduled':
       return { label: 'Scheduled', hue: 'var(--ss-indigo-500, #5E64F4)', action: 'Open', actionable: true };
+    /* Grey action on a green stage: `DP list`'s "Generated — needs review" row
+       carries a grey "Resume", not a green one. */
     case 'needs_review':
-      return { label: 'Generated — needs review', hue: 'var(--ss-scene-cta)', action: 'Review', actionable: true };
+      return {
+        label: 'Generated — needs review',
+        hue: 'var(--ss-scene-cta)',
+        action: 'Review',
+        actionable: true,
+        actionHue: 'var(--ss-fg-muted)',
+      };
     case 'blocked':
-      return { label: 'Blocked', hue: 'var(--ss-scene-override)', action: 'Resume', actionable: true };
+      return {
+        label: 'Blocked',
+        hue: 'var(--ss-scene-override)',
+        action: 'Resume',
+        actionable: true,
+        actionHue: 'var(--ss-fg-muted)',
+      };
     /* Distinct from blocked on purpose: "we refused" and "we broke" need
        different things from the reader. Same hue — both want attention — and a
        different verb, because a failed post is rescheduled once its cause is
@@ -81,6 +102,8 @@ function stageOf(item: ContentListItem): { label: string; hue: string; action: s
         hue: item.mediaType && item.mediaType !== 'text' ? 'var(--ss-purple)' : 'var(--ss-fg-muted)',
         action: 'Resume',
         actionable: true,
+        // "Resume" is grey in every row of the design, whatever the stage's hue.
+        actionHue: 'var(--ss-fg-muted)',
       };
   }
 }
@@ -184,7 +207,8 @@ export function DraftsList({
     <div className="px-[30px] pt-[27px] pb-[30px]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-20 font-medium text-ink">Draft List</h2>
+          {/* Pure black in `DP list`, the one heading in the panel that is not ink. */}
+          <h2 className="text-20 font-medium text-black">Draft List</h2>
           <p className="mt-[10px] text-16 font-medium text-ink-muted">
             {items === null
               ? <Busy size={16}>Loading…</Busy>
@@ -210,7 +234,13 @@ export function DraftsList({
                 )}
                 // Inline for the same reason the rail tiles are — an arbitrary
                 // rgba class here rendered the wrong element's colour once.
-                style={{ background: on ? 'var(--ss-cyan)' : 'rgba(131,131,131,0.1)' }}
+                // Each pill sits in a 1px ring: a deeper cyan round the chosen
+                // one, grey at 20% round the rest.
+                style={
+                  on
+                    ? { background: 'var(--ss-cyan)', boxShadow: '0 0 0 1px rgb(14,160,187)' }
+                    : { background: 'rgba(131,131,131,0.1)', boxShadow: '0 0 0 1px rgba(131,131,131,0.2)' }
+                }
               >
                 {f.label} ({n})
               </button>
@@ -239,8 +269,13 @@ export function DraftsList({
                 <button
                   type="button"
                   onClick={() => onOpen(item.contentItemId)}
+                  /*
+                    Each row is a card in `DP list`: grey at 5% inside a 1px grey
+                    ring at 20%, r10.158. The rule it used to draw underneath is
+                    kept, transparent, so the row keeps its height.
+                  */
                   className={cn(
-                    'flex w-full items-start justify-between gap-6 border-b border-border/60 py-[22px] text-left transition-colors',
+                    'flex w-full items-start justify-between gap-6 rounded-[10.158px] border-b border-transparent bg-ink-muted/5 py-[22px] text-left shadow-[0_0_0_1px_rgba(131,131,131,0.2)] transition-colors',
                     here ? 'opacity-60' : 'hover:bg-surface-muted/60',
                   )}
                 >
@@ -252,7 +287,10 @@ export function DraftsList({
                       </span>
                       <span className="text-15 font-medium text-ink-muted">{ago(item.createdAt)}</span>
                       {item.mediaType ? (
-                        <span className="rounded-[12.381px] px-[12px] py-[3px] text-12 font-medium text-ink-muted" style={{ background: 'rgba(131,131,131,0.1)' }}>
+                        <span
+                          className="rounded-[12.381px] px-[12px] py-[3px] text-12 font-medium text-ink-muted"
+                          style={{ background: 'rgba(131,131,131,0.1)', boxShadow: '0 0 0 1px rgba(131,131,131,0.4)' }}
+                        >
                           {item.mediaType}
                         </span>
                       ) : null}
@@ -261,7 +299,7 @@ export function DraftsList({
 
                   <span
                     className="shrink-0 text-16 font-semibold"
-                    style={{ color: stage.actionable ? stage.hue : 'var(--ss-scene-cta)' }}
+                    style={{ color: stage.actionable ? (stage.actionHue ?? stage.hue) : 'var(--ss-scene-cta)' }}
                   >
                     {here ? 'Open now' : stage.action}
                   </span>

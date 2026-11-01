@@ -396,7 +396,10 @@ export function AssetsLibraryScreen() {
         )}
         /* The right edge is the card's, less the 12 the design leaves beside
            Ask Spark — which is what puts the black action's right edge on 1452
-           rather than hard against the pill. */
+           rather than hard against the pill. `AskSpark` now leads with the
+           notification bell (1455), which this design never drew; the 26 gap
+           is kept to the cluster as a whole, so the action ends at 1429 rather
+           than touching the bell. */
         style={{ paddingRight: 12, columnGap: 26 }}
       >
         <div className="min-w-0 flex-1">
@@ -476,7 +479,11 @@ export function AssetsLibraryScreen() {
             </svg>
             <span className="whitespace-nowrap text-16 font-semibold text-white">Upload File</span>
           </button>
-        ) : (folders?.length ?? 0) > 0 ? (
+        ) : /* The design's `hasFolders` is the inverse of its empty state, so the
+               action shows whenever the folder grid does — Unfiled alone
+               included. Gating on real folders hid it on exactly the brand
+               onboarding leaves behind: one Unfiled shelf and the grid tile. */
+        folders !== null && (folders.length > 0 || (unfiled?.length ?? 0) > 0) ? (
           <button
             type="button"
             onClick={() => setModal('create')}

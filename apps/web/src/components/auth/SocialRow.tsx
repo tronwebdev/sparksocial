@@ -11,6 +11,13 @@ import { cn } from '@/lib/utils';
  */
 export type OAuthStrategy = 'oauth_google' | 'oauth_facebook' | 'oauth_x';
 
+/*
+ * `SparkSocial Auth.dc.html` draws the whole row monochrome: Google in #0C0C0C
+ * and Facebook/X from `currentColor` icons, which render black. Facebook and X
+ * follow it. Google does not, deliberately: Google's sign-in branding rules
+ * require the full-colour "G" on a sign-in button, and an off-brand mark is
+ * a reason its OAuth review can refuse the app.
+ */
 const PROVIDERS: Array<{ strategy: OAuthStrategy; label: string; icon: React.ReactNode }> = [
   {
     strategy: 'oauth_google',
@@ -30,7 +37,7 @@ const PROVIDERS: Array<{ strategy: OAuthStrategy; label: string; icon: React.Rea
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
         <path
-          fill="#1877F2"
+          fill="#0C0C0C"
           d="M20 10a10 10 0 1 0-11.56 9.88v-6.99H5.9V10h2.54V7.8c0-2.5 1.49-3.89 3.77-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V10h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 20 10Z"
         />
       </svg>

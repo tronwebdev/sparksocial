@@ -211,12 +211,13 @@ function CarouselDeck({
           ))}
         </div>
       ) : (
+      /* The arrows are bare grey chevrons in `DP prevCarousel` — no disc, no ring. */
       <div className="mt-[10px] flex items-center gap-[10px]">
         <button
           type="button"
           aria-label="Previous slide"
           onClick={() => go(at - 1)}
-          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-white text-16 text-ink shadow-[0_0_0_1px_rgba(131,131,131,0.25)]"
+          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full text-16 text-ink-muted"
         >
           &#8249;
         </button>
@@ -227,7 +228,10 @@ function CarouselDeck({
           `cover`, because a slide cropped in the preview is a slide whose
           cropping nobody approved.
         */}
-        <div className="flex aspect-[4/5] min-w-0 flex-1 items-center justify-center overflow-hidden rounded-[10px]" style={{ background: 'rgba(131,131,131,0.1)' }}>
+        <div
+          className="flex aspect-[4/5] min-w-0 flex-1 items-center justify-center overflow-hidden rounded-[10px]"
+          style={{ background: 'rgba(131,131,131,0.1)', boxShadow: 'inset 0 0 0 0.3px rgba(131,131,131,0.3)' }}
+        >
           {current.kind === 'video' ? (
             <video src={current.url} controls className="h-full w-full object-contain" />
           ) : (
@@ -240,7 +244,7 @@ function CarouselDeck({
           type="button"
           aria-label="Next slide"
           onClick={() => go(at + 1)}
-          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-white text-16 text-ink shadow-[0_0_0_1px_rgba(131,131,131,0.25)]"
+          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full text-16 text-ink-muted"
         >
           &#8250;
         </button>
@@ -256,10 +260,17 @@ function CarouselDeck({
             aria-current={i === at ? 'true' : undefined}
             onClick={() => setAt(i)}
             className="flex h-[28px] w-[28px] items-center justify-center rounded-[6px] text-13 font-medium transition-colors"
+            /*
+              `DP prevCarousel`'s pager: black numerals throughout, the current
+              one on a pale cyan in a hairline of deeper cyan, the rest on grey
+              at 10% in a grey hairline. (This read `--ss-ink` and
+              `--ss-ink-muted`, neither of which exists, so both fell through to
+              whatever colour the button inherited.)
+            */
             style={
               i === at
-                ? { background: 'var(--ss-cyan-200)', color: 'var(--ss-ink)' }
-                : { background: 'rgba(131,131,131,0.12)', color: 'var(--ss-ink-muted)' }
+                ? { background: 'rgb(212,248,255)', boxShadow: 'inset 0 0 0 0.226px rgb(38,159,182)', color: 'rgb(0,0,0)' }
+                : { background: 'rgba(133,133,133,0.1)', boxShadow: 'inset 0 0 0 0.226px rgb(131,131,131)', color: 'rgb(0,0,0)' }
             }
           >
             {i + 1}
@@ -312,7 +323,7 @@ function PostCard({
   media: Array<{ kind: 'image' | 'video'; url: string }>;
 }) {
   return (
-    <article className="rounded-[10px] bg-white px-[24px] pt-[18px] pb-[20px] shadow-[0_0_0_1px_rgba(131,131,131,0.18)]">
+    <article className="rounded-[10px] bg-white px-[24px] pt-[18px] pb-[20px] shadow-[0_0_0_1px_rgba(131,131,131,0.2)]">
       <header className="flex items-center gap-[10px]">
         <span
           aria-hidden
@@ -359,7 +370,9 @@ function PostCard({
         </div>
       ) : null}
 
-      <footer className="mt-[24px] flex items-center gap-[52px] border-t border-border/50 pt-[16px]">
+      {/* No rule above the engagement row in `DP prevText`; the border stays,
+          transparent, so the row keeps its place. */}
+      <footer className="mt-[24px] flex items-center gap-[52px] border-t border-transparent pt-[16px]">
         {['Like', 'Comment', 'Share'].map((a) => (
           <span key={a} aria-hidden className="text-16 text-ink-muted">
             {a}
@@ -412,9 +425,15 @@ function MediaPane({
   const one = media[0]!;
   return (
     <div>
+      {/* `DP prevImage` / `prevVideo`'s frame: a faint horizontal grey fall
+          inside a 30% grey ring, rather than a flat grey. */}
       <div
         className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[10px]"
-        style={{ background: 'rgba(131,131,131,0.1)' }}
+        style={{
+          background:
+            'linear-gradient(270deg, rgba(224,224,224,0.1) 0%, rgba(29,29,29,0.06) 48.38%, rgba(131,131,131,0.034) 100%)',
+          boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)',
+        }}
       >
         {one.kind === 'video' ? (
           <video src={one.url} controls className="h-full w-full object-contain" />
@@ -488,7 +507,7 @@ export function PostPreview({
           Rewrite in the editor
         </span>
       </div>
-      <div className="mt-[14px] max-h-[167px] overflow-y-auto rounded-[10px] bg-white px-[20px] py-[16px] shadow-[0_0_0_1px_rgba(131,131,131,0.18)]">
+      <div className="mt-[14px] max-h-[167px] overflow-y-auto rounded-[10px] bg-white px-[20px] py-[16px] shadow-[0_4px_15px_0_rgba(163,65,255,0.2)]">
         <p className="whitespace-pre-wrap text-16 font-medium leading-[1.5] text-ink-muted">
           {caption || '(no written copy)'}
         </p>
@@ -502,7 +521,7 @@ export function PostPreview({
       <p className="text-15 font-medium text-ink-muted">Character count by platform</p>
       <div
         className="mt-[14px] flex flex-wrap items-center gap-x-[34px] gap-y-[10px] rounded-[10px] px-[22px] py-[18px]"
-        style={{ background: 'rgba(131,131,131,0.1)' }}
+        style={{ background: 'rgba(131,131,131,0.1)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
       >
         {lengths.map((l) => (
           <span key={l.platform} className={cn('text-16 font-medium', l.over ? 'text-destructive' : 'text-ink-muted')}>
@@ -546,14 +565,30 @@ export function PostPreview({
               aria-pressed={chosen}
               {...(takes.reason ? { title: takes.reason } : {})}
               onClick={() => onSelect(p)}
+              /*
+                Four states, each the prototypes' own: chosen is #B3F3FF with
+                black type; chosen-but-too-long is orange at 32% in a solid
+                orange ring with grey type; available is grey at 10% in a 10%
+                grey ring; unavailable is grey at 20% with its type faded to
+                40% — the type, not the whole pill.
+              */
               className={cn(
                 'flex h-[35px] items-center rounded-full px-[18px] text-16 font-medium capitalize transition-colors',
-                !takes.ok ? 'cursor-not-allowed text-ink-muted opacity-50' : chosen ? 'text-ink' : 'text-ink-muted',
+                !takes.ok
+                  ? 'cursor-not-allowed text-ink-muted/40'
+                  : chosen && !over
+                    ? 'text-black'
+                    : 'text-ink-muted',
               )}
-              style={{
-                background:
-                  over && chosen ? 'rgba(243,85,37,0.32)' : chosen ? 'var(--ss-cyan-200)' : 'rgba(131,131,131,0.2)',
-              }}
+              style={
+                !takes.ok
+                  ? { background: 'rgba(131,131,131,0.2)' }
+                  : over && chosen
+                    ? { background: 'rgba(243,85,37,0.32)', boxShadow: '0 0 0 1px rgb(243,85,37)' }
+                    : chosen
+                      ? { background: 'rgb(179,243,255)' }
+                      : { background: 'rgba(131,131,131,0.1)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.1)' }
+              }
             >
               {p.replace('_', ' ')}
               {over && chosen ? ' (over limit)' : ''}
@@ -605,7 +640,7 @@ export function PostPreview({
     two that are not.
   */
   const actions = (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border/50 pt-[20px]">
+    <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-[20px]">
       <button
         type="button"
         onClick={onPublish}
@@ -622,7 +657,7 @@ export function PostPreview({
             onClick={onSchedule}
             disabled={busy}
             className="flex h-[44px] items-center rounded-[8.457px] px-[20px] text-16 font-medium disabled:opacity-60"
-            style={{ background: 'rgba(36,116,237,0.1)', color: '#2474ED' }}
+            style={{ background: 'rgba(36,116,237,0.1)', color: '#2474ED', boxShadow: '0 0 0 1px rgb(36,116,237)' }}
           >
             Schedule
           </button>
@@ -631,7 +666,7 @@ export function PostPreview({
           type="button"
           onClick={onSaveDraft}
           disabled={busy}
-          className="flex h-[44px] items-center rounded-[8.457px] bg-white px-[24px] text-16 font-medium text-ink shadow-[0_0_0_1px_rgba(131,131,131,0.18)] disabled:opacity-60"
+          className="flex h-[44px] items-center rounded-[8.457px] bg-white px-[24px] text-16 font-medium text-ink disabled:opacity-60"
         >
           Save as Draft
         </button>

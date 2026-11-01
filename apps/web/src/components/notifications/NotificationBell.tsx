@@ -36,11 +36,36 @@ import { TOPIC, TopicTile } from './topics';
  * `#5B5B5B` at 1.6, Agency Portal fills and strokes it `#2FC5DE` at 1.4 — so
  * the colour is the caller's, not this component's.
  */
-export type BellGlyph = { stroke: string; fill?: string; strokeWidth?: number };
+export type BellGlyph = {
+  stroke: string;
+  fill?: string;
+  strokeWidth?: number;
+  /** Draw the designs' own bell at this size rather than the app's 19x20
+      one: a 22 viewBox, a flared skirt with rounded feet, and a wider clapper
+      at 18.6. Account Home draws it 20x21, Agency Portal 21x22. */
+  drawn?: { width: number; height: number };
+};
+
+/**
+ * The circle, for the same two screens.
+ *
+ * Both draw a 56px white disc under a drop shadow and no inset ring — the
+ * ring is the app header's, where the bell sits beside other outlined
+ * controls. Without a `face` the bell keeps that 44/48 ringed circle.
+ */
+export type BellFace = { size: number; shadow: string };
 
 const DEFAULT_GLYPH: BellGlyph = { stroke: '#0C0C0C', strokeWidth: 1.5 };
 
-export function NotificationBell({ compact = false, glyph = DEFAULT_GLYPH }: { compact?: boolean; glyph?: BellGlyph }) {
+export function NotificationBell({
+  compact = false,
+  glyph = DEFAULT_GLYPH,
+  face,
+}: {
+  compact?: boolean;
+  glyph?: BellGlyph;
+  face?: BellFace;
+}) {
   const { items, unreadCount, loading, refresh, markAllRead, markRead, requestOsPermission, osPermission } =
     useNotifications();
   const [open, setOpen] = useState(false);
@@ -63,7 +88,7 @@ export function NotificationBell({ compact = false, glyph = DEFAULT_GLYPH }: { c
     };
   }, [open]);
 
-  const size = compact ? 44 : 48;
+  const size = face?.size ?? (compact ? 44 : 48);
 
   return (
     <div ref={wrap} className="relative shrink-0">
@@ -84,24 +109,37 @@ export function NotificationBell({ compact = false, glyph = DEFAULT_GLYPH }: { c
         aria-haspopup="dialog"
         aria-expanded={open}
         className="relative flex items-center justify-center rounded-full bg-white transition-colors hover:bg-[#F4F5F7]"
-        style={{ width: size, height: size, boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.22)' }}
+        style={{ width: size, height: size, boxShadow: face?.shadow ?? 'inset 0 0 0 1px rgba(131,131,131,0.22)' }}
       >
-        <svg width="19" height="20" viewBox="0 0 19 20" fill="none" aria-hidden>
-          <path
-            d="M9.5 2.2a5.6 5.6 0 0 0-5.6 5.6c0 3.6-1.4 4.8-1.4 4.8h14s-1.4-1.2-1.4-4.8A5.6 5.6 0 0 0 9.5 2.2Z"
-            fill={glyph.fill ?? 'none'}
-            stroke={glyph.stroke}
-            strokeWidth={glyph.strokeWidth ?? 1.5}
-            strokeLinejoin="round"
-          />
-          {/* The clapper is 1.6 in both prototypes that draw a bell. */}
-          <path
-            d="M11.3 15.4a2 2 0 0 1-3.6 0"
-            stroke={glyph.stroke}
-            strokeWidth={glyph === DEFAULT_GLYPH ? 1.5 : 1.6}
-            strokeLinecap="round"
-          />
-        </svg>
+        {glyph.drawn ? (
+          <svg width={glyph.drawn.width} height={glyph.drawn.height} viewBox="0 0 22 22" fill="none" aria-hidden>
+            <path
+              d="M11 3a5.6 5.6 0 0 1 5.6 5.6c0 3 .8 4.8 1.6 5.9.3.4 0 1-.5 1H4.3c-.5 0-.8-.6-.5-1 .8-1.1 1.6-2.9 1.6-5.9A5.6 5.6 0 0 1 11 3Z"
+              fill={glyph.fill ?? 'none'}
+              stroke={glyph.stroke}
+              strokeWidth={glyph.strokeWidth ?? 1.6}
+              strokeLinejoin="round"
+            />
+            {/* The clapper is 1.6 in both prototypes that draw a bell. */}
+            <path d="M9 18.6a2.1 2.1 0 0 0 4 0" stroke={glyph.stroke} strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+        ) : (
+          <svg width="19" height="20" viewBox="0 0 19 20" fill="none" aria-hidden>
+            <path
+              d="M9.5 2.2a5.6 5.6 0 0 0-5.6 5.6c0 3.6-1.4 4.8-1.4 4.8h14s-1.4-1.2-1.4-4.8A5.6 5.6 0 0 0 9.5 2.2Z"
+              fill={glyph.fill ?? 'none'}
+              stroke={glyph.stroke}
+              strokeWidth={glyph.strokeWidth ?? 1.5}
+              strokeLinejoin="round"
+            />
+            <path
+              d="M11.3 15.4a2 2 0 0 1-3.6 0"
+              stroke={glyph.stroke}
+              strokeWidth={glyph.strokeWidth ?? 1.5}
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
         {unreadCount > 0 ? (
           <span
             aria-hidden

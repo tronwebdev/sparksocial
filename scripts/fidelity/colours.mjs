@@ -223,9 +223,11 @@ export function compareColours(name) {
     for (const paint of p.paints) {
       if (paint.endsWith('gradient')) continue;
       const [kind, colour] = [paint.slice(0, 1), paint.slice(2)];
-      const match = l.paints.some((q) => q.startsWith(kind) && d(q.slice(2), colour) <= TOL);
+      // Fill or stroke, either: a glyph drawn as an outline in one and a filled
+      // shape in the other is the same colour on screen.
+      const match = l.paints.some((q) => !q.endsWith('gradient') && d(q.slice(2), colour) <= TOL);
       if (!match) {
-        const theirs = l.paints.filter((q) => q.startsWith(kind)).map((q) => hex(q.slice(2)));
+        const theirs = l.paints.filter((q) => !q.endsWith('gradient')).map((q) => hex(q.slice(2)));
         issues.push(`${kind === 'f' ? 'fill' : 'stroke'} ${hex(colour)} → ${theirs.join(' ') || 'none'}`);
       }
     }

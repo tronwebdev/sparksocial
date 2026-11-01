@@ -641,26 +641,31 @@
      its component, because none of it is shared.
 
      The screen is full-bleed on the same 1698 card as Calendar, Discovery and
-     the Command Center — but its wash is *not* mirrored the way theirs is, so
-     it needs its own gradient rather than reusing `--ss-grad-canvas`. Reusing
-     that one would flip the pink to the wrong corner. */
-  --ss-grad-set-card: linear-gradient(152.69deg, rgba(245, 107, 255, 0.2) 2.9%, rgba(255, 255, 255, 0) 65.06%),
-    linear-gradient(209.142deg, rgba(108, 232, 255, 0.3) 2.94%, rgba(255, 255, 255, 0) 69.43%),
+     the Command Center. Its wash has its own angles and stops, so it is its
+     own token rather than `--ss-grad-canvas`.
+
+     Mirrored, like the canvas: the prototype draws the card's wash and the
+     active nav row with `transform: scaleX(-1)` on the painted layer. This
+     used to say the settings wash was *not* mirrored and copied the raw angles
+     — measured against the prototype's DOM (scripts/fidelity/colours.mjs), the
+     transform is there on both, so the pink and cyan sat in each other's
+     corners and the active row's cyan was on the wrong end. The flip is baked
+     in as `t → -t`, the same horizontal reflection `--ss-grad-canvas` uses. */
+  --ss-grad-set-card: linear-gradient(-152.69deg, rgba(245, 107, 255, 0.2) 2.9%, rgba(255, 255, 255, 0) 65.06%),
+    linear-gradient(-209.142deg, rgba(108, 232, 255, 0.3) 2.94%, rgba(255, 255, 255, 0) 69.43%),
     linear-gradient(#f7f7f7, #f7f7f7);
 
   /**
-   * The active row in the settings nav.
-   *
-   * Cyan on the **right**, fading to nothing on the left — the mirror of
-   * `--ss-grad-nav-active`, which the app sidebar uses and which runs the other
-   * way. They look like the same gradient in a screenshot and are not, so the
-   * two are separate tokens rather than one shared by both navs.
+   * The active row in the settings nav: cyan on the **left**, clearing by the
+   * right edge. The prototype writes it as the reverse ramp under scaleX(-1);
+   * on screen that is this — the same paint as the app sidebar's
+   * `--ss-grad-nav-active`.
    */
   --ss-grad-set-nav-active: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(148, 238, 255, 0.4) 67.15%,
-    rgba(108, 232, 255, 0.4) 100%
+    rgba(108, 232, 255, 0.4) 0%,
+    rgba(148, 238, 255, 0.4) 32.85%,
+    rgba(255, 255, 255, 0) 100%
   );
 
   /* Engagement Intelligence's own card: a cyan head that clears by 60%. */
