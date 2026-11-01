@@ -321,12 +321,14 @@ export function PickFolderModal({
 
   const choices = folders.filter((f) => f.folderId !== currentFolderId);
 
-  /** `null` takes it out of its folder — `asset.folder.move` accepts that. */
+  /** `null` takes it out of its folder — `asset.folder.move` accepts that.
+   *  A key per press: moving A→B, back, then to B again must move it, not
+   *  replay the first move's stored result. */
   async function file(folderId: string | null, name: string) {
     if (busy) return;
     const key = folderId ?? UNFILED_CHOICE;
     setBusy(key);
-    const res = await invoke('asset.folder.move', { genomeId, assetId: asset, folderId }, `asset-move:${asset}:${key}`);
+    const res = await invoke('asset.folder.move', { genomeId, assetId: asset, folderId }, `asset-move:${asset}:${key}:${Date.now()}`);
     setBusy(null);
     if (!notifyResult(res, undefined, `Couldn’t move it to “${name}”`)) return;
     onFiled(name);

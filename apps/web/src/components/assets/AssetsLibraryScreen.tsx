@@ -315,7 +315,11 @@ export function AssetsLibraryScreen() {
 
   async function removeAsset(a: Asset) {
     if (!genomeId) return;
-    const res = await invoke('asset.archive', { genomeId, assetId: a.assetId }, `asset-archive:${a.assetId}`);
+    /* A key per press, not per asset. With `asset-archive:<id>` a delete after
+       an Undo replayed the first delete's stored result and archived nothing —
+       the card left the screen and came back on the next load. Archiving is
+       idempotent by nature, so nothing was relying on the shared key. */
+    const res = await invoke('asset.archive', { genomeId, assetId: a.assetId }, `asset-archive:${a.assetId}:${Date.now()}`);
     if (!notifyResult(res, undefined, 'Couldn’t delete it')) return;
     setAssets((prev) => prev?.filter((x) => x.assetId !== a.assetId) ?? prev);
     void loadFolders();
