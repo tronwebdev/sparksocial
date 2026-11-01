@@ -9,13 +9,14 @@ import { platformLabel } from '@/lib/platforms';
  * the real mark: the queue rows at 492/523, the calendar cells, the rail's post
  * cards, the dashboard's Upcoming rows. Same five files, one component.
  *
- * ── Only five exist ───────────────────────────────────────────────────────
+ * ── Which marks exist ─────────────────────────────────────────────────────
  *
- * `platforms.ts` names fourteen platforms; the design ships marks for Instagram,
- * Facebook, LinkedIn and X (twice — a dark and a light X). So this falls back to
- * the initials treatment rather than picking a wrong logo, which means TikTok,
- * YouTube, Threads, Pinterest, Reddit and Bluesky still read as letters. That is
- * a missing asset, not a missing case, and it is visible as such.
+ * `platforms.ts` names fourteen platforms. Instagram, Facebook, LinkedIn and X
+ * came from `ui build/assets/icons`; TikTok, YouTube, Pinterest, Reddit and
+ * Google Business from the Social Accounts prototype's own tiles
+ * (`ui build/figma-set/assets`). The design draws nothing for Threads or
+ * Bluesky, so those two fall back to initials rather than a wrong logo — a
+ * missing asset, not a missing case, and visible as such.
  *
  * `alt` is empty and the label goes on `title`: the platform is already written
  * next to the icon everywhere this is used, so announcing it twice is noise.
@@ -29,6 +30,12 @@ const MARKS: Record<string, { src: string; label: string }> = {
   facebook_group: { src: '/icons/fb-color.png', label: 'Facebook' },
   linkedin: { src: '/icons/linkedin.png', label: 'LinkedIn' },
   x: { src: '/icons/x-logo.svg', label: 'X' },
+  tiktok: { src: '/icons/tiktok.png', label: 'TikTok' },
+  youtube_shorts: { src: '/icons/youtube.png', label: 'YouTube' },
+  youtube_long: { src: '/icons/youtube.png', label: 'YouTube' },
+  pinterest: { src: '/icons/pinterest.png', label: 'Pinterest' },
+  reddit: { src: '/icons/reddit.png', label: 'Reddit' },
+  google_business: { src: '/icons/google-business.png', label: 'Google Business' },
 };
 
 export function PlatformIcon({

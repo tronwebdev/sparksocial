@@ -8,6 +8,8 @@ import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notify, notifyResult } from '@/lib/notify';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
+import { CredentialConnectModal } from '@/components/settings/CredentialConnectModal';
+import { OAUTH_POPUP_NAME, type OAuthPopupResult } from '@/lib/oauthPopup';
 
 /**
  * `ONB-04` — *"Connect Social Accounts (connected profiles list + OAuth popup)"*.
@@ -53,10 +55,11 @@ interface PlatformStatus {
   status: ConnectionStatus;
   accountLabel?: string;
   supported: boolean;
+  connectedVia?: string;
+  connectMethod: 'oauth' | 'credentials' | 'derived';
+  /** Whether Connect can lead anywhere on this deployment. */
+  available?: boolean;
 }
-
-/** The five with a native OAuth flow. Others publish through the aggregator and have nothing to connect here. */
-const NATIVE = ['instagram', 'tiktok', 'linkedin', 'x', 'youtube_shorts'] as const;
 
 
 export function ConnectAccountsStep({
@@ -72,6 +75,7 @@ export function ConnectAccountsStep({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [credentialFor, setCredentialFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await invoke<{ platforms: PlatformStatus[] }>('integration.health', {});
@@ -79,17 +83,52 @@ export function ConnectAccountsStep({
       setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
-    const native = res.output.platforms.filter((p) => (NATIVE as readonly string[]).includes(p.platform));
-    setPlatforms(native);
+    /*
+      Every account this deployment can actually connect, and nothing else.
+      This was a hardcoded five ("the ones with a native flow"), which went
+      stale as platforms were added and still offered the ones with no app
+      registered — each Connect refusing by name. Platforms that post through
+      another's connection (Stories, Facebook) are not accounts of their own.
+    */
+    const connectable = res.output.platforms.filter(
+      (p) => !p.connectedVia && p.supported && (p.available !== false || p.connected),
+    );
+    setPlatforms(connectable);
     setError(null);
-    onConnectedCountChange?.(native.filter((p) => p.connected).length);
+    onConnectedCountChange?.(connectable.filter((p) => p.connected).length);
   }, [onConnectedCountChange]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  /* The consent popup lands on the accounts page, which reports back here and
+     closes itself — see `oauthPopup.ts`. */
+  useEffect(() => {
+    const onMessage = (e: MessageEvent<OAuthPopupResult>) => {
+      if (e.origin !== window.location.origin || e.data?.type !== 'spark-oauth') return;
+      const label = e.data.provider ? platformLabel(e.data.provider) : 'The platform';
+      if (e.data.social === 'connected') notify.success(`${label} connected`);
+      else if (e.data.social === 'denied') notify.info(`${label} connection cancelled`);
+      else notify.error(`Couldn’t connect ${label}`, { body: 'The connection did not go through. Try again.' });
+      void load();
+    };
+    /* When the popup could not hand back (some consent pages cut the link to
+       this window), coming back to this window is the signal instead. */
+    const onFocus = () => void load();
+    window.addEventListener('message', onMessage);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [load]);
+
   async function connect(platform: string) {
+    if (platforms?.find((p) => p.platform === platform)?.connectMethod === 'credentials') {
+      setCredentialFor(platform);
+      return;
+    }
     setBusy(platform);
     const res = await invoke<{ authorizeUrl: string }>('integration.connect', { genomeId, provider: platform });
     setBusy(null);
@@ -97,7 +136,7 @@ export function ConnectAccountsStep({
     // which the tool refuses by name. Shown verbatim as the detail — it is a
     // better explanation than anything this component could paraphrase.
     if (!notifyResult(res, undefined, `Couldn’t connect ${platformLabel(platform)}`)) return;
-    const win = window.open(res.output.authorizeUrl, 'spark-oauth', 'width=600,height=760');
+    const win = window.open(res.output.authorizeUrl, OAUTH_POPUP_NAME, 'width=600,height=760');
     if (!win) {
       notify.warning('Your browser blocked the sign-in window', {
         body: 'Allow pop-ups for this site, then try again.',
@@ -148,6 +187,18 @@ export function ConnectAccountsStep({
           ))}
         </ul>
       )}
+
+      {credentialFor ? (
+        <CredentialConnectModal
+          platform={credentialFor}
+          genomeId={genomeId}
+          onClose={() => setCredentialFor(null)}
+          onConnected={() => {
+            setCredentialFor(null);
+            void load();
+          }}
+        />
+      ) : null}
 
       <div>
         <Button size="sm" variant="ghost" disabled={checking} onClick={() => void recheck()}>

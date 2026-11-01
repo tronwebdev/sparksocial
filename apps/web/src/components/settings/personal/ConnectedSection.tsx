@@ -20,8 +20,25 @@ import { platformLabel } from '@/lib/platforms';
  */
 
 interface Health {
-  platforms: Array<{ platform: string; connected: boolean; accountLabel?: string; supported: boolean }>;
+  platforms: Array<{
+    platform: string;
+    connected: boolean;
+    status: 'not_connected' | 'ok' | 'expiring' | 'expired';
+    accountLabel?: string;
+    supported: boolean;
+    connectedVia?: string;
+  }>;
 }
+
+/* What the row says about a connection. Every connected row used to say
+   "Healthy" in green — including one whose access had expired, which is the
+   one a person most needs to see. */
+const STATE = {
+  ok: { label: 'Healthy', color: 'var(--ss-green-700)', dot: 'var(--ss-set-online)' },
+  expiring: { label: 'Expiring soon', color: 'var(--ss-warn)', dot: 'var(--ss-warn)' },
+  expired: { label: 'Expired — reconnect', color: 'var(--ss-danger)', dot: 'var(--ss-danger)' },
+  not_connected: { label: 'Not connected', color: 'rgb(131,131,131)', dot: 'rgb(131,131,131)' },
+} as const;
 
 export function ConnectedSection() {
   const { user, isLoaded } = useUser();
@@ -36,7 +53,9 @@ export function ConnectedSection() {
   }, []);
 
   const sign = user?.externalAccounts ?? [];
-  const publishing = (health?.platforms ?? []).filter((p) => p.connected);
+  /* One row per account — Stories, Facebook and long-form YouTube post
+     through another platform's connection and are not accounts of their own. */
+  const publishing = (health?.platforms ?? []).filter((p) => p.connected && !p.connectedVia);
 
   return (
     <div className="grid grid-cols-1 gap-[34px]">
@@ -109,7 +128,7 @@ export function ConnectedSection() {
               className="rounded bg-white px-[22px] py-[18px] text-16"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)', color: 'rgb(131,131,131)' }}
             >
-              Nothing is connected yet. Connect an account under Brand Settings → Account
+              Nothing is connected yet. Connect an account under Brand settings → Account
               Connection.
             </li>
           ) : (
@@ -125,9 +144,9 @@ export function ConnectedSection() {
                     {p.accountLabel ?? 'Connected'}
                   </span>
                 </span>
-                <span className="flex items-center gap-[8px] text-16 font-semibold" style={{ color: 'var(--ss-green-700)' }}>
-                  <span aria-hidden className="block h-[10px] w-[10px] rounded-full" style={{ background: 'var(--ss-set-online)' }} />
-                  Healthy
+                <span className="flex items-center gap-[8px] text-16 font-semibold" style={{ color: STATE[p.status].color }}>
+                  <span aria-hidden className="block h-[10px] w-[10px] rounded-full" style={{ background: STATE[p.status].dot }} />
+                  {STATE[p.status].label}
                 </span>
               </li>
             ))

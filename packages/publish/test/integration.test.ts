@@ -147,6 +147,32 @@ describe('integration.health', () => {
     expect(tiktok).toMatchObject({ connected: false, supported: false, via: null });
   });
 
+  /*
+   * Staging offered Connect on Instagram, Facebook, Threads, Pinterest and
+   * Reddit, and every one refused — no app registered for them. The tile has to
+   * know before it is pressed.
+   */
+  it('says which platforms can actually be connected on this deployment', async () => {
+    const tool = makeIntegrationHealth({
+      adapters: [createStubAdapter({ supports: ['instagram', 'tiktok', 'bluesky'] })],
+      connectable: { tiktok: 'client_tiktok' },
+    });
+    const out = await tool.handler({}, ctx());
+    const by = (p: string) => out.platforms.find((x) => x.platform === p)!;
+    expect(by('tiktok').available).toBe(true);
+    expect(by('instagram').available).toBe(false);
+    // Posts through Instagram, so it is exactly as available as Instagram.
+    expect(by('instagram_story').available).toBe(false);
+    // A handle and an app password — no app registration involved.
+    expect(by('bluesky').available).toBe(true);
+  });
+
+  it('reports every platform available when it is not told what is configured', async () => {
+    const tool = makeIntegrationHealth({ adapters: [createStubAdapter({ supports: ['instagram'] })] });
+    const out = await tool.handler({}, ctx());
+    expect(out.platforms.every((p) => p.available)).toBe(true);
+  });
+
   it('requires a selected genome', async () => {
     const tool = makeIntegrationHealth({ adapters: [createStubAdapter()] });
     await expect(tool.handler({}, ctx({ genomeId: undefined }))).rejects.toThrow(ToolError);

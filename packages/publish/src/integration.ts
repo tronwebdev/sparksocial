@@ -1199,7 +1199,17 @@ export function connectionStatus(expiresAt: Date | undefined, connected: boolean
   return expiresAt.getTime() - now.getTime() <= EXPIRY_WARNING_MS ? 'expiring' : 'ok';
 }
 
-export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?: () => Date }) {
+export function makeIntegrationHealth(deps: {
+  adapters: PlatformAdapter[];
+  now?: () => Date;
+  /**
+   * The platforms `integration.connect` can mint a consent link for — the same
+   * client ids it is built with, or `{}` when it is not registered at all.
+   * Absent means "unknown", and every OAuth platform reads as available, which
+   * is what this tool reported before it knew.
+   */
+  connectable?: Partial<Record<Platform, string>>;
+}) {
   const router = routeAdapters(deps.adapters);
 
   return defineTool({
@@ -1242,6 +1252,15 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
            * above and offer no connect action at all.
            */
           connectMethod: z.enum(['oauth', 'credentials', 'derived']),
+          /**
+           * Whether Connect can lead anywhere on this deployment. An OAuth
+           * platform with no app registered refuses at `integration.connect`
+           * ("isn't configured for native publishing yet") — on staging that was
+           * six of the thirteen tiles, each offering a Connect that could only
+           * fail. A derived platform is available when the one it posts
+           * through is.
+           */
+          available: z.boolean(),
           via: z.string().nullable(),
         }),
       ),
@@ -1274,6 +1293,8 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
           const conn = await ctx.db.oauthConnections.get(genomeId, ctx.orgId, owner);
           const isSupported = supported.has(platform);
           const status = connectionStatus(conn?.expiresAt, Boolean(conn), now);
+          const available =
+            CREDENTIAL_PLATFORMS.includes(owner) || !deps.connectable || Boolean(deps.connectable[owner]);
           return {
             platform,
             connected: Boolean(conn),
@@ -1284,6 +1305,7 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
               : CREDENTIAL_PLATFORMS.includes(platform)
                 ? 'credentials'
                 : 'oauth') as 'oauth' | 'credentials' | 'derived',
+            available,
             ...(conn?.accountLabel ? { accountLabel: conn.accountLabel } : {}),
             ...(conn?.accountAvatarUrl ? { accountAvatarUrl: conn.accountAvatarUrl } : {}),
             ...(conn?.expiresAt ? { expiresAt: conn.expiresAt.toISOString() } : {}),

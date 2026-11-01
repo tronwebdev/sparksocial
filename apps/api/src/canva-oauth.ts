@@ -33,7 +33,7 @@ export function registerCanvaOAuthCallback(app: Hono, deps: CanvaOAuthCallbackDe
   app.get('/oauth/canva/callback', async (c) => {
     const error = c.req.query('error');
     if (error) {
-      return c.redirect(`${deps.webAppUrl}/settings?canva=denied`, 302);
+      return c.redirect(`${deps.webAppUrl}/settings/accounts?canva=denied`, 302);
     }
 
     const code = c.req.query('code');
@@ -55,7 +55,7 @@ export function registerCanvaOAuthCallback(app: Hono, deps: CanvaOAuthCallbackDe
       );
     } catch (e) {
       console.error('[error] canva token exchange failed', { genomeId: state.genomeId, error: e instanceof Error ? e.message : String(e) });
-      return c.redirect(`${deps.webAppUrl}/settings?canva=failed`, 302);
+      return c.redirect(`${deps.webAppUrl}/settings/accounts?canva=failed`, 302);
     }
 
     await deps.db.oauthConnections.save({
@@ -68,6 +68,6 @@ export function registerCanvaOAuthCallback(app: Hono, deps: CanvaOAuthCallbackDe
       ...(tokens.expiresAt ? { expiresAt: tokens.expiresAt } : {}),
     });
 
-    return c.redirect(`${deps.webAppUrl}/settings?canva=connected`, 302);
+    return c.redirect(`${deps.webAppUrl}/settings/accounts?canva=connected`, 302);
   });
 }

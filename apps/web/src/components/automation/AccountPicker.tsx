@@ -1,5 +1,6 @@
 'use client';
 
+import { CredentialConnectModal } from '@/components/settings/CredentialConnectModal';
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
@@ -51,6 +52,10 @@ export interface PlatformRow {
   accountLabel?: string;
   hoursUntilExpiry: number | null;
   supported: boolean;
+  connectedVia?: string;
+  connectMethod?: 'oauth' | 'credentials' | 'derived';
+  /** Whether Connect can lead anywhere on this deployment. */
+  available?: boolean;
 }
 
 const STATUS_NOTE: Record<PlatformRow['status'], string | null> = {
@@ -72,6 +77,7 @@ export function AccountPicker({
   const [rows, setRows] = useState<PlatformRow[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [credentialFor, setCredentialFor] = useState<string | null>(null);
   /** Per-platform message from `integration.connect` — usually "not configured". */
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [awaiting, setAwaiting] = useState(false);
@@ -112,6 +118,10 @@ export function AccountPicker({
 
   async function connect(platform: string) {
     if (busy) return;
+    if (rows?.find((r) => r.platform === platform)?.connectMethod === 'credentials') {
+      setCredentialFor(platform);
+      return;
+    }
     setBusy(platform);
     setNotes((n) => {
       const next = { ...n };
@@ -175,7 +185,10 @@ export function AccountPicker({
   }
 
   const connected = rows.filter((r) => r.connected);
-  const rest = rows.filter((r) => !r.connected);
+  /* Accounts that can be connected from here: not one that posts through
+     another's connection (it arrives with that one), and not one with no app
+     registered on this deployment, whose Connect could only refuse. */
+  const rest = rows.filter((r) => !r.connected && !r.connectedVia && r.available !== false);
 
   return (
     <div className="mt-[10px]">
@@ -269,6 +282,18 @@ export function AccountPicker({
             ))}
           </ul>
         </details>
+      ) : null}
+
+      {credentialFor ? (
+        <CredentialConnectModal
+          platform={credentialFor}
+          genomeId={genomeId}
+          onClose={() => setCredentialFor(null)}
+          onConnected={() => {
+            setCredentialFor(null);
+            void load();
+          }}
+        />
       ) : null}
 
       {awaiting ? (

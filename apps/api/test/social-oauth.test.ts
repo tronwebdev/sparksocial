@@ -51,24 +51,36 @@ describe('GET /oauth/social/callback', () => {
     expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=denied');
   });
 
-  it('400s when code or state is missing', async () => {
+  /*
+   * These used to answer 400 with plain text on the API's own domain — a white
+   * page with no way back into the product. They now return to the accounts
+   * screen with a reason it can put into words.
+   */
+  it('sends a callback with no code or state back to the app, not to a 400', async () => {
     const { app } = harness();
-    const res = await app.request('/oauth/social/callback?code=abc');
-    expect(res.status).toBe(400);
+    const res = await app.request('/oauth/social/callback?code=abc', { redirect: 'manual' });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=failed&reason=incomplete');
   });
 
-  it('400s on an unverifiable state (wrong signature)', async () => {
+  it('treats an unverifiable state (wrong signature) as an expired link', async () => {
     const { app } = harness();
     const bad = signOAuthState({ orgId: 'org_1', genomeId: 'gen_1', connectedBy: 'u', provider: 'tiktok', codeVerifier: 'v', exp: Date.now() + 60_000 }, 'wrong-secret');
-    const res = await app.request(`/oauth/social/callback?code=abc&state=${encodeURIComponent(bad)}`);
-    expect(res.status).toBe(400);
+    const res = await app.request(`/oauth/social/callback?code=abc&state=${encodeURIComponent(bad)}`, { redirect: 'manual' });
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=failed&reason=expired');
   });
 
-  it('400s on an expired state', async () => {
+  it('sends an expired state back as an expired link', async () => {
     const { app } = harness();
     const expired = validState({ exp: Date.now() - 1 });
-    const res = await app.request(`/oauth/social/callback?code=abc&state=${encodeURIComponent(expired)}`);
-    expect(res.status).toBe(400);
+    const res = await app.request(`/oauth/social/callback?code=abc&state=${encodeURIComponent(expired)}`, { redirect: 'manual' });
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=failed&reason=expired');
+  });
+
+  it('names the platform on a denial when the state says which it was', async () => {
+    const { app } = harness();
+    const res = await app.request(`/oauth/social/callback?error=access_denied&state=${encodeURIComponent(validState())}`, { redirect: 'manual' });
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=denied&provider=tiktok');
   });
 
   it('redirects to a failed page when this provider has no configured client id/secret, without saving anything', async () => {
@@ -76,7 +88,7 @@ describe('GET /oauth/social/callback', () => {
     const { app, saved } = harness();
     const res = await app.request(`/oauth/social/callback?code=abc&state=${encodeURIComponent(state)}`, { redirect: 'manual' });
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=failed');
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=failed&reason=not_configured&provider=linkedin');
     expect(saved).toEqual([]);
   });
 
@@ -122,7 +134,7 @@ describe('GET /oauth/social/callback', () => {
     const res = await app.request(`/oauth/social/callback?code=code123&state=${encodeURIComponent(state)}`, { redirect: 'manual' });
 
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=failed');
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=failed&reason=exchange&provider=tiktok');
     expect(saved).toEqual([]);
   });
 });

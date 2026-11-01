@@ -1,5 +1,6 @@
 'use client';
 
+import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { InfoIcon, PANEL_CLIP, StepPanel } from './campaignChrome';
 import { platformLabel } from '@/lib/platforms';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
@@ -32,40 +33,16 @@ export interface PlatformStatus {
   connected: boolean;
   accountLabel?: string;
   supported: boolean;
+  /** Posts through another platform's connection; Connect goes to that one. */
+  connectedVia?: string;
+  /** `credentials` is a handle and app password (Bluesky), not a consent screen. */
+  connectMethod?: 'oauth' | 'credentials' | 'derived';
+  /** Whether Connect can lead anywhere on this deployment. */
+  available?: boolean;
 }
 
 const TILE_X = [22, 160, 298, 436];
 const TILE_Y = [326, 436, 546, 656];
-
-/** A mark per platform, since the prototype's PNG sprites are not in the app. */
-function PlatformMark({ platform }: { platform: string }) {
-  const letter = platformLabel(platform).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase() || '?';
-  const tint: Record<string, string> = {
-    instagram: '#E1306C',
-    instagram_story: '#E1306C',
-    facebook: '#1877F2',
-    facebook_group: '#1877F2',
-    linkedin: '#0A66C2',
-    x: '#0C0C0C',
-    tiktok: '#010101',
-    youtube_shorts: '#FF0000',
-    youtube_long: '#FF0000',
-    threads: '#0C0C0C',
-    pinterest: '#E60023',
-    google_business: '#4285F4',
-    reddit: '#FF4500',
-    bluesky: '#0085FF',
-  };
-  return (
-    <span
-      aria-hidden
-      className="flex h-[44px] w-[44px] items-center justify-center rounded-[12px] text-20 font-bold text-white"
-      style={{ background: tint[platform] ?? '#838383' }}
-    >
-      {letter}
-    </span>
-  );
-}
 
 export function AccountsStep({
   platforms,
@@ -80,7 +57,10 @@ export function AccountsStep({
   onConnect: (platform: string) => void;
   connecting: string | null;
 }) {
-  const connected = (platforms ?? []).filter((p) => p.connected);
+  /* Accounts, not platforms: Stories and Facebook post through Instagram's
+     connection, and two of the design's two chips spent on one account said
+     less than one would. */
+  const connected = (platforms ?? []).filter((p) => p.connected && !p.connectedVia);
   const grid = (platforms ?? []).filter((p) => p.supported);
 
   return (
@@ -109,8 +89,11 @@ export function AccountsStep({
             className="absolute h-[68px] w-[221px] rounded bg-white"
             style={{ left: i === 0 ? 24 : 257, top: 193, boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
           >
-            <span className="absolute left-[11px] top-[9px] block">
-              <PlatformMark platform={p.platform} />
+            <span
+              className="absolute left-[11px] top-[9px] flex h-[47px] w-[47px] items-center justify-center rounded-full"
+              style={{ background: '#F8F8F8', boxShadow: 'inset 0 0 0 1.188px rgba(120,120,120,0.28)' }}
+            >
+              <PlatformIcon platform={p.platform} size={28} />
             </span>
             <span className="absolute left-[73px] top-[25px] block max-w-[120px] truncate text-16 font-semibold leading-none text-black">
               {p.accountLabel ?? platformLabel(p.platform)}
@@ -138,13 +121,20 @@ export function AccountsStep({
       ) : (
         grid.map((p, i) => {
           const on = selected.includes(p.platform);
+          /* What Connect actually connects: Stories and Facebook post through
+             another platform's account, and asking for their own was refused. */
+          const target = p.connectedVia ?? p.platform;
+          const owner = (platforms ?? []).find((x) => x.platform === target);
+          const available = p.connected || owner?.available !== false;
           return (
             <button
               key={p.platform}
               type="button"
-              onClick={() => (p.connected ? onToggle(p.platform) : onConnect(p.platform))}
+              onClick={() => (p.connected ? onToggle(p.platform) : onConnect(target))}
+              disabled={!available}
+              title={available ? undefined : `${platformLabel(p.platform)} isn’t set up for this workspace yet.`}
               aria-pressed={p.connected ? on : undefined}
-              className="absolute h-cmp-tile-h w-cmp-tile cursor-pointer rounded bg-white transition-opacity duration-200"
+              className="absolute h-cmp-tile-h w-cmp-tile cursor-pointer rounded bg-white transition-opacity duration-200 disabled:cursor-default"
               style={{
                 left: TILE_X[i % 4],
                 top: TILE_Y[Math.floor(i / 4)],
@@ -159,7 +149,7 @@ export function AccountsStep({
               }}
             >
               <span className="absolute left-1/2 top-[14px] block -translate-x-1/2">
-                <PlatformMark platform={p.platform} />
+                <PlatformIcon platform={p.platform} size={44} />
               </span>
               <span className="absolute inset-x-0 top-[65px] block truncate px-[6px] text-center text-14 font-semibold leading-none text-black">
                 {platformLabel(p.platform)}
@@ -168,7 +158,15 @@ export function AccountsStep({
                   that decides whether choosing it means anything. */}
               {!p.connected ? (
                 <span className="absolute inset-x-0 top-[81px] block text-center text-11 font-medium" style={{ color: 'rgb(131,131,131)' }}>
-                  {connecting === p.platform ? <Busy size={14}>Opening…</Busy> : 'Connect'}
+                  {connecting === target ? (
+                    <Busy size={14}>Opening…</Busy>
+                  ) : !available ? (
+                    'Not available yet'
+                  ) : p.connectedVia ? (
+                    `Connects with ${platformLabel(p.connectedVia)}`
+                  ) : (
+                    'Connect'
+                  )}
                 </span>
               ) : null}
             </button>

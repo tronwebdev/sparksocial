@@ -46,7 +46,7 @@ describe('GET /oauth/canva/callback', () => {
     const { app } = harness();
     const res = await app.request('/oauth/canva/callback?error=access_denied', { redirect: 'manual' });
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('https://app.example.com/settings?canva=denied');
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?canva=denied');
   });
 
   it('400s when code or state is missing', async () => {
@@ -85,7 +85,7 @@ describe('GET /oauth/canva/callback', () => {
     const res = await app.request(`/oauth/canva/callback?code=code123&state=${encodeURIComponent(state)}`, { redirect: 'manual' });
 
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('https://app.example.com/settings?canva=connected');
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?canva=connected');
     expect(saved[0]).toMatchObject({ genomeId: 'gen_1', orgId: 'org_1', provider: 'canva', accessToken: 'tok_abc', refreshToken: 'ref_abc', connectedBy: 'user_1' });
   });
 
@@ -98,7 +98,7 @@ describe('GET /oauth/canva/callback', () => {
     const res = await app.request(`/oauth/canva/callback?code=code123&state=${encodeURIComponent(state)}`, { redirect: 'manual' });
 
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('https://app.example.com/settings?canva=failed');
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?canva=failed');
     expect(saved).toEqual([]);
   });
 });

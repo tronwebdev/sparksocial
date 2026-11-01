@@ -28,41 +28,49 @@ export interface SocialOAuthCallbackDeps {
 /*
  * ── Where the browser lands afterwards ──────────────────────────────────
  *
- * `/settings/accounts`, not `/settings`. The redirect used to point at the
- * settings root, which renders `OverviewSection` — and the only component that
- * reads `?social=` is `PublishHealthPanel`, which lives inside `AccountsSection`
- * one level down. So the "TikTok connected." confirmation this handler has been
- * sending all along was never rendered by anything.
- *
- * Nothing was lost by it: both panels reload on `focus`, so closing the popup
- * still flipped the tile. But the popup's last page was the settings overview,
- * which is not an answer to "did that work?".
+ * `/settings/accounts`, not `/settings`: `AccountsSection` reads `?social=`
+ * (and `provider`, and `reason` on a failure) and turns it into a
+ * notification naming the account. When the page is onboarding's consent
+ * popup it hands the result to the window that opened it and closes — see
+ * `apps/web/src/lib/oauthPopup.ts`.
  */
 export function registerSocialOAuthCallback(app: Hono, deps: SocialOAuthCallbackDeps): void {
   const fetchImpl = deps.fetchImpl ?? fetch;
 
+  /*
+   * Every outcome goes back to the app, with the platform and a reason.
+   *
+   * A missing or expired state used to answer with a bare 400 on the API's own
+   * domain — "Missing code or state." on a white page, with no way back into
+   * the product — and every failure arrived as the same `?social=failed`, so
+   * the screen could only say "it failed". The reasons are for the screen to
+   * word; the detail stays in the log.
+   */
+  const back = (params: Record<string, string>): string =>
+    `${deps.webAppUrl}/settings/accounts?${new URLSearchParams(params).toString()}`;
+
   app.get('/oauth/social/callback', async (c) => {
-    const error = c.req.query('error');
-    if (error) {
-      return c.redirect(`${deps.webAppUrl}/settings/accounts?social=denied`, 302);
+    const stateToken = c.req.query('state');
+    const state = stateToken ? verifyOAuthState(stateToken, deps.stateSecret) : null;
+    const providerParam: Record<string, string> = state ? { provider: state.provider } : {};
+
+    if (c.req.query('error')) {
+      return c.redirect(back({ social: 'denied', ...providerParam }), 302);
     }
 
     const code = c.req.query('code');
-    const stateToken = c.req.query('state');
     if (!code || !stateToken) {
-      return c.text('Missing code or state.', 400);
+      return c.redirect(back({ social: 'failed', reason: 'incomplete', ...providerParam }), 302);
     }
-
-    const state = verifyOAuthState(stateToken, deps.stateSecret);
     if (!state) {
-      return c.text('This connection link has expired or is invalid — start again from Settings.', 400);
+      return c.redirect(back({ social: 'failed', reason: 'expired' }), 302);
     }
 
     const provider = state.provider as Platform;
     const clientId = deps.clientIds[provider];
     const clientSecret = deps.clientSecrets[provider];
     if (!clientId || !clientSecret) {
-      return c.redirect(`${deps.webAppUrl}/settings/accounts?social=failed`, 302);
+      return c.redirect(back({ social: 'failed', reason: 'not_configured', provider }), 302);
     }
 
     let tokens: Awaited<ReturnType<typeof exchangeSocialCode>>;
@@ -81,7 +89,7 @@ export function registerSocialOAuthCallback(app: Hono, deps: SocialOAuthCallback
         provider,
         error: e instanceof Error ? e.message : String(e),
       });
-      return c.redirect(`${deps.webAppUrl}/settings/accounts?social=failed`, 302);
+      return c.redirect(back({ social: 'failed', reason: 'exchange', provider }), 302);
     }
 
     await deps.db.oauthConnections.save({
@@ -97,6 +105,6 @@ export function registerSocialOAuthCallback(app: Hono, deps: SocialOAuthCallback
       ...(tokens.accountId ? { accountId: tokens.accountId } : {}),
     });
 
-    return c.redirect(`${deps.webAppUrl}/settings/accounts?social=connected&provider=${provider}`, 302);
+    return c.redirect(back({ social: 'connected', provider }), 302);
   });
 }

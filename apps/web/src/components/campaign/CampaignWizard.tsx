@@ -45,6 +45,7 @@ import { GOAL_CARDS, TYPE_CARDS, EXTRA_OBJECTIVES } from './campaignDraft';
 import { userMessage } from '@/lib/errorCopy';
 import { notify, notifyResult } from '@/lib/notify';
 import { Busy } from '@/components/brand/SparkLoader';
+import { CredentialConnectModal } from '@/components/settings/CredentialConnectModal';
 
 /**
  * `CMP-01` — the campaign wizard, PRD §8.4.
@@ -228,6 +229,8 @@ export function CampaignWizard({
 
   // CMP-01.4
   const [platforms, setPlatforms] = useState<PlatformStatus[] | null>(null);
+  /* Bluesky's handle-and-app-password form — it has no consent screen. */
+  const [credentialFor, setCredentialFor] = useState<string | null>(null);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -609,6 +612,11 @@ export function CampaignWizard({
       notify.warning('Select a brand before connecting an account');
       return;
     }
+    /* A credential platform has no authorize URL; asking for one was refused. */
+    if (platforms?.find((p) => p.platform === platform)?.connectMethod === 'credentials') {
+      setCredentialFor(platform);
+      return;
+    }
     setConnecting(platform);
     // `{ genomeId, provider }` — the tool's schema. This sent `{ platform }`,
     // which matches neither field; see `AccountsSection.connect`.
@@ -847,6 +855,18 @@ export function CampaignWizard({
       onToggle={(p) => setSelected((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]))}
       onConnect={(p) => void connectPlatform(p)}
       connecting={connecting}
+    />
+  ) : null}
+
+  {credentialFor && genomeId ? (
+    <CredentialConnectModal
+      platform={credentialFor}
+      genomeId={genomeId}
+      onClose={() => setCredentialFor(null)}
+      onConnected={() => {
+        setCredentialFor(null);
+        setPlatforms(null);
+      }}
     />
   ) : null}
 

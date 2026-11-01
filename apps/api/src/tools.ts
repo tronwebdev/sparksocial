@@ -661,7 +661,9 @@ export function registerAlphaTools(): void {
   );
   register(makePublishStatus({ adapters, limiter, embed }));
   register(makePublishRollback({ adapters, limiter, embed }));
-  register(makeIntegrationHealth({ adapters }));
+  // `connectable` is what `integration.connect` is built with — see
+  // `index.ts`, which registers it only when OAUTH_STATE_SECRET is set.
+  register(makeIntegrationHealth({ adapters, connectable: envSet('OAUTH_STATE_SECRET') ? socialClientIds() : {} }));
   /*
    * Registered here rather than with the other campaign tools above, because
    * it needs the routing table: 'nowhere to publish' is one of the two things
