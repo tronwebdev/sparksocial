@@ -2573,6 +2573,28 @@ export async function listKnowledgeChunks(db: Database, scope: Scope, docId?: st
     .orderBy(desc(knowledgeChunks.createdAt));
 }
 
+/**
+ * Every chunk of one document — `brand.knowledge.remove_document`.
+ *
+ * A document is stored as `docId` itself (a single attach) or as its parts,
+ * `docId#1`, `docId#2`… (`attach_document` splits long files), so both shapes
+ * match. `starts_with` rather than `LIKE`, because a filename is free text and
+ * an unescaped `%` or `_` in it would widen the match to other documents.
+ */
+export async function deleteKnowledgeDoc(db: Database, scope: Scope, docId: string): Promise<number> {
+  assertScope(scope);
+  const rows = await db
+    .delete(knowledgeChunks)
+    .where(
+      and(
+        scopePredicate('knowledgeChunks', scope),
+        or(eq(knowledgeChunks.docId, docId), sql`starts_with(${knowledgeChunks.docId}, ${`${docId}#`})`),
+      ),
+    )
+    .returning({ id: knowledgeChunks.id });
+  return rows.length;
+}
+
 // ---------------------------------------------------------------------------
 // P5: trend watchlist
 // ---------------------------------------------------------------------------

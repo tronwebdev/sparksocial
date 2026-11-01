@@ -35,6 +35,13 @@ export interface Choice {
   value: string;
   label: string;
   hint?: string;
+  /**
+   * An answer that rules out every other on a multiple-choice card. "Nothing —
+   * I would rather not film" could be ticked beside "The place I work", and the
+   * pair was saved as `['space', 'nothing']` — a capture profile that says
+   * both yes and no.
+   */
+  exclusive?: boolean;
 }
 
 export interface Question {
@@ -71,7 +78,7 @@ export const QUESTIONS: Question[] = [
       { value: 'work_artifacts', label: 'Things I am working on', hint: 'Tools, materials, work in progress' },
       { value: 'product', label: 'The product itself' },
       { value: 'screen', label: 'My screen', hint: 'A recording of software in use' },
-      { value: 'nothing', label: 'Nothing — I would rather not film', hint: 'SPARK works from what you already have' },
+      { value: 'nothing', label: 'Nothing — I would rather not film', hint: 'SPARK works from what you already have', exclusive: true },
     ],
   },
   {

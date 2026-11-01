@@ -22,7 +22,7 @@ describe('a billing failure is not the photo’s fault', () => {
   it('does not blame the photo', () => {
     const err = heygenUploadError(400, CREDIT_BODY);
     expect(err.message).not.toMatch(/photo could not be used|rejected the photo/i);
-    expect(err.message).toMatch(/nothing is wrong with your photo/i);
+    expect(err.message).toMatch(/nothing you did caused this/i);
   });
 
   it('tells the customer what they can do, which is carry on', () => {
@@ -42,7 +42,7 @@ describe('a billing failure is not the photo’s fault', () => {
    */
   it('still recognises the billing case if the code changes but the words do not', () => {
     const body = JSON.stringify({ code: 999999, message: 'Insufficient credit for this operation.' });
-    expect(heygenUploadError(400, body).message).toMatch(/nothing is wrong with your photo/i);
+    expect(heygenUploadError(400, body).message).toMatch(/nothing you did caused this/i);
   });
 });
 

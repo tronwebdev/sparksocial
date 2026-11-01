@@ -68,17 +68,29 @@ const NICHE_HINTS: ReadonlyArray<readonly [string, readonly string[]]> = [
 ];
 
 /**
+ * The category a brand carries before anybody has chosen one.
+ *
+ * `brand.create` and `genome.create` both require a category, and onboarding
+ * creates the brand two screens before it asks what the business is — so it
+ * writes this. It is a placeholder, not an answer: read back as a niche it
+ * became "Something else: business", which pre-filled the question with a
+ * value nobody gave and enabled "Generate logo" on the strength of it.
+ */
+export const UNSET_CATEGORY = 'business';
+
+/**
  * Put a free-text category onto the list, or fall back to "Something else"
  * with the original text kept.
  *
  * Never returns nothing when it was given something: a category the list
  * cannot express is exactly what "Something else" is for, and dropping it
  * would lose what the crawl learned — which is the bug this closes, one
- * option over.
+ * option over. The one exception is `UNSET_CATEGORY`, which is nothing
+ * dressed as something.
  */
 export function resolveNiche(category: string | undefined): { niche: string; other: string } {
   const text = category?.trim();
-  if (!text) return { niche: '', other: '' };
+  if (!text || text.toLowerCase() === UNSET_CATEGORY) return { niche: '', other: '' };
 
   // An exact member of the list passes through untouched.
   if ((NICHES as readonly string[]).includes(text)) return { niche: text, other: '' };

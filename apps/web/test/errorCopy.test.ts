@@ -26,6 +26,13 @@ describe('what counts as machine output', () => {
     expect(looksTechnical('The inference pass returned an unusable shape.')).toBe(true);
   });
 
+  it('catches a top-level field error, which has no dotted path to give it away', () => {
+    expect(looksTechnical('url: Invalid url; url: Not a valid URL.')).toBe(true);
+    expect(looksTechnical('name: Required')).toBe(true);
+    // Copy that happens to contain a colon is still copy.
+    expect(looksTechnical('Note: the crawl only reads public pages.')).toBe(false);
+  });
+
   it('catches a leaked query, a stack frame and an errno', () => {
     expect(looksTechnical('Failed query: insert into "renders" ("id", "org_id")')).toBe(true);
     expect(looksTechnical('at Object.handler (/app/packages/x.ts:12:7)')).toBe(true);

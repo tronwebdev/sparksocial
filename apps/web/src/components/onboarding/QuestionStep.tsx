@@ -21,7 +21,10 @@ export function QuestionStep({
 }) {
   function toggle(value: string) {
     if (!question.multiple) return onChange([value]);
-    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
+    if (selected.includes(value)) return onChange(selected.filter((v) => v !== value));
+    // An exclusive answer replaces the rest, and any other answer replaces it.
+    const exclusive = new Set(question.choices.filter((c) => c.exclusive).map((c) => c.value));
+    onChange(exclusive.has(value) ? [value] : [...selected.filter((v) => !exclusive.has(v)), value]);
   }
 
   return (

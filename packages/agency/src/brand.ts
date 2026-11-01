@@ -459,6 +459,93 @@ export function makeBrandKnowledgeAttachDocument(deps: { embed: EmbedClient; rea
   });
 }
 
+/* ── brand.knowledge.remove_document ─────────────────────────────────── */
+
+/**
+ * `brand.knowledge.remove_document` — the trash on onboarding's File Preview.
+ *
+ * That button only ever emptied the tile. The document stayed attached, so
+ * SPARK went on quoting a file the owner had watched themselves remove, and
+ * nothing anywhere could take it out again: there was a way in for knowledge
+ * and no way out.
+ *
+ * ── What goes, and what stays ─────────────────────────────────────────────
+ *
+ * The chunks go — they are what retrieval and claim-grounding read, so they
+ * are what "SPARK knows this" means. The asset row is *archived*, by the same
+ * reasoning `asset.archive` gives for never deleting one: a post may already
+ * cite it. The PDF itself stays in storage.
+ *
+ * ── Why `write` and not `destructive` ─────────────────────────────────────
+ *
+ * The chunks are derived data. Uploading the same file again rebuilds them
+ * exactly, and the source is untouched, so nothing is lost that one action
+ * cannot restore. `destructive` would put this behind the containment gate
+ * for irreversible actions and make the trash on an onboarding tile wait for
+ * an approval.
+ */
+export const brandKnowledgeRemoveDocument = defineTool({
+  name: 'brand.knowledge.remove_document',
+  version: 1,
+
+  summary:
+    'Stop SPARK using a document attached with brand.knowledge.attach_document: removes its passages from ' +
+    'retrieval and archives its asset. The uploaded file is kept, so attaching it again restores it. Free.',
+
+  input: z.object({
+    genomeId: z.string().min(1),
+    /** The file's own name, as it was attached — the doc id is derived from it the same way. */
+    filename: z.string().min(1).max(200),
+    /** The asset `attach_document` registered, when it returned one. */
+    assetId: z.string().min(1).optional(),
+  }),
+  output: z.object({
+    docId: z.string(),
+    /** Chunks removed. Zero when it was already gone — removal is idempotent. */
+    removed: z.number().int(),
+    assetArchived: z.boolean(),
+  }),
+
+  effect: 'write',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin', 'editor'],
+  // Removing a document that is already gone is the same state.
+  idempotent: true,
+
+  async handler(input, ctx) {
+    const remove = ctx.db.knowledge.removeDoc;
+    if (!remove) {
+      throw new ToolError('UPSTREAM_FAILED', 'Removing a document is not available on this store.');
+    }
+
+    // Derived exactly as `attach_document` derives it, so the two cannot drift.
+    const docId = `doc:${input.filename}`.slice(0, 120);
+    const removed = await remove.call(ctx.db.knowledge, input.genomeId, ctx.orgId, docId);
+
+    /*
+     * After the chunks, and non-fatal, mirroring how the asset was registered:
+     * the passages are what the owner asked to be rid of, and they are gone.
+     */
+    let assetArchived = false;
+    if (input.assetId) {
+      assetArchived = await ctx.db.assets
+        .setArchived({ id: input.assetId, genomeId: input.genomeId, orgId: ctx.orgId, archived: true })
+        .then((row) => Boolean(row))
+        .catch((err: unknown) => {
+          ctx.logger.warn('knowledge asset not archived', {
+            genomeId: input.genomeId,
+            assetId: input.assetId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return false;
+        });
+    }
+
+    ctx.logger.info('document removed', { genomeId: input.genomeId, docId, removed, assetArchived });
+    return { docId, removed, assetArchived };
+  },
+});
+
 /**
  * Splits on paragraph boundaries, falling back to a hard cut.
  *

@@ -18,6 +18,10 @@ export function createKnowledgeRepository(db: Database): KnowledgeStore {
       const rows = await scoped.listKnowledgeChunks(db, { orgId, brandId: orgId, genomeId });
       return rows.map(toChunk);
     },
+
+    async removeDoc(genomeId, orgId, docId) {
+      return scoped.deleteKnowledgeDoc(db, { orgId, brandId: orgId, genomeId }, docId);
+    },
   };
 }
 

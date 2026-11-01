@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { BRAND_FONTS } from '@sparksocial/shared';
+import { BRAND_FONTS, brandFont, matchBrandFont } from '@sparksocial/shared';
 import {
   SectionLabel, SelectField, SmallSelect, Toggle, TagChip, Suggestions, TextInput,
   guardrailSuggestions,
@@ -9,7 +9,7 @@ import {
 import { ProtoScale } from './Stage';
 import { TimezoneField } from '@/components/common/TimezoneField';
 import { invoke } from '@/lib/tools';
-import { notifyResult } from '@/lib/notify';
+import { notify, notifyResult } from '@/lib/notify';
 import { SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
@@ -117,8 +117,13 @@ export function BrandKitStep({
    */
   const [topicRound, setTopicRound] = useState(0);
   const [claimRound, setClaimRound] = useState(0);
-  const [topics, setTopics] = useState('');
-  const [claims, setClaims] = useState('');
+  /*
+   * Lists, not comma-joined strings. Stored as text, a phrase with a comma in
+   * it — "Recipes, secret" — came back as two chips and was saved as two
+   * guardrails, and there was no way to enter it as one.
+   */
+  const [topics, setTopics] = useState<string[]>([]);
+  const [claims, setClaims] = useState<string[]>([]);
   const [topicDraft, setTopicDraft] = useState('');
   const [claimDraft, setClaimDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -139,18 +144,30 @@ export function BrandKitStep({
    */
   const ownKit = useRef<{ colors: string[]; fonts: { display?: string; body?: string } } | null>(null);
   const [usingPreset, setUsingPreset] = useState(false);
+  /**
+   * Whether governance was actually read. If it was not, every field here is
+   * an empty default, and `save` — which writes all seven at once — would
+   * replace the brand's real colours, fonts and guardrails with nothing.
+   */
+  const readOk = useRef(false);
 
   useEffect(() => {
     void (async () => {
       const res = await invoke<Governance>('brand.governance.get', {});
       setLoaded(true);
-      if (res.status !== 'succeeded') return;
+      if (res.status !== 'succeeded') {
+        notify.error('Couldn’t read your brand kit', {
+          body: 'Nothing here will be saved, so nothing you already have is overwritten. Set it in Settings → Brand Kit.',
+        });
+        return;
+      }
+      readOk.current = true;
       const g = res.output;
       setColors(g.brandColors);
       setFonts(g.brandFonts ?? {});
       setStrictMode(g.strictMode);
-      setTopics(g.restrictedTopics.join(', '));
-      setClaims(g.claimsToAvoid.join(', '));
+      setTopics(g.restrictedTopics);
+      setClaims(g.claimsToAvoid);
       /**
        * The timezone is `notNull` with a `UTC` default, so `UTC` cannot be
        * distinguished from unanswered. Rather than pre-select it and let somebody
@@ -169,23 +186,24 @@ export function BrandKitStep({
   }, []);
 
   async function save() {
+    if (!readOk.current) return true;
     setBusy(true);
 
     /*
-      `voice` is a comma list now, because the capture's control is
-      multi-select. `toneVector` is a single vector, so the first pick wins
-      rather than averaging: averaging "formal" with "casual" returns
-      neutral, which is not what selecting both means.
+      One voice. `toneVector` is a single vector, and averaging "formal" with
+      "casual" returns neutral, which is not what choosing both means — so the
+      first pick won and the rest were dropped without a word. The control
+      offered a choice it then ignored; it now replaces instead of adding.
     */
-    const preset = VOICE_PRESETS.find((p) => p.id === voice.split(',')[0]);
+    const preset = VOICE_PRESETS.find((p) => p.id === voice);
     const res = await invoke('brand.governance.set', {
       brandColors: colors.length ? colors : null,
       brandFonts: fonts.display ?? fonts.body ? fonts : null,
       ...(preset ? { toneVector: preset.tone } : {}),
       ...(timezone ? { timezone } : {}),
       strictMode,
-      restrictedTopics: splitList(topics).length ? splitList(topics) : null,
-      claimsToAvoid: splitList(claims).length ? splitList(claims) : null,
+      restrictedTopics: topics.length ? topics : null,
+      claimsToAvoid: claims.length ? claims : null,
     });
 
     setBusy(false);
@@ -214,20 +232,15 @@ export function BrandKitStep({
 
   if (!loaded) return <SparkLoader size="panel" label="Reading what SPARK already has…" />;
 
-  const selectedVoices = voice ? voice.split(',').filter(Boolean) : [];
-  const toggleVoice = (id: string) =>
-    setVoice(
-      selectedVoices.includes(id)
-        ? selectedVoices.filter((v) => v !== id).join(',')
-        : [...selectedVoices, id].join(','),
-    );
+  const selectedVoices = voice ? [voice] : [];
+  const toggleVoice = (id: string) => setVoice(voice === id ? '' : id);
 
-  const topicList = splitList(topics);
-  const claimList = splitList(claims);
-  const addTo = (current: string, value: string) =>
-    splitList(current).includes(value) ? current : [...splitList(current), value].join(', ');
-  const removeFrom = (current: string, value: string) =>
-    splitList(current).filter((v) => v !== value).join(', ');
+  const topicList = topics;
+  const claimList = claims;
+  // Case-insensitive, so "Politics" does not sit beside "politics".
+  const addTo = (current: string[], value: string) =>
+    current.some((v) => v.toLowerCase() === value.toLowerCase()) ? current : [...current, value];
+  const removeFrom = (current: string[], value: string) => current.filter((v) => v !== value);
 
   /*
    * The preset, and what it replaced.
@@ -245,7 +258,18 @@ export function BrandKitStep({
     if (next) {
       ownKit.current = { colors, fonts };
       if (crawledKit.colors.length > 0) setColors(crawledKit.colors);
-      if (crawledKit.fonts) setFonts(crawledKit.fonts);
+      /*
+       * Through `matchBrandFont`, as `saveKit` does on the server. The crawl
+       * reports a family as the site spells it — "Garamond", "Lato" — and the
+       * kit accepts six ids, so turning the preset on made every later save
+       * of this screen fail validation, taking the colours, voice, timezone
+       * and guardrails down with the fonts.
+       */
+      if (crawledKit.fonts) {
+        const display = matchBrandFont(crawledKit.fonts.display);
+        const body = matchBrandFont(crawledKit.fonts.body);
+        if (display || body) setFonts({ ...(display ? { display } : {}), ...(body ? { body } : {}) });
+      }
     } else if (ownKit.current) {
       setColors(ownKit.current.colors);
       setFonts(ownKit.current.fonts);
@@ -276,7 +300,10 @@ export function BrandKitStep({
     <ProtoScale native={891}>
       <div style={{ width: 891, display: 'flex', flexDirection: 'column', gap: 38 }} onBlur={() => void save()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
-          <span style={{ fontSize: 18, color: '#0C0C0C' }}>This is your brand kit generated from your URL</span>
+          <span style={{ fontSize: 18, color: '#0C0C0C' }}>
+            {/* Only true when there was a URL to generate it from. */}
+            {hasPreset ? 'This is your brand kit generated from your URL' : 'This is your brand kit'}
+          </span>
           {/*
             The toggle used to be permanently off and disabled, because
             nothing proposed a palette from a crawl. `crawl.ts` now reads the
@@ -342,8 +369,14 @@ export function BrandKitStep({
             <div style={{ width: 432, height: 132, borderRadius: 10, background: '#FFFFFF', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)', padding: '12.5px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, height: 35, whiteSpace: 'nowrap' }}>
                 <span style={{ fontSize: 20, color: '#0C0C0C' }}>Font Styles:</span>
-                <span style={{ fontSize: 27, fontWeight: 700, color: '#0C0C0C' }}>{fonts.display || 'System'}</span>
-                <span style={{ fontSize: 24, fontWeight: 700, color: '#0C0C0C' }}>, {fonts.body || 'default'}</span>
+                {/* Labels, not ids: this read "lora , inter". */}
+                <span style={{ fontSize: 27, fontWeight: 700, color: '#0C0C0C' }}>
+                  {brandFont(fonts.display)?.label ?? 'System'}
+                  {fonts.body && fonts.body !== fonts.display ? ',' : ''}
+                </span>
+                {fonts.body && fonts.body !== fonts.display ? (
+                  <span style={{ fontSize: 24, fontWeight: 700, color: '#0C0C0C' }}>{brandFont(fonts.body)?.label ?? fonts.body}</span>
+                ) : null}
               </div>
               {/*
                 The prototype has a single 393x49 "Choose Fonts" select on
@@ -384,7 +417,7 @@ export function BrandKitStep({
                 vector, so `save()` sends the first pick's — see the note there. */}
             <SelectField
               ariaLabel="Brand voice"
-              placeholder={selectedVoices.length ? `${selectedVoices.length} selected` : 'Choose a voice'}
+              placeholder={VOICE_PRESETS.find((pr) => pr.id === voice)?.label ?? 'Choose a voice'}
               value=""
               onChange={(v: string) => v && toggleVoice(v)}
               options={VOICE_PRESETS.map((pr) => ({ value: pr.id, label: pr.label }))}
@@ -519,12 +552,6 @@ export function BrandKitStep({
     </ProtoScale>
   );
 }
-
-const splitList = (text: string): string[] =>
-  text
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
 
 /** Falls back to the swatch a colour input can show, rather than claiming the brand's colour is grey. */
 

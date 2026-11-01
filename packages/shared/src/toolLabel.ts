@@ -78,6 +78,7 @@ const LABELS: Record<string, string> = {
   'brand.logo.generate': 'Generate a placeholder logo',
   'brand.knowledge.attach': 'Attach brand knowledge',
   'brand.knowledge.attach_document': 'Read an uploaded document',
+  'brand.knowledge.remove_document': 'Remove an uploaded document',
   'brand.oauth.connect': 'Connect an account',
   'brand.oauth.disconnect': 'Disconnect an account',
   'brand.engagement.platforms.get': 'Read per-platform engagement settings',

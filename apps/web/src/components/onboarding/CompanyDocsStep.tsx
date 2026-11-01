@@ -47,6 +47,8 @@ const MAX_MB = 500;
 
 interface Attached {
   filename: string;
+  /** The asset `attach_document` registered, so removing the file archives it too. */
+  assetId?: string;
   pages: number;
   chunks: number;
   characters: number;
@@ -112,11 +114,31 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
       ...prev,
       {
         filename: file.name,
+        ...(read.output.assetId ? { assetId: read.output.assetId } : {}),
         pages: read.output.pages,
         chunks: read.output.chunks,
         characters: read.output.characters,
       },
     ]);
+  }
+
+  /**
+   * The trash on the preview. It used to drop the tile and nothing else: the
+   * document stayed attached and SPARK kept quoting it. Removed from the brand
+   * first, and from the screen only once that has happened.
+   */
+  const [removing, setRemoving] = useState(false);
+  async function remove(doc: Attached) {
+    setRemoving(true);
+    const res = await invoke('brand.knowledge.remove_document', {
+      genomeId,
+      filename: doc.filename,
+      ...(doc.assetId ? { assetId: doc.assetId } : {}),
+    });
+    setRemoving(false);
+    if (!notifyResult(res, { title: 'Document removed', body: `SPARK will no longer use ${doc.filename}.` }, 'Couldn’t remove that document')) return;
+    // Every copy of the same file name went with it, so every tile for it goes too.
+    setAttached((prev) => prev.filter((d) => d.filename !== doc.filename));
   }
 
   const latest = attached[attached.length - 1];
@@ -147,7 +169,10 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
           outlined
           glyph="document"
           accept={ACCEPT}
-          formats={`PDF, Docs up to ${MAX_MB}MB`}
+          // The design says "PDF, Docs", but a Word file is refused two lines
+          // up with "needs exporting to PDF first" — the caption promised what
+          // the drop zone then turned away.
+          formats={`PDF up to ${MAX_MB}MB`}
           busy={busy}
           onFile={(f) => void upload(f)}
         />
@@ -156,7 +181,7 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
           left={360}
           top={28.2}
           label="File Preview"
-          onClear={latest ? () => setAttached((prev) => prev.slice(0, -1)) : undefined}
+          onClear={latest && !removing ? () => void remove(latest) : undefined}
         >
           {latest ? (
             <>

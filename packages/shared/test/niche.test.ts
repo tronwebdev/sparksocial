@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NICHES, resolveNiche } from '../src/niche.js';
+import { NICHES, UNSET_CATEGORY, resolveNiche } from '../src/niche.js';
 
 /**
  * Putting the crawl's free-text category onto the twelve-option select.
@@ -75,6 +75,13 @@ describe('what it does not know', () => {
     expect(resolveNiche(undefined)).toEqual({ niche: '', other: '' });
     expect(resolveNiche('')).toEqual({ niche: '', other: '' });
     expect(resolveNiche('   ')).toEqual({ niche: '', other: '' });
+  });
+
+  it('reads the placeholder onboarding writes as no answer, not "Something else: business"', () => {
+    expect(resolveNiche(UNSET_CATEGORY)).toEqual({ niche: '', other: '' });
+    expect(resolveNiche('Business')).toEqual({ niche: '', other: '' });
+    // A real category that merely mentions the word still resolves.
+    expect(resolveNiche('business consulting').niche).toBe('Professional services');
   });
 
   it('is case-insensitive, since the category is however the model wrote it', () => {

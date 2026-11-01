@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
+import { UNSET_CATEGORY } from '@sparksocial/shared';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { Button } from '@/components/ui/button';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
@@ -155,6 +156,67 @@ interface Draft {
   kit?: { colors: string[]; fonts?: { display?: string; body?: string }; logoUrl?: string };
 }
 
+/** The brand this run of onboarding created, and the name it was created under. */
+interface MadeBrand {
+  brandId: string;
+  name: string;
+}
+
+/**
+ * One run of onboarding, as far as it has got.
+ *
+ * Everything here lived only in component state, so a refresh — or a phone
+ * reloading a backgrounded tab — dropped the person on "What is your Brand
+ * Name?" with no trace of the brand they had half set up. That brand was
+ * still in the account, with its crawl, answers and logo saved, and starting
+ * again made a second one beside it.
+ *
+ * `sessionStorage`, keyed by organisation: it survives a reload, is gone when
+ * the tab is, and never carries one account's draft into another's. Nothing
+ * in it is a secret — ids and the answers the person just typed.
+ */
+interface Progress {
+  step: number;
+  brandName: string;
+  url: string;
+  draft?: Draft;
+  answers: Answers;
+  made?: MadeBrand;
+}
+
+const progressKey = (orgId: string) => `spark:onboarding:${orgId}`;
+
+function readProgress(orgId: string): Progress | null {
+  try {
+    const raw = window.sessionStorage.getItem(progressKey(orgId));
+    return raw ? (JSON.parse(raw) as Progress) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeProgress(orgId: string, progress: Progress | null) {
+  try {
+    if (progress) window.sessionStorage.setItem(progressKey(orgId), JSON.stringify(progress));
+    else window.sessionStorage.removeItem(progressKey(orgId));
+  } catch {
+    /* storage unavailable — the run simply does not survive a reload */
+  }
+}
+
+/**
+ * What the person typed, as an address the API accepts.
+ *
+ * `PublicHttpUrl` is `z.string().url()`, which rejects `bettys.co.uk` — and
+ * that, not `https://www.bettys.co.uk`, is how nearly everybody writes their
+ * own site. `looksLikeUrl` accepted it, Continue lit up, and the crawl came
+ * back with "url: Invalid url".
+ */
+function normaliseUrl(value: string): string {
+  const trimmed = value.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { orgId } = useAuth();
@@ -181,6 +243,10 @@ export default function OnboardingPage() {
    */
   const [answers, setAnswers] = useState<Answers>({});
   const [savingDimensions, setSavingDimensions] = useState(false);
+  /** See `provisionBrand`: one brand per run, however many attempts it takes. */
+  const [made, setMade] = useState<MadeBrand | undefined>();
+  /** False until a saved run has been looked for — see `Progress`. */
+  const [restored, setRestored] = useState(false);
   /** Lifted out of `ConnectAccountsStep` so the footer can say Continue rather than Skip. */
 
   // Which dimensions still need asking depends on what the crawl resolved, so
@@ -225,13 +291,36 @@ export default function OnboardingPage() {
    * what the screen says it does.
    */
   async function provisionBrand(name: string): Promise<string | undefined> {
-    const made = await invoke<{ brandId: string; genomeId: string; name: string }>(
+    /*
+     * Once per run, not once per press.
+     *
+     * The brand used to be created before every attempt, and the attempt is
+     * the part that fails: a mistyped address, a site that blocks the
+     * crawler, then "Set up by answering questions instead". Each of those
+     * left an empty brand behind in the account — three tries at the URL step
+     * was three brands named after the same business, two of them blank. The
+     * second attempt reuses the first's brand; `genome.bootstrap_from_url` and
+     * `genome.create` both fill the brand's existing genome rather than adding
+     * another, so reuse is exactly what they expect.
+     *
+     * If the name was changed in between (Back, edit, Continue), the brand
+     * follows it rather than keeping the first spelling.
+     */
+    if (made) {
+      if (name && name !== made.name) {
+        const renamed = await invoke('brand.settings.patch', { brandId: made.brandId, name });
+        if (renamed.status === 'succeeded') setMade({ ...made, name });
+      }
+      return made.brandId;
+    }
+
+    const created = await invoke<{ brandId: string; genomeId: string; name: string }>(
       'brand.create',
       {
         name,
         // Onboarding asks for the real category two screens later, and nothing in
         // the engine branches on it — same reasoning `genome.create` gives.
-        category: 'business',
+        category: UNSET_CATEGORY,
         locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
       },
       /*
@@ -246,11 +335,12 @@ export default function OnboardingPage() {
       crypto.randomUUID(),
     );
 
-    if (made.status !== 'succeeded') {
-      setError(humanError(made, 'That needs approval before it can run.'));
+    if (created.status !== 'succeeded') {
+      setError(humanError(created, 'That needs approval before it can run.'));
       return undefined;
     }
-    return made.output.brandId;
+    setMade({ brandId: created.output.brandId, name });
+    return created.output.brandId;
   }
 
   async function bootstrap() {
@@ -285,7 +375,7 @@ export default function OnboardingPage() {
       dimensions?: Record<string, string | string[] | undefined>;
       kit?: { colors: string[]; fonts?: { display?: string; body?: string }; logoUrl?: string };
     }>('genome.bootstrap_from_url', {
-      url: url.trim(),
+      url: normaliseUrl(url),
       brandId,
       // Five pages is the crawler's own budget. Asking for more here would
       // stretch a wait that is already the longest in the product.
@@ -303,12 +393,29 @@ export default function OnboardingPage() {
       return;
     }
 
+    /*
+     * The name the person typed is the brand's name.
+     *
+     * The crawl writes the name the *site* uses into the genome, so a brand
+     * entered as "Onboarding QA Bakery" was greeted on the next screen as
+     * "Bettys", listed everywhere else under the typed name, and written about
+     * in posts under the crawled one. They were asked the question first and
+     * answered it; `brand.settings.patch` sets both the brand and its genome to
+     * that answer. Non-fatal: the crawl itself succeeded, and a name can be
+     * changed in settings.
+     */
+    const typed = brandName.trim();
+    const crawledName = result.output.identity?.businessName;
+    if (typed && crawledName && crawledName !== typed) {
+      await invoke('brand.settings.patch', { brandId, name: typed });
+    }
+
     selectGenome(result.output.draftGenomeId);
     setDraft({
       genomeId: result.output.draftGenomeId,
       chips: result.output.chips ?? [],
       unresolved: result.output.unresolved ?? [],
-      businessName: result.output.identity?.businessName ?? brandName,
+      businessName: typed || crawledName || url.trim(),
       ...(result.output.identity?.category ? { category: result.output.identity.category } : {}),
       dimensions: normaliseInferred(result.output.dimensions),
       ...(result.output.kit ? { kit: result.output.kit } : {}),
@@ -349,7 +456,7 @@ export default function OnboardingPage() {
       businessName: brandName.trim(),
       // The details screen asks for the real one two screens later; the category
       // is display-only either way and nothing in the engine branches on it.
-      category: 'business',
+      category: UNSET_CATEGORY,
       locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
     });
 
@@ -394,6 +501,42 @@ export default function OnboardingPage() {
 
   /** Whatever the crawl inferred, overridden by anything the owner answered. */
   const dimensionValues: Answers = { ...draft?.dimensions, ...answers };
+
+  /* ── Surviving a reload — see `Progress` ───────────────────────────────── */
+
+  // Read once, after mount: `sessionStorage` does not exist during the server
+  // render, so reading it in a `useState` initialiser would hydrate a
+  // different screen from the one the server drew.
+  useEffect(() => {
+    if (!orgId || restored) return;
+    const saved = readProgress(orgId);
+    if (saved) {
+      setBrandName(saved.brandName);
+      setUrl(saved.url);
+      setAnswers(saved.answers ?? {});
+      setMade(saved.made);
+      if (saved.draft) {
+        setDraft(saved.draft);
+        selectGenome(saved.draft.genomeId);
+      }
+      // A run saved past the URL step without its draft cannot be resumed
+      // there; the name and address are kept, so the URL step is one press.
+      setStep(saved.draft || saved.step <= URL_STEP ? saved.step : URL_STEP);
+    }
+    setRestored(true);
+    // `selectGenome` reads `orgId`, which is already a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, restored]);
+
+  useEffect(() => {
+    if (!orgId || !restored) return;
+    // Finished, or not begun: nothing worth resuming.
+    if (step === DONE || (step === NAME && !brandName && !made)) {
+      writeProgress(orgId, null);
+      return;
+    }
+    writeProgress(orgId, { step, brandName, url, answers, ...(draft ? { draft } : {}), ...(made ? { made } : {}) });
+  }, [orgId, restored, step, brandName, url, answers, draft, made, DONE]);
 
   /**
    * Save all four dimensions and advance.
@@ -444,6 +587,8 @@ export default function OnboardingPage() {
 
   const back = step > NAME ? () => { setError(undefined); setStep(step - 1); } : undefined;
 
+  if (!restored) return <SparkLoader size="page" label="Opening your setup…" />;
+
   /* ── 1 · Brand identity ─────────────────────────────────────────────── */
 
   if (step === NAME) {
@@ -472,10 +617,19 @@ export default function OnboardingPage() {
   }
 
   if (step === URL_STEP) {
+    /*
+     * One gate for both ways of submitting. Continue was disabled for a
+     * malformed address, but Enter called `bootstrap` directly — so "emkacuts"
+     * plus Enter created a brand, spent a crawl, and came back with a Zod
+     * message.
+     */
+    const canCrawl = looksLikeUrl(url) && !busy && !manualBusy;
     return (
       <StepShell
         group={2}
-        onBack={back}
+        // Not while the crawl runs: it finishes by moving to the next screen,
+        // so going Back mid-crawl was undone half a minute later.
+        {...(busy || manualBusy ? {} : { onBack: back })}
         eyebrow={
           <>
             <strong className="font-semibold text-ink">Great news!</strong> Your Brand Identity is ready.
@@ -485,7 +639,7 @@ export default function OnboardingPage() {
         }
         title="What's your company URL?"
         onContinue={() => void bootstrap()}
-        continueDisabled={!looksLikeUrl(url) || busy || manualBusy}
+        continueDisabled={!canCrawl}
         composer={
           /* The composer's own box is what the capture anchors at y 526.5, so the
              hint, error and opt-out hang BELOW it absolutely rather than sharing
@@ -496,7 +650,7 @@ export default function OnboardingPage() {
               type="url"
               value={url}
               onChange={setUrl}
-              onSubmit={() => void bootstrap()}
+              onSubmit={() => canCrawl && void bootstrap()}
               placeholder="Enter your website URL"
               disabled={busy || manualBusy}
               icon={<ComposerGlobeIcon />}
@@ -509,7 +663,10 @@ export default function OnboardingPage() {
               // steps are the real ones the tool performs.
               <SparkLoader
                 size="inline"
-                label="Opening your pages, reading them, and drafting your profile. This takes about half a minute and only happens once."
+                // "About half a minute" was the measurement when this was
+                // written; a five-page site now takes closer to sixty seconds,
+                // and a wait that overruns its own promise reads as a hang.
+                label="Opening your pages, reading them, and drafting your profile. This can take up to a minute and only happens once."
               />
             ) : null}
 
@@ -542,7 +699,8 @@ export default function OnboardingPage() {
       <StepShell
         group={2}
         onBack={back}
-        eyebrow={<>Great Got your brand name, <strong className="font-semibold text-brand-purple">{draft.businessName}</strong></>}
+        // The prototype's own words: "Great! Got your brand name, {{ brandNameShown }}".
+        eyebrow={<>Great! Got your brand name, <strong className="font-semibold text-brand-purple">{draft.businessName}</strong></>}
         title="Tell us a bit more about your brand?"
         // `Q_FIRST` collapses onto `DOCS` when the crawl resolved all four, so
         // a brand with a readable site never sees a question it answered.
@@ -694,13 +852,23 @@ export default function OnboardingPage() {
     return <CompletionScreen onDone={() => router.push('/')} />;
   }
 
-  /* Reachable only if `draft` is missing past the URL step — a refresh mid-flow. */
+  /*
+   * Reachable only if `draft` is missing past the URL step. A refresh no
+   * longer lands here (see `Progress`); this is what is left for a saved run
+   * that could not be read back. It used to say "Nothing was saved", which was
+   * false — the brand and everything entered for it were — and "Start over"
+   * made a second brand beside the first.
+   */
   return (
     <StepShell
       group={1}
-      title="Let’s start again"
-      subtitle="That took longer than expected and the answers were lost. Nothing was saved."
-      footer={<Button onClick={() => setStep(NAME)}>Start over</Button>}
+      title="Let’s pick up where you left off"
+      subtitle={
+        made
+          ? 'Your brand was created, but this screen lost its place. Go back to the website step to carry on.'
+          : 'This screen lost its place before your brand was created. Start again from its name.'
+      }
+      footer={<Button onClick={() => setStep(made ? URL_STEP : NAME)}>Carry on</Button>}
     >
       <span />
     </StepShell>

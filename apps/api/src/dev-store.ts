@@ -1711,6 +1711,15 @@ export function createDevStore(
       async listAll(genomeId, orgId) {
         return knowledgeChunkRows.filter((r) => r.genomeId === genomeId && r.orgId === orgId);
       },
+      async removeDoc(genomeId, orgId, docId) {
+        const doomed = (r: (typeof knowledgeChunkRows)[number]) =>
+          r.genomeId === genomeId && r.orgId === orgId && (r.docId === docId || r.docId.startsWith(`${docId}#`));
+        const before = knowledgeChunkRows.length;
+        for (let i = knowledgeChunkRows.length - 1; i >= 0; i--) {
+          if (doomed(knowledgeChunkRows[i]!)) knowledgeChunkRows.splice(i, 1);
+        }
+        return before - knowledgeChunkRows.length;
+      },
     },
 
     orgSettings: {

@@ -152,6 +152,7 @@ import {
   makeAgencyDomainRemove,
   makeBrandKnowledgeAttach,
   makeBrandKnowledgeAttachDocument,
+  brandKnowledgeRemoveDocument,
   brandExport,
   brandImport,
   brandDeletionPreview,
@@ -1200,6 +1201,7 @@ export function registerAgencyTools(deps: {
   // F6's document upload. The reader is injected so the package stays free of a
   // PDF parser — see document-reader.ts.
   register(makeBrandKnowledgeAttachDocument({ embed: embedClient(), reader: createDocumentReader() }));
+  register(brandKnowledgeRemoveDocument);
   register(brandExport);
   register(brandImport);
   register(brandDeletionPreview);

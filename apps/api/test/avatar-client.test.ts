@@ -129,7 +129,7 @@ describe('fromImage — v3 asset, then photo avatar', () => {
 
     await expect(
       client.fromImage!({ imageUrl: 'https://storage.example/f.jpg', contentType: 'image/jpeg' }),
-    ).rejects.toThrow(/nothing is wrong with your photo/i);
+    ).rejects.toThrow(/nothing you did caused this/i);
   });
 
   it('fails readably when the uploaded photo can no longer be read', async () => {

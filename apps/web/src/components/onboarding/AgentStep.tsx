@@ -1066,6 +1066,9 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
             role="dialog"
             aria-modal="true"
             aria-label="Confirm consent"
+            // Escape is the one way out every modal promises; without it the
+            // keyboard's only exit was tabbing to Cancel.
+            onKeyDown={(e) => e.key === 'Escape' && cancelConsent()}
             style={{
               position: 'absolute', inset: 0, zIndex: 10, display: 'flex',
               alignItems: 'center', justifyContent: 'center',

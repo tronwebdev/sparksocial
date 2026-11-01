@@ -98,6 +98,12 @@ const MACHINE_SIGNALS: readonly RegExp[] = [
   /^\s*\w+Error:/,
   /\bunusable shape\b/i,
   /\b[a-z_]+\.[a-z_]+(\.[a-z_]+)*\s*:/i, // `brandFonts.display:` — a field path
+  /*
+   * A top-level field, which has no dot to give it away: Zod's own wording
+   * after it is the tell. `url: Invalid url; url: Not a valid URL.` reached the
+   * onboarding URL step this way.
+   */
+  /(^|;\s*)[a-z_]\w*: (invalid|required|expected|string must|number must|array must)/i,
   /https?:\/\/\S{80,}/, // a signed URL dumped into prose
   /fetch failed/i, // Node's undici, verbatim
   /could not reach the sparksocial api/i, // the proxy's own note, with the server's address in it

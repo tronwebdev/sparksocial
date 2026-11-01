@@ -260,7 +260,13 @@ export function TagChip({ children, onRemove }: { children: React.ReactNode; onR
     >
       <span style={{ fontSize: 16, fontWeight: 500, color: '#838383' }}>{children}</span>
       {onRemove ? (
-        <button type="button" onClick={onRemove} aria-label="Remove" style={{ display: 'block', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
+        <button
+          type="button"
+          onClick={onRemove}
+          // Named, or every chip's button reads "Remove" and a screen-reader
+          // user cannot tell which of a dozen guardrails they are deleting.
+          aria-label={typeof children === 'string' ? `Remove ${children}` : 'Remove'}
+          style={{ display: 'block', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
           <svg width="12.8" height="12.8" viewBox="0 0 13 13" fill="none" style={{ display: 'block' }} aria-hidden>
             <path d="M1.5 1.5l10 10M11.5 1.5l-10 10" stroke="#838383" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
@@ -645,15 +651,28 @@ export function Swatch({ hex, onRemove }: { hex: string; onRemove?: () => void }
 }
 
 /** A palette option: 42.7px, radius 11.85. */
-export function PaletteSwatch({ hex, onPick }: { hex: string; onPick: () => void }) {
+export function PaletteSwatch({ hex, onPick, disabled }: { hex: string; onPick: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onPick}
+      disabled={disabled}
       aria-label={`Add ${hex}`}
-      style={{ width: 42.7, height: 42.7, borderRadius: 11.85, background: hex, border: 'none', padding: 0, cursor: 'pointer' }}
+      style={{ width: 42.7, height: 42.7, borderRadius: 11.85, background: hex, border: 'none', padding: 0, cursor: disabled ? 'not-allowed' : 'pointer' }}
     />
   );
+}
+
+/** `brandColors`' own `.max(12)` in `brand.governance.set`. */
+export const MAX_BRAND_COLOURS = 12;
+
+/**
+ * Whether a colour is already chosen, ignoring case. The crawl writes `#a68f51`
+ * and the palette `#0097FD`, so a plain `includes` let the same colour in twice.
+ */
+function sameColour(colors: readonly string[], hex: string): boolean {
+  const want = hex.toLowerCase();
+  return colors.some((c) => c.toLowerCase() === want);
 }
 
 /** The 15px refresh glyph, its 14px/500 label, and the 16px/500 pickable list. */
@@ -821,30 +840,47 @@ export function BrandColorPicker({
     const commit = () => {
       const hex = el.value.toUpperCase();
       const { colors: current, onChange: emit } = latest.current;
-      if (!current.includes(hex)) emit([...current, hex]);
+      if (current.length < MAX_BRAND_COLOURS && !sameColour(current, hex)) emit([...current, hex]);
     };
     el.addEventListener('change', commit);
     detach.current = () => el.removeEventListener('change', commit);
   }, []);
 
+  /*
+   * `brand.governance.set` takes at most `MAX_BRAND_COLOURS`, so a thirteenth
+   * was a save that failed. Adding stops there, and says why.
+   */
+  const full = colors.length >= MAX_BRAND_COLOURS;
+  const fullTitle = `A brand kit holds up to ${MAX_BRAND_COLOURS} colours. Remove one to add another.`;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+      {/*
+        57 tall, as drawn, until it fills: the row used to be a fixed 57 with
+        no wrap, so from the eighth colour the swatches ran out of the card's
+        right edge and the last ones could not be reached to remove.
+      */}
       <div
         style={{
-          display: 'flex', alignItems: 'center', gap: 14, width, height: 57,
-          borderRadius: 10, background: '#FFFFFF', padding: '0 18px',
+          display: 'flex', alignItems: 'center', gap: 14, width, minHeight: 57,
+          borderRadius: 10, background: '#FFFFFF', padding: '9px 18px',
         }}
       >
         <span style={{ fontSize: 18.3, color: '#0C0C0C', whiteSpace: 'nowrap' }}>Selected Colors</span>
-        <span style={{ display: 'flex', gap: 10 }}>
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {colors.map((c, idx) => (
             <Swatch key={c + idx} hex={c} onRemove={() => onChange(colors.filter((_, j) => j !== idx))} />
           ))}
         </span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, width }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, width, opacity: full ? 0.45 : 1 }} title={full ? fullTitle : undefined}>
         {PALETTE.map((c) => (
-          <PaletteSwatch key={c} hex={c} onPick={() => onChange(colors.includes(c) ? colors : [...colors, c])} />
+          <PaletteSwatch
+            key={c}
+            hex={c}
+            disabled={full}
+            onPick={() => onChange(sameColour(colors, c) ? colors : [...colors, c])}
+          />
         ))}
         {/* The prototype's eyedropper tile. A colour input, because the
             `EyeDropper` API is Chromium-only and a throwing button is worse. */}
@@ -852,7 +888,7 @@ export function BrandColorPicker({
           style={{
             position: 'relative',
             width: 42.7, height: 42.7, borderRadius: 11.85, background: '#FFFFFF',
-            boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.4)', cursor: 'pointer',
+            boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.4)', cursor: full ? 'not-allowed' : 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
@@ -862,6 +898,7 @@ export function BrandColorPicker({
           <input
             ref={bindPicker}
             type="color"
+            disabled={full}
             aria-label="Pick a custom colour"
             style={{ position: 'absolute', left: '50%', top: '50%', width: 1, height: 1, opacity: 0, border: 'none', padding: 0 }}
           />

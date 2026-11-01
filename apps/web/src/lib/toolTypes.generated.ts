@@ -11,7 +11,7 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 237 tools.
+ * 238 tools.
  */
 
 export interface ToolIO {
@@ -282,6 +282,10 @@ export interface ToolIO {
   "brand.knowledge.attach_document": {
     input: { genomeId: string; url: string; filename: string };
     output: { docId: string; assetId?: string; pages: number; chunks: number; characters: number; restrictionsAdded: { claimsToAvoid: Array<string>; bannedPhrases: Array<string> } };
+  };
+  "brand.knowledge.remove_document": {
+    input: { genomeId: string; filename: string; assetId?: string };
+    output: { docId: string; removed: number; assetArchived: boolean };
   };
   "brand.logo.generate": {
     input: { brandId?: string; hint?: string };

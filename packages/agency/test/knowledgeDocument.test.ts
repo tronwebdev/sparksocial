@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
 import type { ToolCtx } from '@sparksocial/tools';
 import { toolFamily } from '@sparksocial/tools/defineTool';
-import { chunkText, makeBrandKnowledgeAttachDocument } from '../src/brand.js';
+import { evaluate } from '@sparksocial/tools/policy';
+import { brandKnowledgeRemoveDocument, chunkText, makeBrandKnowledgeAttachDocument } from '../src/brand.js';
 
 /**
  * `brand.knowledge.attach_document` — F6's "Upload company Docs (PDF)".
@@ -196,5 +197,94 @@ describe('the registered asset is reported back', () => {
 
     expect(out.assetId).toBeUndefined();
     expect(out.chunks).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * `brand.knowledge.remove_document` — the trash on onboarding's File Preview,
+ * which used to empty the tile and leave the document attached.
+ */
+describe('brand.knowledge.remove_document', () => {
+  function removeCtx(over: { removeDoc?: unknown; setArchived?: (args: unknown) => Promise<unknown>; role?: string } = {}) {
+    const calls: { removed: unknown[]; archived: unknown[] } = { removed: [], archived: [] };
+    const c = {
+      orgId: 'org_1',
+      genomeId: 'gen_1',
+      role: over.role ?? 'owner',
+      db: {
+        knowledge: {
+          removeDoc:
+            'removeDoc' in over
+              ? over.removeDoc
+              : async (genomeId: string, orgId: string, docId: string) => {
+                  calls.removed.push({ genomeId, orgId, docId });
+                  return 3;
+                },
+        },
+        assets: {
+          setArchived:
+            over.setArchived ??
+            (async (args: unknown) => {
+              calls.archived.push(args);
+              return { id: (args as { id: string }).id, archivedAt: new Date() };
+            }),
+        },
+      },
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+    } as unknown as ToolCtx;
+    return { c, calls };
+  }
+
+  it('removes the document by the same id attach_document gave it, and archives its asset', async () => {
+    const { c, calls } = removeCtx();
+    const out = await brandKnowledgeRemoveDocument.handler(
+      { genomeId: 'gen_1', filename: 'guide.pdf', assetId: 'asset_9' },
+      c,
+    );
+
+    expect(out).toEqual({ docId: 'doc:guide.pdf', removed: 3, assetArchived: true });
+    // The store matches `doc:guide.pdf` and its parts `#1`, `#2`…; the tool
+    // passes the root so one call takes every part.
+    expect(calls.removed).toEqual([{ genomeId: 'gen_1', orgId: 'org_1', docId: 'doc:guide.pdf' }]);
+    expect(calls.archived).toEqual([{ id: 'asset_9', genomeId: 'gen_1', orgId: 'org_1', archived: true }]);
+  });
+
+  it('still reports the removal when archiving the asset fails', async () => {
+    // The passages are what the owner asked to be rid of, and they are gone.
+    const { c } = removeCtx({ setArchived: async () => Promise.reject(new Error('db down')) });
+    const out = await brandKnowledgeRemoveDocument.handler({ genomeId: 'gen_1', filename: 'guide.pdf', assetId: 'a' }, c);
+    expect(out).toMatchObject({ removed: 3, assetArchived: false });
+  });
+
+  it('fails cleanly against a store that cannot remove', async () => {
+    const { c } = removeCtx({ removeDoc: undefined });
+    const err = await brandKnowledgeRemoveDocument
+      .handler({ genomeId: 'gen_1', filename: 'guide.pdf' }, c)
+      .catch((e: unknown) => e);
+    expect((err as ToolError).code).toBe('UPSTREAM_FAILED');
+  });
+
+  it('is write/auto/idempotent, family brand, and a viewer or the agent alone cannot run it', () => {
+    expect(brandKnowledgeRemoveDocument.effect).toBe('write');
+    expect(brandKnowledgeRemoveDocument.autonomy).toBe('auto');
+    expect(brandKnowledgeRemoveDocument.idempotent).toBe(true);
+    expect(toolFamily(brandKnowledgeRemoveDocument.name)).toBe('brand');
+
+    const decide = (role: string) =>
+      evaluate({
+        caller: 'user',
+        role,
+        tool: {
+          name: brandKnowledgeRemoveDocument.name,
+          effect: brandKnowledgeRemoveDocument.effect,
+          autonomy: brandKnowledgeRemoveDocument.autonomy,
+          scopes: brandKnowledgeRemoveDocument.scopes,
+        },
+        brand: { approvalMode: 'autopublish', agentPaused: false },
+        budget: { estimatedCents: 0, remainingCents: 10_000 },
+      } as unknown as Parameters<typeof evaluate>[0]);
+
+    expect(decide('viewer').kind).toBe('deny');
+    expect(decide('editor').kind).toBe('allow');
   });
 });

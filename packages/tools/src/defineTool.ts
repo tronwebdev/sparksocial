@@ -2582,6 +2582,13 @@ export interface KnowledgeStore {
    * `packages/guardrails/src/gather.ts`'s own comment on that gap.
    */
   listAll(genomeId: string, orgId: string): Promise<KnowledgeChunk[]>;
+  /**
+   * Remove one document — its whole chunk set, single or split — and say how
+   * many chunks went. Optional so the many test doubles of this store need not
+   * grow a method they never call; `brand.knowledge.remove_document` fails
+   * cleanly against a store without it.
+   */
+  removeDoc?(genomeId: string, orgId: string, docId: string): Promise<number>;
 }
 
 /** Org-level config `org.governance.set`/`org.billing.plan.set`/`org.security.sso.configure` read and write (plan §12 P6). */

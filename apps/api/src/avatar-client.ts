@@ -236,7 +236,8 @@ export function heygenUploadError(status: number, body: string, kind: 'photo' | 
     return new ToolError(
       'UPSTREAM_FAILED',
       kind === 'photo'
-        ? 'Avatar generation is temporarily unavailable on this workspace. Nothing is wrong with your photo — ' +
+        ? // Not "your photo": "Generate Avatar" reaches this too, with no photo involved.
+          'Avatar generation is temporarily unavailable on this workspace. Nothing you did caused this — ' +
             'try again later, or continue and set an avatar afterwards.'
         : 'Avatar video is temporarily unavailable on this workspace. Nothing is wrong with your post — try again later.',
       meta,

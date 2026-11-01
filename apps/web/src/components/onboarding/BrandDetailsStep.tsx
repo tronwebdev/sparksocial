@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { NICHES, resolveNiche } from '@sparksocial/shared';
 import { BrandColorPicker, DropZone, PreviewTile, SectionLabel, SelectField, UploadSection, GenerateButton, SectionRule } from './kit';
@@ -66,6 +66,8 @@ export function BrandDetailsStep({
   const [niche, setNiche] = useState(() => resolveNiche(initialNiche).niche);
   /** What they typed after choosing "Something else" — see `effectiveNiche`. */
   const [otherNiche, setOtherNiche] = useState(() => resolveNiche(initialNiche).other);
+  /** Set by the first pick, so the genome read below never overwrites it. */
+  const nicheTouched = useRef(false);
   /**
    * The brand palette, here rather than only on the brand-kit step.
    *
@@ -132,14 +134,24 @@ export function BrandDetailsStep({
         const line = gen.output.genome?.identity?.one_liner?.trim();
         if (line) setOneLiner((v) => v || line);
 
-        /* The category too, for a reload that skipped the crawl screen. */
-        const category = gen.output.genome?.identity?.category;
-        if (category) {
-          const resolved = resolveNiche(category);
-          if (resolved.niche) {
-            setNiche((n) => n || resolved.niche);
-            setOtherNiche((o) => o || resolved.other);
-          }
+        /*
+         * The category too — and the saved one wins over `initialNiche`.
+         *
+         * It used to fill only an empty select, but `initialNiche` is the
+         * crawl's guess and is never empty after a crawl. So Back from the
+         * questions reopened this screen on the guess ("Food and drink") with
+         * the owner's own answer ("Something else: Artisan tea room bakery")
+         * sitting unread in the genome, and the next blur saved the guess back
+         * over it. The genome holds the guess too until somebody changes it,
+         * so preferring it costs nothing on the first visit.
+         *
+         * Unless they have already touched the select: this read can land
+         * after a fast first click.
+         */
+        const resolved = resolveNiche(gen.output.genome?.identity?.category);
+        if (resolved.niche && !nicheTouched.current) {
+          setNiche(resolved.niche);
+          setOtherNiche(resolved.other);
         }
       }
     })();
@@ -169,9 +181,17 @@ export function BrandDetailsStep({
    */
   const canGenerateLogo = oneLiner.trim().length > 0 && effectiveNiche.length > 0;
 
-  async function saveText() {
+  /**
+   * `next` is the select's new value, passed in because state has not caught
+   * up with it yet. Calling this straight after `setNiche(v)` read the niche
+   * from before the change, so every pick from the list saved the *previous*
+   * one — choose "Hospitality" and "Food and drink" was written.
+   */
+  async function saveText(next?: { niche: string }) {
     const line = oneLiner.trim();
-    if (!line && !effectiveNiche) return;
+    const pickedNiche = next ? next.niche : niche;
+    const category = pickedNiche === 'Something else' ? otherNiche.trim() : pickedNiche;
+    if (!line && !category) return;
 
     setSavingText(true);
     const res = await invoke('genome.identity.set', {
@@ -181,7 +201,7 @@ export function BrandDetailsStep({
         // The list's own words, or theirs — `category` is display-only and
         // nothing in the engine branches on it (CLAUDE.md invariant 5), so a
         // readable label beats a slug and free text is as good as a listed one.
-        ...(effectiveNiche ? { category: effectiveNiche } : {}),
+        ...(category ? { category } : {}),
       },
     });
     setSavingText(false);
@@ -197,10 +217,29 @@ export function BrandDetailsStep({
    * `brand.governance.set({ logoUrl })` as an upload, so both paths leave the
    * brand row in one shape.
    */
-  /** Persisted immediately: the logo reads it from governance, not from here. */
+  /**
+   * Persisted immediately: the logo reads it from governance, not from here.
+   *
+   * A failed save used to be silent — the swatches changed on screen and the
+   * brand kept its old palette, which is the one outcome the owner cannot see
+   * and the logo generator then acts on. The swatches go back too, so the
+   * screen shows what was actually saved.
+   */
   async function saveColors(next: string[]) {
+    const before = colors;
     setColors(next);
-    await invoke('brand.governance.set', { brandColors: next.length ? next : null });
+    const res = await invoke('brand.governance.set', { brandColors: next.length ? next : null });
+    if (!notifyResult(res, undefined, 'Couldn’t save your colours')) setColors(before);
+  }
+
+  /**
+   * The trash on the preview, which only ever emptied the tile: the brand kept
+   * the logo, so it came back on the next visit and stayed on every render in
+   * between. Cleared on the brand, then on screen.
+   */
+  async function clearLogo() {
+    const res = await invoke('brand.governance.set', { logoUrl: null });
+    if (notifyResult(res, 'Logo removed', 'Couldn’t remove the logo')) setLogoUrl('');
   }
 
   async function generateLogo() {
@@ -298,8 +337,9 @@ export function BrandDetailsStep({
             placeholder="Choose one"
             value={niche}
             onChange={(v: string) => {
+              nicheTouched.current = true;
               setNiche(v);
-              void saveText();
+              void saveText({ niche: v });
             }}
             options={NICHES.map((n) => ({ value: n, label: n }))}
           />
@@ -320,7 +360,10 @@ export function BrandDetailsStep({
             <input
               type="text"
               value={otherNiche}
-              onChange={(e) => setOtherNiche(e.target.value)}
+              onChange={(e) => {
+                nicheTouched.current = true;
+                setOtherNiche(e.target.value);
+              }}
               onBlur={() => void saveText()}
               aria-label="Describe your business niche"
               placeholder="e.g. mobile car valeting"
@@ -386,7 +429,7 @@ export function BrandDetailsStep({
             busy={uploading}
             onFile={(f) => void uploadLogo(f)}
           />
-          <PreviewTile left={385} top={114.2} label="Logo Preview" onClear={logoUrl ? () => setLogoUrl('') : undefined}>
+          <PreviewTile left={385} top={114.2} label="Logo Preview" onClear={logoUrl ? () => void clearLogo() : undefined}>
             {logoUrl ? <img src={logoUrl} alt="" style={{ maxWidth: 118, maxHeight: 118, objectFit: 'contain' }} /> : null}
           </PreviewTile>
         </UploadSection>
