@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
+import { fetchApi, upstreamDescription } from '@/lib/apiUpstream';
 import { forwardableGenomeId } from '@/lib/selectedGenome';
 
 /**
@@ -33,16 +34,11 @@ import { forwardableGenomeId } from '@/lib/selectedGenome';
  *    a generic error would let a client mistake "held for approval" for "done".
  */
 
-/**
- * `||`, not `??`.
- *
- * `??` falls back only on `undefined`, and the value that actually shows up in a
- * misconfigured deployment is the **empty string** — a platform variable that
- * resolved to nothing, or a dashboard field saved blank. An empty base makes the
- * request URL `/v1/tools/draft`, which has no origin, so `fetch` rejects with
- * `Failed to parse URL` before any request leaves the process.
+/*
+ * Where requests go — the private network first, `SPARK_API_URL` otherwise — is
+ * `lib/apiUpstream.ts`. It keeps this file's old rule about `||` over `??`: an
+ * empty base is the misconfiguration that actually happens.
  */
-const API_URL = process.env.SPARK_API_URL || 'http://localhost:8080';
 
 export async function POST(req: Request, { params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
@@ -75,8 +71,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ name: s
    * unchanged, and the `catch` cannot see one.
    */
   let upstream: Response;
+  let via: 'private' | 'public';
   try {
-    upstream = await fetch(`${API_URL}/v1/tools/${encodeURIComponent(name)}`, {
+    ({ res: upstream, via } = await fetchApi(`/v1/tools/${encodeURIComponent(name)}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -84,16 +81,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ name: s
         ...(genomeId ? { 'x-genome-id': genomeId } : {}),
       },
       body: await req.text(),
-    });
+    }));
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
-    console.error('[tools proxy] could not reach the API', { name, apiUrl: API_URL, detail });
+    console.error('[tools proxy] could not reach the API', { name, apiUrl: upstreamDescription(), detail });
     return Response.json(
       {
         status: 'failed',
         error: {
           code: 'UPSTREAM_FAILED',
-          message: `Could not reach the SparkSocial API at ${API_URL}. ${detail}`,
+          message: `Could not reach the SparkSocial API at ${upstreamDescription()}. ${detail}`,
         },
       },
       { status: 502 },
@@ -102,6 +99,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ name: s
 
   return new Response(upstream.body, {
     status: upstream.status,
-    headers: { 'content-type': upstream.headers.get('content-type') ?? 'application/json' },
+    headers: {
+      'content-type': upstream.headers.get('content-type') ?? 'application/json',
+      // Which route the call took — a deployment fact, for checking the private network is in use.
+      'x-spark-upstream': via,
+    },
   });
 }

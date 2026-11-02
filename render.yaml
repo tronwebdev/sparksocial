@@ -179,6 +179,18 @@ services:
       # other service's URL" that is both reliable and readable.
       - key: SPARK_API_URL
         value: https://api.sparkai.social
+      # The same API over Render's private network — `host:port`, plain HTTP,
+      # no trip back out through the public edge on every tool call. An
+      # optimisation, never a dependency: `apps/web/src/lib/apiUpstream.ts` uses
+      # it when it is set and reachable and falls back to SPARK_API_URL above
+      # otherwise — which matters given the empty-`fromService` history noted
+      # there. `property: hostport` is Render's documented form for a private
+      # address, not the `envVarKey` lookup that failed.
+      - key: SPARK_API_PRIVATE_HOSTPORT
+        fromService:
+          type: web
+          name: sparksocial-api
+          property: hostport
       # `sync: false` means "set this in the dashboard" — the value never enters
       # the repo. Required: without it the web app cannot start a session.
       - key: CLERK_SECRET_KEY

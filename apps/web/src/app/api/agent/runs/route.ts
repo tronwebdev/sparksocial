@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
+import { fetchApi, upstreamDescription } from '@/lib/apiUpstream';
 import { forwardableGenomeId } from '@/lib/selectedGenome';
 
 /**
@@ -25,8 +26,7 @@ import { forwardableGenomeId } from '@/lib/selectedGenome';
  * drawer shows a "thinking" state for the duration.
  */
 
-/** `||`, not `??` — see the note in `api/tools/[name]/route.ts`. */
-const API_URL = process.env.SPARK_API_URL || 'http://localhost:8080';
+/* Where requests go — private network first — is `lib/apiUpstream.ts`, shared with the tool proxy. */
 
 export async function POST(req: Request) {
   const { getToken, orgId } = await auth();
@@ -45,8 +45,9 @@ export async function POST(req: Request) {
   // Same transport guard as the tool proxy, for the same reason: an uncaught
   // rejection here is a Next 500 with nothing in it to act on.
   let upstream: Response;
+  let via: 'private' | 'public';
   try {
-    upstream = await fetch(`${API_URL}/v1/agent/runs`, {
+    ({ res: upstream, via } = await fetchApi('/v1/agent/runs', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -54,18 +55,26 @@ export async function POST(req: Request) {
         ...(genomeId ? { 'x-genome-id': genomeId } : {}),
       },
       body: await req.text(),
-    });
+    }));
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
-    console.error('[agent proxy] could not reach the API', { apiUrl: API_URL, detail });
+    console.error('[agent proxy] could not reach the API', { apiUrl: upstreamDescription(), detail });
     return Response.json(
-      { error: { code: 'UPSTREAM_FAILED', message: `Could not reach the SparkSocial API at ${API_URL}. ${detail}` } },
+      {
+        error: {
+          code: 'UPSTREAM_FAILED',
+          message: `Could not reach the SparkSocial API at ${upstreamDescription()}. ${detail}`,
+        },
+      },
       { status: 502 },
     );
   }
 
   return new Response(upstream.body, {
     status: upstream.status,
-    headers: { 'content-type': upstream.headers.get('content-type') ?? 'application/json' },
+    headers: {
+      'content-type': upstream.headers.get('content-type') ?? 'application/json',
+      'x-spark-upstream': via,
+    },
   });
 }
