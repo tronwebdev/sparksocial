@@ -10,6 +10,7 @@
 
 import type { SetupRequirement } from '@sparksocial/shared';
 import { userMessage } from './errorCopy';
+import { forgetReads, isSharedRead, sharedRead } from './readCache';
 import { askToFix, startedByAPerson } from './setupPrompt';
 
 export type ToolResult<T> =
@@ -51,6 +52,18 @@ const SIGN_IN_URL = '/sign-in';
  * the key for a non-idempotent tool, because the compiler cannot see it.
  */
 export async function invoke<T>(name: string, input: unknown, idempotencyKey?: string): Promise<ToolResult<T>> {
+  /* Reads are shared between callers, and anything else invalidates them — see `readCache.ts`. */
+  if (isSharedRead(name) && !idempotencyKey) {
+    return sharedRead(name, input, () => invokeWithSetup<T>(name, input));
+  }
+  try {
+    return await invokeWithSetup<T>(name, input, idempotencyKey);
+  } finally {
+    forgetReads();
+  }
+}
+
+async function invokeWithSetup<T>(name: string, input: unknown, idempotencyKey?: string): Promise<ToolResult<T>> {
   const byAPerson = startedByAPerson();
   const first = await invokeOnce<T>(name, input, idempotencyKey);
 
