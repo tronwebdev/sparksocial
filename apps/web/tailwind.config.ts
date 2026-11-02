@@ -548,6 +548,7 @@ const config: Config = {
         'pop-in': 'ss-pop-in 0.35s ease',
         pulse: 'ss-pulse 1.8s ease-in-out infinite',
         dot: 'ss-dot 1.1s ease-in-out infinite',
+        sweep: 'ss-sweep 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite',
         spin: 'ss-spin 0.8s linear infinite',
         // The prototypes' own 6s is for a decorative ring, not a busy spinner.
         'spin-slow': 'ss-spin 6s linear infinite',

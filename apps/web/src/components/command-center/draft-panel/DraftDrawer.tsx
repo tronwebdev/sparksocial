@@ -62,6 +62,7 @@ export function DraftDrawer({
   tab,
   onTab,
   onClose,
+  bare,
   children,
 }: {
   postType: PostType;
@@ -75,6 +76,12 @@ export function DraftDrawer({
   tab: DrawerTab;
   onTab: (next: DrawerTab) => void;
   onClose: () => void;
+  /**
+   * No tab row, and the content owns the whole pane — `DP genImage` and its
+   * siblings draw their own header where the tabs sit, and a footer pinned to
+   * the pane's foot, so they need the height rather than a scroll box.
+   */
+  bare?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -172,7 +179,18 @@ export function DraftDrawer({
               pane's own x788 — so the list runs the drawer's full width. Which
               follows: the rail picks what *this* post is, and the list is not
               one post.
+
+              The orb stays. `DP list` keeps the rail's 126px Spark mark where
+              the rail drew it — 14 in, 13 down — with the tabs moved right of it
+              (x820, 183 in) and the tab row's hairline starting at x786 under
+              them. Dropping it with the rail left the list as the one drawer
+              state without the mark.
             */}
+            {tab === 'list' ? (
+              <div aria-hidden className="pointer-events-none absolute left-[14px] top-[13px] z-10 max-canvas:hidden">
+                <SparkMark size={126} decorative />
+              </div>
+            ) : null}
             {tab === 'list' ? null : (
               <PostTypeRail active={postType} onSelect={onPostType} fixed={typeFixed ?? false} />
             )}
@@ -185,8 +203,8 @@ export function DraftDrawer({
                 tab === 'list' ? '' : 'overflow-hidden rounded-[24.378px] bg-white',
               )}
             >
-              <DrawerTabs tab={tab} onTab={onTab} />
-              <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+              {bare ? null : <DrawerTabs tab={tab} onTab={onTab} />}
+              <div className={cn('min-h-0 flex-1', bare ? 'overflow-hidden' : 'overflow-y-auto')}>{children}</div>
             </div>
           </div>
         </div>
@@ -404,11 +422,20 @@ export function TypeIcon({ type, active, stroke: ink }: { type: PostType; active
  * inset shadow on the row's last pixel.
  */
 function DrawerTabs({ tab, onTab }: { tab: DrawerTab; onTab: (next: DrawerTab) => void }) {
+  const list = tab === 'list';
   return (
     <div
-      className="flex shrink-0 items-center gap-[14px] px-[32px] pt-[25px] pb-[27px]"
-      style={{ boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.25)' }}
+      className={cn(
+        'relative flex shrink-0 items-center gap-[14px] pr-[32px] pt-[25px] pb-[27px]',
+        // Right of the orb on the list — see `DraftDrawer`. Below `canvas` the orb goes and so does the inset.
+        list ? 'pl-[183px] max-canvas:pl-[32px]' : 'pl-[32px]',
+      )}
     >
+      <span
+        aria-hidden
+        className={cn('absolute bottom-0 right-0 h-px', list ? 'left-[149px] max-canvas:left-0' : 'left-0')}
+        style={{ background: 'rgba(131,131,131,0.25)' }}
+      />
       {([
         { id: 'current' as const, label: 'Current Draft' },
         { id: 'list' as const, label: 'Drafts List' },

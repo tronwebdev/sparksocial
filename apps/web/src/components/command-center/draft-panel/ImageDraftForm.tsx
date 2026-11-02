@@ -655,7 +655,7 @@ export function ImageChips() {
  * Renders its column even with no value, so the three stay aligned; an absent
  * fact shows an em dash rather than collapsing and dragging the next one left.
  */
-function Fact({ label, value }: { label: string; value?: string }) {
+export function Fact({ label, value }: { label: string; value?: string }) {
   return (
     <div className="flex items-baseline gap-[5px]">
       <dt className="text-16 text-ink-muted">{label} -</dt>

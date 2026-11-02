@@ -99,8 +99,8 @@ describe('the post-type rail reports once a draft is open', () => {
     expect(DRAWER).toMatch(/repurpose/i);
   });
 
-  it('is only fixed when there is a draft to fix it to', () => {
-    expect(PANEL).toContain('typeFixed={draft !== null && draft !== undefined}');
+  it('is only fixed when there is a draft to fix it to, or one is being made', () => {
+    expect(PANEL).toContain('typeFixed={(draft !== null && draft !== undefined) || genShown}');
   });
 });
 

@@ -57,6 +57,8 @@
   --ss-scene-broll: #3079e7; /* b-roll + text overlay */
   --ss-scene-override: #e18b1c; /* a scene whose audio departs from the default */
   --ss-scene-bar-warm: #fbd8ac; /* the left accent bar on an overridden scene */
+  --ss-gen-slide-done: #d7f9ff; /* a finished slide while a carousel generates — `DP genCarousel` */
+  --ss-gen-avatar: #c4f1fa; /* the skeleton post's avatar — `DP genText` */
 
   /* Confirmation tick. Sampled from `Screenshot …192600` — a lime, distinct
      from the ramp's signal greens, and used only for that badge. */
@@ -1116,6 +1118,14 @@
 @keyframes ss-dot {
   0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
   40% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* The Draft Panel's generating bar: one 109px segment crossing a 357px track.
+   A sweep rather than a fill — a generate call is one request with nothing to
+   report until it returns, so the bar says "working" and never a percentage. */
+@keyframes ss-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(330%); }
 }
 
 /* `Spark Chat.dc.html`'s own entrance, which is **not** `ss-drawer-in`: the

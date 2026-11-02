@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { notify, notifyResult } from '@/lib/notify';
@@ -24,6 +24,7 @@ import {
 import { focusFromCalendar, type FocusCalendarView, type FocusFacts } from '@/components/calendar/focusFacts';
 import { CarouselStoryboard, VideoStoryboard, sceneAnchor } from './Storyboard';
 import { DraftsList } from './DraftsList';
+import { GeneratingView, readyTitle, type GenJob } from './GeneratingView';
 import { PostPreview } from './PostPreview';
 import { cn } from '@/lib/utils';
 import { PANEL_CARD, PANEL_CARD_BODY, PANEL_CARD_STYLE, PANEL_CARD_TITLE, PANEL_FIELD, PANEL_FIELD_SM } from './controls';
@@ -238,24 +239,30 @@ export function DraftPanel({
    */
   const [kitTemplates, setKitTemplates] = useState<KitTemplate[] | null>(null);
   /**
-   * `M10` — the generation pipeline, made visible.
+   * `M10` — the generation pipeline, made visible: `DP genImage`, `genVideo`,
+   * `genCarousel` and `genText`.
    *
-   * ── Why this is a label and not a progress bar ────────────────────────
+   * It was one line under the storyboard — "Asking for an image… — Hook" —
+   * because a generate call is one HTTP request with no job id and nothing to
+   * poll, and a bar that fills at a guessed rate and then sits at 90% is worse
+   * than no bar. The prototypes draw a whole screen for it, and that screen can
+   * be built without the guess: the bar sweeps instead of filling, the steps
+   * are the handler's own, and the last one is held until the response is
+   * back. `GeneratingView` says which parts are measured and which are paced.
    *
-   * Each `content.generate_*` call is one HTTP request that returns when the
-   * vendor is done. There is no streaming, no job id, and nothing to poll — so a
-   * percentage would be animation over an unknown, and a bar that fills at a
-   * guessed rate and then sits at 90% is worse than no bar. What *is* known is
-   * which beat is being worked on and which stage the request is at, and that
-   * turns out to be the useful half: "asking fal for a 1:1 image" is a sentence
-   * somebody can act on when it takes 40 seconds.
-   *
-   * One state per beat, not two. A "saving" stage was drafted and removed: the
-   * tool call has already written the draft by the time it returns, and
-   * `replaceBeat` only updates local state — so a save label would have been
-   * exactly the invented stage this comment argues against.
+   * One job at a time, as before — `busyBeatId` already refused a second
+   * generate while one was running. The job outlives the panel: closing it does
+   * not cancel the request, and the prototype's "we'll notify you" is kept by
+   * `finishJob` below.
    */
-  const [stage, setStage] = useState<{ beatId: string; label: string } | null>(null);
+  const [generating, setGenerating] = useState<GenJob | null>(null);
+  const openRef = useRef(open);
+  openRef.current = open;
+  /** Clear the screen if this job is still the one on it, and say so if nobody is watching. */
+  function finishJob(job: GenJob, ok: boolean) {
+    setGenerating((g) => (g === job ? null : g));
+    if (ok && !openRef.current) notify.success(readyTitle(job), { body: 'Open the draft to see it.' });
+  }
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -369,11 +376,29 @@ export function DraftPanel({
       }
 
       if (res.output.beats.length === 0 && res.output.mode !== 'direct_finish' && !stalled) {
+        /*
+          The fill is the longest wait anybody meets opening a post, and it used
+          to be a loader saying "Loading your draft…" for half a minute. The row
+          is set first so the generating screen has the campaign to head itself
+          with; there is no brief to quote — the calendar planned this slot, so
+          "What you asked for" stays off rather than inventing a request.
+        */
+        setDraft(res.output);
+        const job: GenJob = {
+          kind: 'post',
+          postType: res.output.mediaType,
+          asked: '',
+          chips: [],
+          contentItemId,
+          startedAt: Date.now(),
+        };
+        setGenerating(job);
         const filled = await invoke<DraftView>(
           'content.draft',
           { genomeId, playbookId: res.output.playbookId, contentItemId, intent: '' },
           crypto.randomUUID(),
         );
+        finishJob(job, filled.status === 'succeeded');
         if (filled.status !== 'succeeded') {
           setError(filled.status === 'failed' ? userMessage(filled.error) : 'That draft was gated.');
           setPhase('failed');
@@ -549,6 +574,15 @@ export function DraftPanel({
   async function createDraft() {
     if (!genomeId || !selectedPlaybookId || busy) return;
     setBusy(true);
+    const format = playbooks?.find((pb) => pb.playbook_id === selectedPlaybookId)?.name;
+    const job: GenJob = {
+      kind: 'post',
+      postType,
+      asked: intent.trim() || conceptPrompt.trim(),
+      chips: format ? [format] : [],
+      startedAt: Date.now(),
+    };
+    setGenerating(job);
     // `content.draft` is deliberately `idempotent: false` — a second call is
     // a second take, not a safe replay of the first — so it requires a key,
     // and it must be fresh per click: reusing one across clicks would make
@@ -559,6 +593,7 @@ export function DraftPanel({
       crypto.randomUUID(),
     );
     setBusy(false);
+    finishJob(job, res.status === 'succeeded');
     if (!notifyResult(res, undefined, 'Couldn’t generate the post')) return;
     setDraft(res.output);
     setPhase('editor');
@@ -614,25 +649,43 @@ export function DraftPanel({
   async function redraftThisPost() {
     if (!draft || !genomeId || busy) return;
     setBusy(true);
+    const job: GenJob = {
+      kind: 'post',
+      postType: draft.mediaType,
+      asked: intent.trim(),
+      chips: [],
+      contentItemId: draft.contentItemId,
+      startedAt: Date.now(),
+    };
+    setGenerating(job);
     const res = await invoke<DraftView>(
       'content.draft',
       { genomeId, playbookId: draft.playbookId, contentItemId: draft.contentItemId, intent },
       crypto.randomUUID(),
     );
     setBusy(false);
+    finishJob(job, res.status === 'succeeded');
     if (!notifyResult(res, undefined, 'Couldn’t regenerate the concept')) return;
-    setDraft(res.output);
+    const id = draft.contentItemId;
+    // Only onto the post it was asked for — the panel may have moved on while it ran.
+    setDraft((d) => (d && d.contentItemId !== id ? d : res.output));
   }
 
-  const replaceBeat = useCallback((beatId: string, next: ResolvedBeat) => {
+  const replaceBeat = useCallback((beatId: string, next: ResolvedBeat, forPost?: string) => {
     /**
        * `keepStructure` first, so the replacement inherits the scene's duration,
        * label and voice override. The generate/save tools do not echo those
        * fields, so a bare swap would visibly reset the scene's timing until the
        * next reload - the same defect `keepStructure` prevents server-side.
        */
+    /*
+      `forPost` because a generate call can finish after the panel has moved to
+      another post — closed and reopened on the next slot, or switched from the
+      Drafts List. Beat ids repeat across posts ("hook", "cta"), so without it
+      the image would land on the wrong post's scene of the same name.
+    */
     setDraft((d) =>
-      d
+      d && (!forPost || d.contentItemId === forPost)
         ? { ...d, beats: d.beats.map((b) => (b.beatId === beatId ? { ...keepStructure(b), ...next } : b)) }
         : d,
     );
@@ -641,7 +694,17 @@ export function DraftPanel({
   async function generateImage(beatId: string, prompt: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
-    setStage({ beatId, label: 'Asking for an image\u2026' });
+    const aspectRatio = draft.mediaType === 'carousel' ? '4:5' : '1:1';
+    const job: GenJob = {
+      kind: 'image',
+      postType: draft.mediaType,
+      asked: prompt,
+      chips: [aspectRatio, 'Brand style'],
+      contentItemId: draft.contentItemId,
+      beatId,
+      startedAt: Date.now(),
+    };
+    setGenerating(job);
     // idempotent: false — regenerating a beat's image is the point of the
     // button, so each click needs its own key or every click after the first
     // would silently return the first image again.
@@ -652,13 +715,12 @@ export function DraftPanel({
         genomeId,
         beatId,
         prompt,
-        aspectRatio: draft.mediaType === 'carousel' ? '4:5' : '1:1',
+        aspectRatio,
       },
       crypto.randomUUID(),
     );
-    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
-    setStage(null);
+    finishJob(job, res.status === 'succeeded');
     if (!notifyResult(res, undefined, 'Couldn’t generate the image')) return;
     /*
       Mirrors the server: a beat with words keeps them and gets the picture
@@ -669,7 +731,7 @@ export function DraftPanel({
     const current = draft.beats.find((b) => b.beatId === beatId);
     if (current?.kind === 'text') {
       setDraft((d) =>
-        d
+        d && d.contentItemId === job.contentItemId
           ? {
               ...d,
               beats: d.beats.map((b) =>
@@ -680,13 +742,22 @@ export function DraftPanel({
       );
       return;
     }
-    replaceBeat(beatId, { kind: 'generated_image', beatId, url: res.output.url, prompt });
+    replaceBeat(beatId, { kind: 'generated_image', beatId, url: res.output.url, prompt }, job.contentItemId);
   }
 
   async function generateAvatarVideo(beatId: string, script: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
-    setStage({ beatId, label: 'Rendering the avatar video\u2026' });
+    const job: GenJob = {
+      kind: 'avatar',
+      postType: draft.mediaType,
+      asked: script,
+      chips: ['9:16', 'Avatar'],
+      contentItemId: draft.contentItemId,
+      beatId,
+      startedAt: Date.now(),
+    };
+    setGenerating(job);
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
       'content.generate_avatar_video',
@@ -699,17 +770,25 @@ export function DraftPanel({
       },
       crypto.randomUUID(),
     );
-    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
-    setStage(null);
+    finishJob(job, res.status === 'succeeded');
     if (!notifyResult(res, undefined, 'Couldn’t generate the avatar video')) return;
-    replaceBeat(beatId, { kind: 'generated_video', beatId, url: res.output.url, script });
+    replaceBeat(beatId, { kind: 'generated_video', beatId, url: res.output.url, script }, job.contentItemId);
   }
 
   async function generateVoiceover(beatId: string, script: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
-    setStage({ beatId, label: 'Recording the voiceover\u2026' });
+    const job: GenJob = {
+      kind: 'voiceover',
+      postType: draft.mediaType,
+      asked: script,
+      chips: ['Stock voice'],
+      contentItemId: draft.contentItemId,
+      beatId,
+      startedAt: Date.now(),
+    };
+    setGenerating(job);
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
       'content.generate_voiceover',
@@ -722,11 +801,10 @@ export function DraftPanel({
       },
       crypto.randomUUID(),
     );
-    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
-    setStage(null);
+    finishJob(job, res.status === 'succeeded');
     if (!notifyResult(res, undefined, 'Couldn’t record the voiceover')) return;
-    replaceBeat(beatId, { kind: 'generated_audio', beatId, url: res.output.url, script });
+    replaceBeat(beatId, { kind: 'generated_audio', beatId, url: res.output.url, script }, job.contentItemId);
   }
 
   // `content.beat.update` — a plain edit, not a regeneration: idempotent, so
@@ -736,7 +814,16 @@ export function DraftPanel({
   async function generateBroll(beatId: string, prompt: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
-    setStage({ beatId, label: 'Generating b-roll\u2026' });
+    const job: GenJob = {
+      kind: 'broll',
+      postType: draft.mediaType,
+      asked: prompt,
+      chips: ['9:16', 'B-roll'],
+      contentItemId: draft.contentItemId,
+      beatId,
+      startedAt: Date.now(),
+    };
+    setGenerating(job);
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
       'content.generate_broll',
@@ -749,16 +836,26 @@ export function DraftPanel({
       },
       crypto.randomUUID(),
     );
-    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
-    setStage(null);
+    finishJob(job, res.status === 'succeeded');
     if (!notifyResult(res, undefined, 'Couldn’t generate the b-roll')) return;
-    replaceBeat(beatId, { kind: 'generated_broll', beatId, url: res.output.url, prompt });
+    replaceBeat(beatId, { kind: 'generated_broll', beatId, url: res.output.url, prompt }, job.contentItemId);
   }
 
   async function dubBeat(beatId: string, sourceUrl: string, mediaKind: 'video' | 'audio', targetLanguage: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
+    const job: GenJob = {
+      kind: 'dub',
+      postType: draft.mediaType,
+      asked: draft.beats.find((b) => b.beatId === beatId)?.label ?? 'This scene, in another language',
+      chips: [targetLanguage, mediaKind === 'video' ? 'Video' : 'Audio'],
+      contentItemId: draft.contentItemId,
+      beatId,
+      language: targetLanguage,
+      startedAt: Date.now(),
+    };
+    setGenerating(job);
     // idempotent: false — a re-dub is a new generation, same reasoning as every other generate_* call above.
     const res = await invoke<{ url: string }>(
       'content.generate_dub',
@@ -773,8 +870,13 @@ export function DraftPanel({
       crypto.randomUUID(),
     );
     setBusyBeatId(null);
+    finishJob(job, res.status === 'succeeded');
     if (!notifyResult(res, undefined, 'Couldn’t dub this scene')) return;
-    replaceBeat(beatId, { kind: 'dubbed_media', beatId, url: res.output.url, targetLanguage, mediaType: mediaKind });
+    replaceBeat(
+      beatId,
+      { kind: 'dubbed_media', beatId, url: res.output.url, targetLanguage, mediaType: mediaKind },
+      job.contentItemId,
+    );
   }
 
   async function saveBeatText(beatId: string, text: string) {
@@ -1255,6 +1357,19 @@ export function DraftPanel({
 
   if (!open) return null;
 
+  /*
+    Whether the running job belongs to what the panel is showing. A new post's
+    draft has no id until it returns, so it belongs to the trigger form; any
+    other job belongs to its own post, and a panel reopened on a different one
+    shows that post rather than somebody else's progress.
+  */
+  const genShown =
+    generating !== null &&
+    drawerTab === 'current' &&
+    (generating.contentItemId === undefined
+      ? phase === 'trigger'
+      : generating.contentItemId === draft?.contentItemId);
+
   /**
    * One beat's controls, wherever they are drawn.
    *
@@ -1363,10 +1478,11 @@ export function DraftPanel({
     <DraftDrawer
       postType={postType}
       onPostType={setPostType}
-      typeFixed={draft !== null && draft !== undefined}
+      typeFixed={(draft !== null && draft !== undefined) || genShown}
       tab={drawerTab}
       onTab={setDrawerTab}
       onClose={onClose}
+      bare={genShown}
     >
       {/*
         The Drafts List tab.
@@ -1375,7 +1491,19 @@ export function DraftPanel({
         post — it is every other post. Opening one loads it into the Current
         Draft tab, which is the only thing the tab can usefully do.
       */}
-      {drawerTab === 'list' ? (
+      {genShown && generating ? (
+        <GeneratingView
+          job={generating}
+          beats={draft?.beats ?? []}
+          campaignName={shownFocus?.campaignName}
+          heading={draft && !draft.campaignId && !shownFocus?.campaignName ? postTitle(draft) : undefined}
+          goal={shownFocus?.goal}
+          campaignType={shownFocus?.campaignType}
+          duration={shownFocus?.duration}
+          platforms={shownFocus?.platforms}
+          onClose={onClose}
+        />
+      ) : drawerTab === 'list' ? (
         <DraftsList
           genomeId={genomeId}
           currentId={draft?.contentItemId}
@@ -1837,21 +1965,6 @@ export function DraftPanel({
 
               {/* The editing tools the prototypes do not draw, under the work they act on. */}
               <div className="mt-[24px] grid grid-cols-1 gap-4">
-                {/*
-                  `M10`. One line, naming the beat and what is being asked of which
-                  vendor. No percentage: each generate call is a single request with
-                  no job id to poll, so a bar would be animation over an unknown.
-                */}
-                {stage ? (
-                  <div className={cn(PANEL_CARD, 'py-[14px]')} style={PANEL_CARD_STYLE}>
-                    <SparkLoader
-                      size="inline"
-                      label={`${stage.label} — ${draft.beats.find((b) => b.beatId === stage.beatId)?.label ?? stage.beatId}`}
-                      className="text-15 font-medium text-ink"
-                    />
-                  </div>
-                ) : null}
-
                 {/* `M9` — conversational editing, over the agent runtime. */}
                 <DraftChat
                   contentItemId={draft.contentItemId}
