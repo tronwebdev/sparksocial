@@ -8,6 +8,7 @@ import { SparkMark } from '@/components/brand/SparkMark';
 import { Busy } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
 import { AdjustFrequency } from '@/components/command-center/AdjustFrequency';
+import { CampaignManageModal } from '@/components/command-center/CampaignManageModal';
 
 /**
  * The dashboard's agent banner — `SparkSocial Dashboard.dc.html`, the dark card
@@ -102,6 +103,9 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
     notify.success(paused ? 'Agent resumed' : 'Agent paused — it won’t act until you resume it');
     onChanged?.();
   }
+
+  /** The campaign list — every campaign this brand has, and pause, resume, rename, duplicate. */
+  const [listing, setListing] = useState(false);
 
   /* Derived, never assumed — see the header. `spin` gates the animation. */
   const lines: Array<{ label: string; spin: boolean }> = paused
@@ -273,6 +277,23 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
                 </span>
               </span>
             ))}
+            {/*
+              Every campaign, from the screen people land on. The list existed
+              only behind the Command Center's "Edit Campaign", so a brand with
+              several campaigns had nowhere obvious to see them all. No
+              prototype draws a campaigns page; this opens the same list that
+              button does, after the status lines that name the campaigns.
+            */}
+            {campaign && genomeId ? (
+              <button
+                type="button"
+                onClick={() => setListing(true)}
+                className="text-16 font-medium underline decoration-1 underline-offset-4 hover:no-underline"
+                style={{ color: '#6CE8FF' }}
+              >
+                View all campaigns
+              </button>
+            ) : null}
           </div>
 
           {/*
@@ -343,6 +364,14 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
           </div>
         </div>
       </div>
+
+      {listing && genomeId ? (
+        <CampaignManageModal
+          genomeId={genomeId}
+          onClose={() => setListing(false)}
+          onChanged={() => onChanged?.()}
+        />
+      ) : null}
     </section>
   );
 }
