@@ -22,12 +22,23 @@ export interface CampaignInfo {
  * `campaign.list` with `limit: 1` or `limit: 5` and keep one — so nothing could
  * say which post belonged to which, or that more than one was running.
  */
+/**
+ * The one `limit` every `campaign.list` on a screen asks with.
+ *
+ * Shared reads (`readCache.ts`) only share an identical request, and the
+ * Command Center asked three ways — 5, 20 and 50 — so it still made three calls
+ * for one list. Callers that want fewer take this many and slice, which gives
+ * them exactly the rows the smaller limit did: the limit applies after the
+ * server's ordering.
+ */
+export const CAMPAIGN_LIST_LIMIT = 50;
+
 export function useCampaigns(genomeId: string | undefined) {
   const [campaigns, setCampaigns] = useState<CampaignInfo[] | null>(null);
 
   const reload = useCallback(async () => {
     if (!genomeId) return;
-    const res = await invoke<{ campaigns: CampaignInfo[] }>('campaign.list', { genomeId, limit: 50 });
+    const res = await invoke<{ campaigns: CampaignInfo[] }>('campaign.list', { genomeId, limit: CAMPAIGN_LIST_LIMIT });
     setCampaigns(res.status === 'succeeded' ? res.output.campaigns : []);
   }, [genomeId]);
 

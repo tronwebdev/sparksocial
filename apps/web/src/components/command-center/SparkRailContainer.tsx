@@ -6,6 +6,7 @@ import { invoke } from '@/lib/tools';
 import { openAskSpark } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { SparkRail } from './SparkRail';
+import { CAMPAIGN_LIST_LIMIT } from '@/lib/useCampaigns';
 
 /**
  * What the Spark rail needs to know, fetched once for the rail itself.
@@ -48,18 +49,15 @@ export function SparkRailContainer() {
     const [status, campaigns] = await Promise.all([
       invoke<{ paused: boolean }>('agent.status', {}),
       genomeId
-        ? invoke<{ campaigns: Campaign[] }>('campaign.list', { genomeId, limit: 20 })
+        ? invoke<{ campaigns: Campaign[] }>('campaign.list', { genomeId, limit: CAMPAIGN_LIST_LIMIT })
         : Promise.resolve(null),
     ]);
 
     if (status.status === 'succeeded') setPaused(status.output.paused);
     if (campaigns && campaigns.status === 'succeeded') {
-      setRunning(campaigns.output.campaigns.filter((c) => c.status === 'active').map((c) => c.name));
-      setCampaign(
-        campaigns.output.campaigns.find((c) => c.status === 'active') ??
-          campaigns.output.campaigns[0] ??
-          null,
-      );
+      const first = campaigns.output.campaigns.slice(0, 20);
+      setRunning(first.filter((c) => c.status === 'active').map((c) => c.name));
+      setCampaign(first.find((c) => c.status === 'active') ?? first[0] ?? null);
     }
   }, [genomeId]);
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
+import { CAMPAIGN_LIST_LIMIT } from '@/lib/useCampaigns';
 
 /**
  * The agent state the Command Center's chrome needs: name, voice, risk
@@ -61,7 +62,7 @@ export function useCcAgent(genomeId: string | undefined): CcAgent {
       invoke<{ paused: boolean }>('agent.status', {}),
       invoke<Governance>('brand.governance.get', {}),
       genomeId
-        ? invoke<{ campaigns: Campaign[] }>('campaign.list', { genomeId, limit: 5 })
+        ? invoke<{ campaigns: Campaign[] }>('campaign.list', { genomeId, limit: CAMPAIGN_LIST_LIMIT })
         : Promise.resolve(null),
       invoke<{ items: unknown[] }>('queue.review.list', {}),
     ]);
@@ -70,11 +71,8 @@ export function useCcAgent(genomeId: string | undefined): CcAgent {
     if (governance.status === 'succeeded') setGov(governance.output);
     if (review.status === 'succeeded') setReviewCount(review.output.items.length);
     if (campaigns && campaigns.status === 'succeeded') {
-      setCampaign(
-        campaigns.output.campaigns.find((c) => c.status === 'active') ??
-          campaigns.output.campaigns[0] ??
-          null,
-      );
+      const first = campaigns.output.campaigns.slice(0, 5);
+      setCampaign(first.find((c) => c.status === 'active') ?? first[0] ?? null);
     }
   }, [genomeId]);
 
