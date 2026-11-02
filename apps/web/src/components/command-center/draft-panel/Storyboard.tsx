@@ -338,7 +338,7 @@ function SceneCard({
         <CloseBox onClick={onRemove} disabled={busy} label={`Remove scene ${index + 1}`} className="right-[23px] top-[15px]" />
       ) : null}
 
-      <div className={cn('flex flex-wrap items-center gap-x-[14px] gap-y-[6px]', onRemove ? 'pr-[34px]' : '')}>
+      <div className={cn('flex flex-wrap items-center gap-x-[14px] gap-y-[6px]', onRemove ? 'pr-[46px]' : '')}>
         <span className="text-15 font-medium text-ink-muted">Scene {index + 1}</span>
         {/* A legacy beat carries no duration, so it shows none rather than 0:00. */}
         {hasDuration ? (

@@ -394,6 +394,11 @@ export function TypeIcon({ type, active, stroke: ink }: { type: PostType; active
  * inactive one is 18/500 in ink-500 with no fill, only a 1px grey ring at 40%
  * — `DP video` and `DP list` both draw it. A hover tint is added on top.
  *
+ * The two sit at opposite ends of the row, not side by side: every `DP *`
+ * prototype puts Current Draft at the left (x864) and Drafts List at the right
+ * (x1536), with only the unbound pencil beyond it. Measured on staging they
+ * had been drawn together at the left.
+ *
  * The row closes on the prototype's hairline at 25% grey, at y95 of the pane:
  * 25 above the 44px chips, 26 below them, then the 1px rule — painted as an
  * inset shadow on the row's last pixel.
@@ -420,6 +425,7 @@ function DrawerTabs({ tab, onTab }: { tab: DrawerTab; onTab: (next: DrawerTab) =
               // 174x44 in the prototype, with the label starting 44px in —
               // that gap is the glyph, not padding.
               'flex h-[44px] items-center gap-[10px] rounded-[10px] pl-[14px] pr-[16px] text-18 transition-colors',
+              t.id === 'list' ? 'ml-auto' : '',
               on ? 'bg-brand-cyan font-semibold text-ink' : 'font-medium text-ink-muted hover:bg-surface-muted',
             )}
             style={on ? undefined : { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}

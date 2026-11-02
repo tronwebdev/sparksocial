@@ -63,6 +63,22 @@ function postTitle(draft: DraftView): string {
   return 'Untitled Post';
 }
 
+/**
+ * When a post goes, as a person reads it — "Thu, Nov 5, 10:00 AM". Bare
+ * `toLocaleString()` printed "05/11/2026, 10:00:00": a date order that depends
+ * on the browser and a seconds field nobody schedules to. The preview's own
+ * header already used this shape, so the Schedule box now agrees with it.
+ */
+function whenLabel(iso: string): string {
+  return new Date(iso).toLocaleString('en', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 export function DraftPanel({
   genomeId,
   contentItemId: initialContentItemId,
@@ -1187,7 +1203,7 @@ export function DraftPanel({
           }
         : d,
     );
-    notify.success(`Scheduled for ${new Date(res.output.scheduledAt).toLocaleString()}`);
+    notify.success(`Scheduled for ${whenLabel(res.output.scheduledAt)}`);
   }
 
   if (!open) return null;
@@ -1992,7 +2008,7 @@ export function DraftPanel({
                 options={PLATFORMS}
                 selected={platform}
                 onSelect={(p) => setPlatform(p as (typeof PLATFORMS)[number])}
-                {...(draft.scheduledAt ? { bestTime: new Date(draft.scheduledAt).toLocaleString() } : {})}
+                {...(draft.scheduledAt ? { bestTime: whenLabel(draft.scheduledAt) } : {})}
                 onEditOutline={() => setPhase('editor')}
                 onBack={() => setPhase('editor')}
                 {...(draft.scheduledAt

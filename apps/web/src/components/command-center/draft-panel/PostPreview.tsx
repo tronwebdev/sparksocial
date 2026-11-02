@@ -763,7 +763,7 @@ export function PostPreview({
         disabled={busy}
         className="flex h-[43px] w-[190px] items-center rounded-[8.457px] bg-ink pl-[17px] text-17 font-medium text-white disabled:opacity-60"
       >
-        <span className="w-[97px] text-center">{busy ? <Busy>Publishing…</Busy> : 'Publish now'}</span>
+        <span className="w-[97px] whitespace-nowrap text-center">{busy ? <Busy>Publishing…</Busy> : 'Publish now'}</span>
         <ArrowUpRightIcon className="ml-[50px] shrink-0" />
       </button>
 
