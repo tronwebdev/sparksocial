@@ -4,7 +4,7 @@ import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldLabel, SelectField, TextField, ToggleChip } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 import { invoke } from '@/lib/tools';
 import { notify, notifyResult } from '@/lib/notify';
@@ -170,41 +170,32 @@ export function TeamGroupsPanel() {
 
       {creating && (
         <div className="mt-4 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
-          <label className="block text-12 font-medium text-ink-muted" htmlFor="group-name">
-            Group name
-          </label>
-          <Input
+          <FieldLabel htmlFor="group-name">Group name</FieldLabel>
+          <TextField
             id="group-name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Video Production"
-            className="mt-1.5 max-w-sm"
+            className="max-w-sm"
           />
 
-          <p className="mt-3 text-12 font-medium text-ink-muted">What it adds</p>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <p className="mt-4 text-18 font-medium text-ink">What it adds</p>
+          <div className="mt-[10px] flex flex-wrap gap-2">
             {CAPABILITIES.map((c) => {
               const on = newCapabilities.includes(c.value);
               return (
-                <button
+                <ToggleChip
                   key={c.value}
-                  type="button"
-                  aria-pressed={on}
+                  pressed={on}
                   title={c.hint}
                   onClick={() =>
                     setNewCapabilities((prev) =>
                       prev.includes(c.value) ? prev.filter((x) => x !== c.value) : [...prev, c.value],
                     )
                   }
-                  className={cn(
-                    'rounded-full border px-3 py-1.5 text-13 transition-colors',
-                    on
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border text-ink-muted hover:bg-surface-muted',
-                  )}
                 >
                   {c.label}
-                </button>
+                </ToggleChip>
               );
             })}
           </div>
@@ -310,12 +301,13 @@ export function TeamGroupsPanel() {
                     /* A select rather than a search box: an account roster is
                        tens of people, not thousands, so the whole list fits and
                        typeahead would be ceremony. `team.list` caps at 200. */
-                    <select
+                    <SelectField
+                      fieldSize="sm"
                       value={memberDrafts[group.id] ?? ''}
                       onChange={(e) => setMemberDrafts((prev) => ({ ...prev, [group.id]: e.target.value }))}
                       aria-label={`Add somebody to ${group.name}`}
                       disabled={busy === group.id || addable(group).length === 0}
-                      className="max-w-[260px] rounded-md shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2.5 py-1.5 text-13 text-ink disabled:opacity-50"
+                      className="max-w-[260px]"
                     >
                       <option value="">
                         {addable(group).length === 0 ? 'Everyone is already in this group' : 'Add somebody…'}
@@ -326,9 +318,10 @@ export function TeamGroupsPanel() {
                           {m.email && m.name ? ` · ${m.email}` : ''} · {m.orgRole}
                         </option>
                       ))}
-                    </select>
+                    </SelectField>
                   ) : (
-                    <Input
+                    <TextField
+                      fieldSize="sm"
                       value={memberDrafts[group.id] ?? ''}
                       onChange={(e) => setMemberDrafts((prev) => ({ ...prev, [group.id]: e.target.value }))}
                       placeholder="User id"
@@ -337,7 +330,6 @@ export function TeamGroupsPanel() {
                     />
                   )}
                   <Button
-                    size="sm"
                     variant="outline"
                     disabled={busy === group.id || !(memberDrafts[group.id] ?? '').trim()}
                     onClick={() => void setMember(group, (memberDrafts[group.id] ?? '').trim(), true)}
@@ -345,7 +337,6 @@ export function TeamGroupsPanel() {
                     Add
                   </Button>
                   <Button
-                    size="sm"
                     variant="ghost"
                     disabled={busy === group.id}
                     onClick={() => void remove(group)}

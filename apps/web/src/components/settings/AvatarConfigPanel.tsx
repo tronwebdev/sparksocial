@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { FieldLabel, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { notifyResult } from '@/lib/notify';
@@ -87,28 +88,22 @@ export function AvatarConfigPanel() {
       </p>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="grid grid-cols-1 gap-1">
-          <label className="text-12 font-medium text-ink-muted" htmlFor="heygen-id">
-            HeyGen avatar id
-          </label>
-          <input
+        <div>
+          <FieldLabel htmlFor="heygen-id">HeyGen avatar id</FieldLabel>
+          <TextField
             id="heygen-id"
             value={heygenAvatarId}
             onChange={(e) => setHeygenAvatarId(e.target.value)}
             placeholder="e.g. abc123"
-            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
-        <div className="grid grid-cols-1 gap-1">
-          <label className="text-12 font-medium text-ink-muted" htmlFor="elevenlabs-id">
-            ElevenLabs voice id
-          </label>
-          <input
+        <div>
+          <FieldLabel htmlFor="elevenlabs-id">ElevenLabs voice id</FieldLabel>
+          <TextField
             id="elevenlabs-id"
             value={elevenlabsVoiceId}
             onChange={(e) => setElevenlabsVoiceId(e.target.value)}
             placeholder="e.g. xyz789"
-            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
       </div>
@@ -129,16 +124,13 @@ export function AvatarConfigPanel() {
           — the same two facts avatar video generation checks before spending.
         </p>
 
-        <div className="mt-3 grid grid-cols-1 gap-1">
-          <label className="text-12 font-medium text-ink-muted" htmlFor="avatar-override-reason">
-            Why (recorded against the genome)
-          </label>
-          <input
+        <div className="mt-4">
+          <FieldLabel htmlFor="avatar-override-reason">Why (recorded against the genome)</FieldLabel>
+          <TextField
             id="avatar-override-reason"
             value={overrideReason}
             onChange={(e) => setOverrideReason(e.target.value)}
             placeholder="e.g. Founder wants to appear on camera for LinkedIn thought leadership"
-            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
 

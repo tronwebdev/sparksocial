@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SelectField, TextField } from '@/components/ui/field';
 import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { notifyResult } from '@/lib/notify';
@@ -91,25 +92,28 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
       <div className="mt-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-3">
         <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">Raise as an opportunity</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <select
+          {/* A row with its button: `sm` controls, the default button's 44px. */}
+          <SelectField
+            fieldSize="sm"
             value={temperature}
             onChange={(e) => setTemperature(e.target.value as Temperature)}
             disabled={busy}
-            className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-13 text-ink disabled:opacity-50"
+            className="w-[120px]"
             aria-label="Temperature"
           >
             <option value="hot">Hot</option>
             <option value="warm">Warm</option>
             <option value="cold">Cold</option>
-          </select>
-          <input
+          </SelectField>
+          <TextField
+            fieldSize="sm"
             value={recommendedAction}
             onChange={(e) => setRecommendedAction(e.target.value)}
             disabled={busy}
             placeholder="Recommended action, e.g. Call within the hour"
-            className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+            className="w-auto min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full"
           />
-          <Button size="sm" disabled={busy || !recommendedAction.trim()} onClick={() => void create()}>
+          <Button disabled={busy || !recommendedAction.trim()} onClick={() => void create()}>
             {busy ? <Busy size={16}>Creating…</Busy> : 'Create opportunity'}
           </Button>
         </div>
@@ -153,14 +157,15 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
         </p>
       ) : null}
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <input
+        <TextField
+          fieldSize="sm"
           value={routedTo}
           onChange={(e) => setRoutedTo(e.target.value)}
           disabled={busy}
           placeholder="Route to — a person, email, or CRM reference"
-          className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+          className="w-auto min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full"
         />
-        <Button size="sm" variant="outline" disabled={busy || !routedTo.trim()} onClick={() => void route()}>
+        <Button variant="outline" disabled={busy || !routedTo.trim()} onClick={() => void route()}>
           {busy ? <Busy size={16}>Routing…</Busy> : 'Route'}
         </Button>
       </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
+import { TextField } from '@/components/ui/field';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { notify, notifyResult } from '@/lib/notify';
@@ -175,14 +176,13 @@ export function DeleteBrandModal({
             <label className="mt-[22px] block text-center text-15 text-ink-muted" htmlFor="confirm-brand-name">
               Type <span className="font-semibold text-ink">{preview.name}</span> to confirm
             </label>
-            <input
+            <TextField
               id="confirm-brand-name"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               autoComplete="off"
               spellCheck={false}
-              className="mt-[10px] h-[52px] w-full rounded-[11px] bg-white px-[18px] text-17 text-ink outline-none"
-              style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.4)' }}
+              className="mt-[10px]"
             />
 
           </>

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useOrganization } from '@clerk/nextjs';
 import { notify, notifyResult } from '@/lib/notify';
 import { Busy } from '@/components/brand/SparkLoader';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 
 /**
@@ -176,23 +178,22 @@ function OrgName() {
         <label className="sr-only" htmlFor="org-name">
           Organisation name
         </label>
-        <input
+        {/* A field and its button on one row: `sm` and the default button,
+            both 44. The inline hairline this had also hid its focus state —
+            an inline `box-shadow` beats the `focus:` class it was paired with. */}
+        <TextField
           id="org-name"
+          fieldSize="sm"
           value={value}
           maxLength={80}
           disabled={!isLoaded || busy}
           placeholder={isLoaded ? 'Organisation name' : 'Loading…'}
           onChange={(e) => setDraft(e.target.value)}
-          className="h-[48px] min-w-0 flex-1 basis-[260px] rounded-[10px] bg-white px-[16px] text-17 font-medium text-ink outline-none focus:shadow-[inset_0_0_0_1.4px_#838383] disabled:opacity-60"
-          style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
+          className="w-auto flex-1 basis-[260px]"
         />
-        <button
-          type="submit"
-          disabled={!dirty || !trimmed || busy}
-          className="h-[48px] rounded-[10px] bg-ink px-[22px] text-16 font-medium text-white disabled:opacity-40"
-        >
+        <Button type="submit" disabled={!dirty || !trimmed || busy}>
           {busy ? <Busy>Saving…</Busy> : 'Save name'}
-        </button>
+        </Button>
       </form>
     </section>
   );

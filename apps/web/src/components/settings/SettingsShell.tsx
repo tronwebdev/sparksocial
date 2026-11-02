@@ -8,6 +8,7 @@ import { ChatDrawer } from '@/components/command-center/ChatDrawer';
 import { isSparkPinned } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
+import { ControlToneProvider } from '@/components/ui/field';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { Busy } from '@/components/brand/SparkLoader';
 import {
@@ -93,6 +94,9 @@ export function SettingsShell({
   return (
     // `ss-settings` scopes the settings prototypes' own placeholder colour (tokens.css).
     <div className="ss-settings min-h-screen bg-white p-[15px] pt-[18px]">
+      {/* …and its type: every form control inside takes the settings prototypes'
+          18/500 labels and field text (`components/ui/field.tsx`). */}
+      <ControlToneProvider tone="settings">
       <div className="relative min-h-[calc(100vh-36px)] overflow-hidden rounded-[30px] bg-set-card">
         {/* ── header ──────────────────────────────────────────────────── */}
         {/*
@@ -193,6 +197,7 @@ export function SettingsShell({
           </section>
         </div>
       </div>
+      </ControlToneProvider>
 
       {isOrg ? null : (
         <ChatDrawer

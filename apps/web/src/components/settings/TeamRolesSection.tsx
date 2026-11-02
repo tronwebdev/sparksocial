@@ -222,7 +222,7 @@ function UsersTab({ reloads, onPeople }: { reloads: number; onPeople: (m: Member
           Outside the scroller, so a narrow window never scrolls it off. */}
       <div className="mb-[18px] flex justify-end">
         <label
-          className="flex h-[43px] w-[333px] items-center gap-[10px] rounded-[10px] bg-white px-[19px]"
+          className="ss-field flex h-[43px] w-[333px] items-center gap-[10px] rounded-[10px] bg-white px-[19px]"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
         >
           {/* Glyph `#838383`; and the design's stylesheet sets every

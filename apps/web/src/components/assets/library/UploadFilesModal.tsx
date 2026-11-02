@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
+import { Checkbox, SelectField, TextField } from '@/components/ui/field';
 import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { notify } from '@/lib/notify';
@@ -409,27 +410,17 @@ export function UploadFilesModal({
           <div className="mt-[16px] flex flex-wrap items-center gap-x-[22px] gap-y-[10px]">
             <label className="flex items-center gap-[12px] text-15 font-medium text-ink">
               What is this?
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="h-[44px] rounded-[10px] bg-white px-[14px] text-15 font-medium text-ink outline-none"
-                style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
-              >
+              <SelectField fieldSize="sm" value={role} onChange={(e) => setRole(e.target.value)} className="w-auto min-w-[200px]">
                 {ASSET_ROLES.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </label>
 
-            <label className="flex items-center gap-[10px] text-15 font-medium text-ink">
-              <input
-                type="checkbox"
-                checked={rightsCleared}
-                onChange={(e) => setRightsCleared(e.target.checked)}
-                className="h-[18px] w-[18px] accent-[#0C0C0C]"
-              />
+            <label className="flex cursor-pointer items-center gap-[10px] text-15 font-medium text-ink">
+              <Checkbox checkSize="sm" checked={rightsCleared} onChange={(e) => setRightsCleared(e.target.checked)} />
               I have the rights to use these
             </label>
 
@@ -613,28 +604,28 @@ export function UploadFilesModal({
             <label className="mt-[18px] block text-16 font-semibold text-ink" htmlFor="lib-upload-name">
               File Name
             </label>
-            <input
+            {/* The prototype's 54/r12/0.28 field is the shared `md` box exactly;
+                the component adds the focus ring it had none of. */}
+            <TextField
               id="lib-upload-name"
               value={sel.name}
               onChange={(e) =>
                 setFiles((prev) => prev.map((f, i) => (i === selected ? { ...f, name: e.target.value } : f)))
               }
-              className="mt-[8px] h-[54px] w-full rounded-xl bg-white px-[18px] text-16 font-medium text-ink outline-none"
-              style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)' }}
+              className="mt-[8px]"
             />
 
             <label className="mt-[18px] block text-16 font-semibold text-ink" htmlFor="lib-upload-meta">
               Meta Description
             </label>
-            <input
+            <TextField
               id="lib-upload-meta"
               value={sel.meta}
               onChange={(e) =>
                 setFiles((prev) => prev.map((f, i) => (i === selected ? { ...f, meta: e.target.value } : f)))
               }
               placeholder="Enter text"
-              className="mt-[8px] h-[54px] w-full rounded-xl bg-white px-[18px] text-16 font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
-              style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)' }}
+              className="mt-[8px]"
             />
             <p className="mt-[8px] text-14 text-ink-muted">
               This becomes the asset&rsquo;s caption, which is what retrieval searches — leave it blank and SPARK

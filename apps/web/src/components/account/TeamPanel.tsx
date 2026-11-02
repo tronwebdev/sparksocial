@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldLabel, SelectField, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notifyResult } from '@/lib/notify';
@@ -178,34 +178,36 @@ export function TeamPanel() {
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <div className="min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
-            <label className="block text-12 text-ink-muted" htmlFor="team-email">
+            {/* A row with its button: `sm` controls, the button's 44px. */}
+            <FieldLabel size="sm" htmlFor="team-email">
               Email
-            </label>
-            <Input
+            </FieldLabel>
+            <TextField
               id="team-email"
+              fieldSize="sm"
               type="email"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="colleague@example.com"
-              className="mt-1"
             />
           </div>
           <div>
-            <label className="block text-12 text-ink-muted" htmlFor="team-role">
+            <FieldLabel size="sm" htmlFor="team-role">
               Account role
-            </label>
-            <select
+            </FieldLabel>
+            <SelectField
               id="team-role"
+              fieldSize="sm"
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
-              className="mt-1 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-13 text-ink"
+              className="w-[180px]"
             >
               {ORG_ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </div>
           <Button disabled={busy !== null || !inviteEmail.trim()} onClick={() => void invite()}>
             {busy === 'invite' ? <Busy>Sending…</Busy> : 'Send invitation'}
@@ -239,12 +241,13 @@ export function TeamPanel() {
                     <label className="sr-only" htmlFor={`org-role-${m.userId}`}>
                       Account role
                     </label>
-                    <select
+                    <SelectField
                       id={`org-role-${m.userId}`}
+                      fieldSize="sm"
                       value={`org:${m.orgRole}`}
                       disabled={busy !== null || m.orgRole === 'owner'}
                       onChange={(e) => void setOrgRole(m.userId, e.target.value)}
-                      className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2.5 py-1.5 text-12 text-ink disabled:opacity-50"
+                      className="w-[160px]"
                     >
                       {/* The owner is listed so the select shows the truth, and
                           disabled so this screen cannot orphan an account by
@@ -255,7 +258,7 @@ export function TeamPanel() {
                           {r.label}
                         </option>
                       ))}
-                    </select>
+                    </SelectField>
                   </div>
                 </div>
 
@@ -283,14 +286,15 @@ export function TeamPanel() {
                               <label className="sr-only" htmlFor={key}>
                                 Access to {b.name || b.brandId}
                               </label>
-                              <select
+                              <SelectField
                                 id={key}
+                                fieldSize="sm"
                                 value={assigned?.role ?? ''}
                                 disabled={busy !== null}
                                 onChange={(e) =>
                                   void setBrandAccess(m.userId, b.brandId, e.target.value || undefined)
                                 }
-                                className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2.5 py-1 text-12 text-ink disabled:opacity-50"
+                                className="w-[150px]"
                               >
                                 <option value="">No access</option>
                                 {BRAND_ROLES.map((r) => (
@@ -298,7 +302,7 @@ export function TeamPanel() {
                                     {r}
                                   </option>
                                 ))}
-                              </select>
+                              </SelectField>
                             </li>
                           );
                         })}

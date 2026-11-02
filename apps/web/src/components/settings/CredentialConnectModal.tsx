@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { platformLabel } from '@/lib/platforms';
 import { Button } from '@/components/ui/button';
+import { FieldHint, FieldLabel, TextField } from '@/components/ui/field';
 import { notify, notifyResult } from '@/lib/notify';
 import { Busy } from '@/components/brand/SparkLoader';
 
@@ -65,28 +66,29 @@ export function CredentialConnectModal({ platform, genomeId, onClose, onConnecte
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      // The settings modals' scrim (`TeamModals`): a light ink wash, blurred.
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(12,12,12,0.28)] p-4 backdrop-blur-[6px]"
       role="dialog"
       aria-modal="true"
       aria-label={`Connect ${label}`}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[440px] rounded-xl border border-border bg-surface p-6 shadow-lg"
+        // r20 and the deep soft shadow of every drawn modal — no stroke.
+        className="w-full max-w-[480px] rounded-[20px] bg-surface px-8 pb-7 pt-7 shadow-[0_40px_90px_-40px_rgba(12,12,12,0.5)] max-sm:px-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-18 font-semibold text-ink">Connect {label}</h2>
-        <p className="mt-1 text-13 text-ink-muted">
+        <h2 className="text-24 font-semibold text-ink">Connect {label}</h2>
+        <p className="mt-2 text-15 text-ink-muted">
           {label} has no sign-in redirect. It authenticates with your handle and an app password you create in your own{' '}
           {label} settings.
         </p>
 
-        <label className="mt-4 block text-13 font-medium text-ink" htmlFor="cc-handle">
+        <FieldLabel htmlFor="cc-handle" className="mt-6">
           Handle
-        </label>
-        <input
+        </FieldLabel>
+        <TextField
           id="cc-handle"
-          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-14 text-ink"
           placeholder="name.bsky.social"
           value={handle}
           autoComplete="off"
@@ -94,13 +96,12 @@ export function CredentialConnectModal({ platform, genomeId, onClose, onConnecte
           onKeyDown={(e) => e.key === 'Enter' && void submit()}
         />
 
-        <label className="mt-3 block text-13 font-medium text-ink" htmlFor="cc-password">
+        <FieldLabel htmlFor="cc-password" className="mt-5">
           App password
-        </label>
-        <input
+        </FieldLabel>
+        <TextField
           id="cc-password"
           type="password"
-          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-14 text-ink"
           placeholder="xxxx-xxxx-xxxx-xxxx"
           value={appPassword}
           /*
@@ -113,16 +114,16 @@ export function CredentialConnectModal({ platform, genomeId, onClose, onConnecte
           onChange={(e) => setAppPassword(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void submit()}
         />
-        <p className="mt-1.5 text-12 text-ink-muted">
+        <FieldHint>
           Not your account password. In {label}: Settings → Privacy and Security → App Passwords → Add App Password.
           You can revoke it there at any time without changing your real password.
-        </p>
+        </FieldHint>
 
-        <div className="mt-5 flex justify-end gap-2">
-          <Button size="sm" variant="ghost" onClick={onClose} disabled={busy}>
+        <div className="mt-7 flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button size="sm" onClick={() => void submit()} disabled={!ready || busy}>
+          <Button onClick={() => void submit()} disabled={!ready || busy}>
             {busy ? <Busy>Checking…</Busy> : 'Connect'}
           </Button>
         </div>

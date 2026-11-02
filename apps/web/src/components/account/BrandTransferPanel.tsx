@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldLabel, SelectField, TextArea, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { notify, notifyResult } from '@/lib/notify';
 import { Busy } from '@/components/brand/SparkLoader';
@@ -194,22 +194,18 @@ export function BrandTransferPanel() {
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <div className="min-w-[180px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
-              <label className="block text-12 text-ink-muted" htmlFor="export-brand">
+              {/* Shares a row with Download: `sm`, the button's 44px. */}
+              <FieldLabel size="sm" htmlFor="export-brand">
                 Brand
-              </label>
-              <select
-                id="export-brand"
-                value={selected}
-                onChange={(e) => setSelected(e.target.value)}
-                className="mt-1 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-13 text-ink"
-              >
+              </FieldLabel>
+              <SelectField id="export-brand" fieldSize="sm" value={selected} onChange={(e) => setSelected(e.target.value)}>
                 {brands.length === 0 ? <option value="">No brands yet</option> : null}
                 {brands.map((b) => (
                   <option key={b.genomeId} value={b.genomeId}>
                     {b.name || b.brandId}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </div>
             <Button variant="outline" disabled={busy !== null || !selected} onClick={() => void exportBrand()}>
               {busy === 'export' ? <Busy>Exporting…</Busy> : 'Download'}
@@ -225,27 +221,27 @@ export function BrandTransferPanel() {
             one, and there is no undo — the only way back is deleting what this makes.
           </p>
 
-          <label className="mt-3 block text-12 text-ink-muted" htmlFor="import-name">
+          <FieldLabel htmlFor="import-name" className="mt-4">
             Call it (optional — otherwise the name in the file)
-          </label>
-          <Input
+          </FieldLabel>
+          <TextField
             id="import-name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Northside Barbers"
-            className="mt-1"
           />
 
-          <label className="mt-3 block text-12 text-ink-muted" htmlFor="import-json">
+          <FieldLabel htmlFor="import-json" className="mt-4">
             The exported file
-          </label>
-          <textarea
+          </FieldLabel>
+          <TextArea
             id="import-json"
             value={json}
             onChange={(e) => setJson(e.target.value)}
             rows={5}
             spellCheck={false}
-            className="mt-1 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 font-mono text-12 text-ink"
+            // Monospace and smaller: it is JSON, read as structure.
+            className="font-mono text-13"
             placeholder='{ "name": "…", "identity": { … }, "dimensions": { … }, … }'
           />
 

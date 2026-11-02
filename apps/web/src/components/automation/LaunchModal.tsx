@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Busy } from '@/components/brand/SparkLoader';
+import { Checkbox } from '@/components/ui/field';
 import { RecipeGlyph } from './RecipeGlyph';
 import { KIND_META, type RecipeKind } from './recipeMeta';
 import type { WizardDraft } from './wizardDraft';
@@ -178,18 +179,7 @@ export function LaunchModal({
         </ul>
 
         <label className="mt-[30px] flex cursor-pointer items-start gap-[13px] px-[96px] max-md:px-[24px]">
-          <input type="checkbox" checked={requireApproval} onChange={() => onRequireApproval(!requireApproval)} className="sr-only" />
-          <span
-            aria-hidden
-            className="mt-[2px] flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[6px] transition-colors"
-            style={{ background: requireApproval ? '#0C0C0C' : '#FFFFFF', boxShadow: requireApproval ? 'none' : 'inset 0 0 0 1.4px rgba(12,12,12,0.35)' }}
-          >
-            {requireApproval ? (
-              <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
-                <path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : null}
-          </span>
+          <Checkbox checked={requireApproval} onChange={() => onRequireApproval(!requireApproval)} className="mt-[1px]" />
           <span className="max-w-[500px] text-17 font-normal leading-[1.4]" style={{ color: '#5B5B5B' }}>
             Require approval for this recipe&rsquo;s posts. Your baseline posts carry on automatically.
             {draft.kind === 'auto_trend' && draft.brandSafety && !requireApproval ? (

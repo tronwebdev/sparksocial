@@ -1,6 +1,7 @@
 'use client';
 
 import { BRAND_FONTS, fontStack } from '@sparksocial/shared';
+import { FieldHint, FieldLabel, SelectField } from '@/components/ui/field';
 
 /**
  * BRAND TYPE — M4's control, the prototype's "Choose Fonts".
@@ -84,7 +85,8 @@ export function BrandFontPicker({
       {/* One sample, both faces, on the brand's own colours — the only check that
           catches a display face nobody can read at caption size. */}
       <div
-        className="mt-3 rounded-lg border border-border p-4"
+        // Filled, not stroked: the designs separate surfaces by fill alone.
+        className="mt-3 rounded-[10px] p-4"
         style={{ backgroundColor: ground ?? '#0C0C0C' }}
       >
         <p
@@ -122,14 +124,11 @@ export function FontSelect({
 
   return (
     <div>
-      <label className="block text-12 text-ink-muted" htmlFor={id}>
-        {label}
-      </label>
-      <select
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <SelectField
         id={id}
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value || undefined)}
-        className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-14 text-ink"
         // Set in the chosen face, so the closed select shows the type rather
         // than only naming it.
         style={value ? { fontFamily: fontStack(value) } : undefined}
@@ -142,11 +141,11 @@ export function FontSelect({
             {f.label}
           </option>
         ))}
-      </select>
+      </SelectField>
       {/* The chosen face's own note replaces the generic hint — "Headlines only,
           it thins out at small sizes" is the thing worth reading once a choice
           is made. */}
-      <p className="mt-1 text-12 text-ink-muted">{chosen?.note ?? hint}</p>
+      <FieldHint>{chosen?.note ?? hint}</FieldHint>
     </div>
   );
 }

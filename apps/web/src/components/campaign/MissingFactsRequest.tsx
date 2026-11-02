@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldCaption, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { notifyResult } from '@/lib/notify';
 import { Busy } from '@/components/brand/SparkLoader';
@@ -116,14 +116,14 @@ export function MissingFactsRequest({
 
       <div className="mt-3 grid grid-cols-1 gap-3">
         {writable.map((fact) => (
-          <label key={fact.path} className="grid gap-1">
-            <span className="text-13 font-medium text-ink capitalize">{fact.label}</span>
-            <span className="text-12 text-ink-muted">{fact.hint}</span>
-            <Input
+          <label key={fact.path} className="block">
+            <FieldCaption className="mb-1 capitalize">{fact.label}</FieldCaption>
+            <span className="block text-14 text-ink-muted">{fact.hint}</span>
+            <TextField
               value={values[fact.path] ?? ''}
               onChange={(e) => setValues((prev) => ({ ...prev, [fact.path]: e.target.value }))}
               placeholder="Book now"
-              className="mt-1"
+              className="mt-[9px]"
               aria-label={fact.label}
             />
           </label>

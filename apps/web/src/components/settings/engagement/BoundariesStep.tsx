@@ -1,6 +1,6 @@
 'use client';
 
-import { Input } from '@/components/ui/input';
+import { TextField } from '@/components/ui/field';
 import { EiOptionRow, EiSectionChip } from './EiPrimitives';
 import { ESCALATION_BEHAVIORS, HARD_RULES, splitList, type EscalationBehavior } from './types';
 
@@ -90,16 +90,16 @@ export function BoundariesStep({
         <label className="block text-18 font-medium" style={{ color: 'rgb(131,131,131)' }} htmlFor="ei-escalation">
           Sensitive keywords
         </label>
-        <p className="mt-0.5 text-12 text-ink-muted">
+        <p className="mt-1 text-14 text-ink-muted">
           A message containing any of these is always escalated, and SPARK will not offer a reply for it
           &mdash; no matter how routine it looked. Comma separated.
         </p>
-        <Input
+        <TextField
           id="ei-escalation"
           value={keywords}
           onChange={(e) => onKeywords(e.target.value)}
           placeholder="refund, chargeback, lawsuit, complaint, scam"
-          className="mt-2 max-w-xl"
+          className="mt-[10px] max-w-xl"
         />
         {words.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">

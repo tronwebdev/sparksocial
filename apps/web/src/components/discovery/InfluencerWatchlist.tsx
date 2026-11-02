@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldLabel, SelectField, TextField } from '@/components/ui/field';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { notifyResult } from '@/lib/notify';
@@ -163,45 +163,48 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
 
       {/* ── Add ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end gap-2 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
+        {/* One row with Watch: `sm` controls, the default button's 44px —
+            where this was a 69px filled select beside 69px inputs. */}
         <div>
-          <label className="block text-12 text-ink-muted" htmlFor="inf-platform">
+          <FieldLabel size="sm" htmlFor="inf-platform">
             Where
-          </label>
-          <select
+          </FieldLabel>
+          <SelectField
             id="inf-platform"
+            fieldSize="sm"
             value={platform}
             onChange={(e) => setPlatform(e.target.value as Platform)}
-            className="mt-1 h-[69px] rounded-lg bg-input px-4 text-16 text-ink"
+            className="w-[170px]"
           >
             {PLATFORMS.map((p) => (
               <option key={p.value} value={p.value}>
                 {p.label}
               </option>
             ))}
-          </select>
+          </SelectField>
         </div>
         <div className="min-w-[160px]">
-          <label className="block text-12 text-ink-muted" htmlFor="inf-handle">
+          <FieldLabel size="sm" htmlFor="inf-handle">
             Handle
-          </label>
-          <Input
+          </FieldLabel>
+          <TextField
             id="inf-handle"
+            fieldSize="sm"
             value={handle}
             onChange={(e) => setHandle(e.target.value)}
             placeholder="@competitor"
-            className="mt-1"
           />
         </div>
         <div className="min-w-[180px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
-          <label className="block text-12 text-ink-muted" htmlFor="inf-note">
+          <FieldLabel size="sm" htmlFor="inf-note">
             Why (optional)
-          </label>
-          <Input
+          </FieldLabel>
+          <TextField
             id="inf-note"
+            fieldSize="sm"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Their before/afters do well"
-            className="mt-1"
           />
         </div>
         <Button disabled={busy !== null || !handle.trim()} onClick={() => void add()}>

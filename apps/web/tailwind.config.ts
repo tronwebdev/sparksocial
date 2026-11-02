@@ -260,6 +260,9 @@ const config: Config = {
         'cal-purple': 'var(--ss-cal-day-purple)',
         'attn': 'var(--ss-cc-attn-bg)',
         'attn-ring': 'var(--ss-cc-attn-ring)',
+        // The strokes a form control draws — `components/ui/field.tsx`.
+        'control-chevron': 'var(--ss-control-chevron)',
+        'control-icon': 'var(--ss-control-icon)',
 
         success: alpha('--ss-success'),
         warn: alpha('--ss-warn'),
@@ -519,6 +522,10 @@ const config: Config = {
         'auth-control': 'var(--ss-auth-control)',
         'auth-glass-pad': 'var(--ss-auth-glass-pad)',
         'auth-glass': 'var(--ss-auth-glass)',
+        // Form-control heights — see the `--ss-control-*` block in tokens.css.
+        'control-sm': 'var(--ss-control-sm)',
+        'control-md': 'var(--ss-control-md)',
+        'control-lg': 'var(--ss-control-lg)',
       },
 
       animation: {

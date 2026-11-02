@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
+import { Checkbox, DateField } from '@/components/ui/field';
 import { parseCsvPreview } from './csvPreview';
 import { AccountPicker } from './AccountPicker';
 import { InfluencerPanel } from './InfluencerPanel';
@@ -19,8 +20,11 @@ import { TREND_REGION_OPTIONS } from '@/lib/trendRegions';
  * and they are the whole vocabulary available.
  */
 
+/* `ss-field` is the app's one focus ring (a 1.5px purple outline). An outline,
+   so the inline `FIELD_RING` box-shadow below cannot cancel it — which is what
+   happened to the grey `focus-within:shadow-…` these fields used to carry. */
 export const FIELD =
-  'h-[62px] w-full rounded-[13px] bg-white px-[22px] text-17 font-medium text-ink outline-none placeholder:text-[#B0B0B0]';
+  'ss-field h-[62px] w-full rounded-[13px] bg-white px-[22px] text-17 font-medium text-ink outline-none placeholder:text-[#B0B0B0]';
 export const FIELD_RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)' } as const;
 export const CARD = 'w-full max-w-auto-form rounded-[24px] bg-white px-[40px] pb-[44px] pt-[34px]';
 export const CARD_SHADOW = { boxShadow: '0 24px 60px -40px rgba(12,12,12,0.25)' } as const;
@@ -45,7 +49,7 @@ function Dropdown({
     <div>
       <div className="text-17 font-semibold text-ink">{label}</div>
       <div
-        className="mt-[9px] flex h-[58px] items-center rounded-[12px] bg-white pl-[20px] pr-[14px] transition-shadow focus-within:shadow-[inset_0_0_0_1.4px_#838383]"
+        className="ss-field mt-[9px] flex h-[58px] items-center rounded-[12px] bg-white pl-[20px] pr-[14px]"
         style={FIELD_RING}
       >
         <select
@@ -915,19 +919,10 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
         />
 
         <label className="flex cursor-pointer items-center gap-[12px]">
-          <input type="checkbox" checked={draft.startToday} onChange={() => set({ startToday: !draft.startToday })} className="sr-only" />
           <span className="whitespace-nowrap text-16 font-medium text-ink">Run this campaign starting from today</span>
-          <span
-            aria-hidden
-            className="flex h-[23px] w-[23px] items-center justify-center rounded-[6px] transition-colors"
-            style={{ background: draft.startToday ? '#0C0C0C' : '#FFFFFF', boxShadow: draft.startToday ? 'none' : 'inset 0 0 0 1.3px rgba(12,12,12,0.35)' }}
-          >
-            {draft.startToday ? (
-              <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
-                <path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : null}
-          </span>
+          {/* The design's 23px tick box, now the shared one — same paint, and a
+              focus ring the sr-only input it replaced could not show. */}
+          <Checkbox checked={draft.startToday} onChange={() => set({ startToday: !draft.startToday })} />
         </label>
       </div>
 
@@ -958,27 +953,27 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
             <label htmlFor="auto-start" className="block text-17 font-semibold text-ink">
               Start date
             </label>
-            <input
+            {/* The design's 58px date box with its calendar glyph at the right,
+                over the native picker (`DateField`). */}
+            <DateField
               id="auto-start"
-              type="date"
+              fieldSize="lg"
               value={draft.startDate}
               disabled={draft.startToday}
               onChange={(e) => set({ startDate: e.target.value })}
-              className="mt-[9px] h-[58px] w-full rounded-[12px] bg-white px-[20px] text-17 font-medium text-ink outline-none disabled:opacity-60"
-              style={FIELD_RING}
+              className="mt-[9px]"
             />
           </div>
           <div>
             <label htmlFor="auto-end" className="block text-17 font-semibold text-ink">
               End date
             </label>
-            <input
+            <DateField
               id="auto-end"
-              type="date"
+              fieldSize="lg"
               value={draft.endDate}
               onChange={(e) => set({ endDate: e.target.value })}
-              className="mt-[9px] h-[58px] w-full rounded-[12px] bg-white px-[20px] text-17 font-medium text-ink outline-none"
-              style={FIELD_RING}
+              className="mt-[9px]"
             />
           </div>
         </div>
@@ -993,10 +988,10 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
               value={draft.everyN}
               onChange={(e) => set({ everyN: Math.max(1, Math.min(30, Number(e.target.value) || 1)) })}
               aria-label="How many"
-              className="h-[58px] w-[150px] rounded-[12px] bg-white px-[18px] text-17 font-semibold text-ink outline-none"
+              className="ss-field h-[58px] w-[150px] rounded-[12px] bg-white px-[18px] text-17 font-semibold text-ink outline-none"
               style={FIELD_RING}
             />
-            <div className="flex h-[58px] w-[190px] items-center rounded-[12px] bg-white pl-[18px] pr-[14px]" style={FIELD_RING}>
+            <div className="ss-field flex h-[58px] w-[190px] items-center rounded-[12px] bg-white pl-[18px] pr-[14px]" style={FIELD_RING}>
               <select
                 value={draft.everyUnit}
                 onChange={(e) => set({ everyUnit: e.target.value as WizardDraft['everyUnit'] })}

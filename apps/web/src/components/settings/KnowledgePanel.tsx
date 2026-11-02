@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldLabel, TextArea, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -335,29 +335,31 @@ export function KnowledgePanel() {
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <div className="min-w-[200px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
-              <label className="block text-12 text-ink-muted" htmlFor="kn-url">
+              {/* Fields sharing a row with Read: `sm`, the button's 44px. */}
+              <FieldLabel size="sm" htmlFor="kn-url">
                 Address
-              </label>
-              <Input
+              </FieldLabel>
+              <TextField
                 id="kn-url"
+                fieldSize="sm"
                 value={siteUrl}
                 onChange={(e) => setSiteUrl(e.target.value)}
                 placeholder="https://example.com/about"
-                className="mt-1"
               />
             </div>
             <div className="w-24">
-              <label className="block text-12 text-ink-muted" htmlFor="kn-pages">
+              <FieldLabel size="sm" htmlFor="kn-pages">
                 Pages
-              </label>
-              <Input
+              </FieldLabel>
+              <TextField
                 id="kn-pages"
+                fieldSize="sm"
                 type="number"
                 min={1}
                 max={20}
                 value={maxPages}
                 onChange={(e) => setMaxPages(Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
-                className="mt-1"
+                className="tabular-nums"
               />
             </div>
             <Button disabled={busy !== null || !siteUrl.trim()} onClick={() => void crawl()}>
@@ -380,29 +382,27 @@ export function KnowledgePanel() {
             you. Word documents need a parser SPARK does not have — export to PDF, or paste the text.
           </p>
 
-          <label className="mt-3 block text-12 text-ink-muted" htmlFor="kn-docid">
+          <FieldLabel htmlFor="kn-docid" className="mt-4">
             What is it called
-          </label>
-          <Input
+          </FieldLabel>
+          <TextField
             id="kn-docid"
             value={docId}
             onChange={(e) => setDocId(e.target.value)}
             placeholder="Returns policy"
-            className="mt-1"
           />
 
-          <label className="mt-3 block text-12 text-ink-muted" htmlFor="kn-text">
+          <FieldLabel htmlFor="kn-text" className="mt-4">
             The text
-          </label>
-          <textarea
+          </FieldLabel>
+          <TextArea
             id="kn-text"
             value={docText}
             onChange={(e) => setDocText(e.target.value)}
             rows={5}
-            className="mt-1 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-13 text-ink"
             placeholder="Paste the policy, FAQ or spec sheet here."
           />
-          <p className="mt-1 text-11 tabular-nums text-ink-muted">
+          <p className="mt-1.5 text-12 tabular-nums text-ink-muted">
             {docText.length.toLocaleString()} / {MAX_DOC_CHARS.toLocaleString()} characters
           </p>
 
@@ -467,7 +467,8 @@ export function KnowledgePanel() {
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <div className="min-w-[240px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
-            <Input
+            <TextField
+              fieldSize="sm"
               value={claim}
               onChange={(e) => {
                 setClaim(e.target.value);

@@ -1,6 +1,6 @@
 'use client';
 
-import { Input } from '@/components/ui/input';
+import { FieldLabel, TextField } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 import { EiSectionChip } from './EiPrimitives';
 import { HANDOFF_DESTINATIONS, QUALIFICATION_OPTIONS, TEMPERATURES } from './types';
@@ -127,19 +127,19 @@ export function SalesStep({
         </p>
       )}
 
-      <label className="mt-5 block text-12 font-medium text-ink-muted" htmlFor="ei-sales-destination">
+      <FieldLabel htmlFor="ei-sales-destination" className="mb-1 mt-5">
         Send leads on to
-      </label>
-      <p className="mt-1 text-12 text-ink-muted">
+      </FieldLabel>
+      <p className="text-14 text-ink-muted">
         An email address or a CRM inbox. Only used for the rows set to &ldquo;send on&rdquo; &mdash; without
         it, those leads wait in Sales Opportunities instead.
       </p>
-      <Input
+      <TextField
         id="ei-sales-destination"
         value={destination}
         onChange={(e) => onDestination(e.target.value)}
         placeholder="sales@yourcompany.com"
-        className="mt-1.5 max-w-md"
+        className="mt-[10px] max-w-md"
       />
     </div>
   );

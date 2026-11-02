@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldHint, FieldLabel, SelectField, Switch, TextField, ToggleChip } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -15,12 +15,15 @@ import { timezoneRegions, zoneLabel, zonesIncluding, zonesInRegion } from '@spar
 import { notify, notifyResult } from '@/lib/notify';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
-/**
- * A text field on a kit card. `Input`'s fill is `--ss-field`, the same grey as
- * the card, so on one it has no visible edge at all. The prototype's field on
- * these cards (Brand Voice's select) is white, 57px tall, 10px radius.
+/*
+ * Fields on these kit cards are `TextField`/`SelectField` at `md` — white on
+ * the grey card, as the prototype's Restricted Topics field and Watermark row
+ * are (54–55 tall, r10, 18/500 under an 18/500 label). `Input`'s fill is
+ * `--ss-field`, the card's own grey, so on a card it had no visible edge.
  */
-const KIT_FIELD = 'mt-1.5 h-[57px] rounded-[10px] bg-white';
+
+/** A note between a field's label and the field itself. */
+const LEAD_HINT = 'mb-[10px] text-14 text-ink-muted';
 
 /**
  * `brand.governance.get`/`.set` — PRD §8.2 (`ONB-03`) and §8.12 (`SET-WS-01`).
@@ -330,65 +333,56 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
             {/* ── What SPARK may not say ─────────────────────────────────── */}
             <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="text-12 font-medium text-ink-muted" htmlFor="gov-topics">
+                <FieldLabel htmlFor="gov-topics" className="mb-1">
                   Restricted topics
-                </label>
-                <p className="mt-0.5 text-12 text-ink-muted">
-                  Subjects to stay off entirely. Comma separated.
-                </p>
-                <Input
+                </FieldLabel>
+                <p className={LEAD_HINT}>Subjects to stay off entirely. Comma separated.</p>
+                <TextField
                   id="gov-topics"
                   value={topicsText}
                   onChange={(e) => setTopicsText(e.target.value)}
                   placeholder="politics, competitor names, staff turnover"
-                  className={KIT_FIELD}
                 />
               </div>
 
               <div>
-                <label className="text-12 font-medium text-ink-muted" htmlFor="gov-claims">
+                <FieldLabel htmlFor="gov-claims" className="mb-1">
                   Claims to avoid
-                </label>
-                <p className="mt-0.5 text-12 text-ink-muted">
+                </FieldLabel>
+                <p className={LEAD_HINT}>
                   Promises this brand does not make, even about things it will happily discuss.
                 </p>
-                <Input
+                <TextField
                   id="gov-claims"
                   value={claimsText}
                   onChange={(e) => setClaimsText(e.target.value)}
                   placeholder="guaranteed, cheapest, clinically proven"
-                  className={KIT_FIELD}
                 />
               </div>
 
               <div>
-                <label className="text-12 font-medium text-ink-muted" htmlFor="gov-phrases">
-                  Never use these words
-                </label>
-                <Input
+                <FieldLabel htmlFor="gov-phrases">Never use these words</FieldLabel>
+                <TextField
                   id="gov-phrases"
                   value={phrasesText}
                   onChange={(e) => setPhrasesText(e.target.value)}
                   placeholder="synergy, game-changer, revolutionary"
-                  className={KIT_FIELD}
                 />
               </div>
 
-              <label className="flex items-start gap-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3">
-                <input
-                  type="checkbox"
-                  checked={strictMode}
-                  onChange={(e) => setStrictMode(e.target.checked)}
-                  className="mt-1 size-4 accent-[--ss-primary]"
-                />
+              {/* The design's "Activate Watermark" row — a white control box
+                  with the label left and the switch right — reused for the one
+                  other on/off in this card. */}
+              <label className="ss-control flex cursor-pointer items-start justify-between gap-4 px-[17px] py-[15px]">
                 <span>
-                  <span className="text-14 font-medium text-ink">Strict mode</span>
-                  <span className="mt-0.5 block text-13 text-ink-muted">
+                  <span className="block text-16 font-medium text-ink">Strict mode</span>
+                  <span className="mt-1 block text-14 text-ink-muted">
                     {strictMode
                       ? 'A post naming a restricted topic or claim is blocked outright.'
                       : 'A post naming a restricted topic or claim is held for your review.'}
                   </span>
                 </span>
+                <Switch checked={strictMode} onChange={(e) => setStrictMode(e.target.checked)} className="mt-px" />
               </label>
             </div>
           </KitSection>
@@ -432,20 +426,19 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                 logo field is a switch wired to nothing.
               */}
               {logoUrl ? (
-                <div className="mt-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3">
-                  <label className="flex items-center gap-2 text-13 text-ink">
-                    <input
-                      type="checkbox"
+                <div className="ss-control mt-3 px-[17px] py-[15px]">
+                  {/* "Activate Watermark": 16/500 left, the 45px switch right. */}
+                  <label className="flex cursor-pointer items-center justify-between gap-4 text-16 font-medium text-ink">
+                    Stamp the logo on rendered posts
+                    <Switch
                       checked={watermark.enabled}
                       onChange={(e) => {
                         setUsingDefaultWatermark(false);
                         setWatermark({ ...watermark, enabled: e.target.checked });
                       }}
-                      className="h-4 w-4"
                     />
-                    Stamp the logo on rendered posts
                   </label>
-                  <p className="mt-1 text-12 text-ink-muted">
+                  <p className="mt-1.5 text-14 text-ink-muted">
                     Bottom-left, where no platform draws its own controls. Turning this off keeps your logo for
                     everything else &mdash; it only stops the mark appearing on images and video.
                   </p>
@@ -453,9 +446,9 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                   {watermark.enabled ? (
                     <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="block text-12 text-ink-muted" htmlFor="gov-wm-opacity">
+                        <FieldLabel size="sm" htmlFor="gov-wm-opacity">
                           Opacity &mdash; {Math.round(watermark.opacity * 100)}%
-                        </label>
+                        </FieldLabel>
                         <input
                           id="gov-wm-opacity"
                           type="range"
@@ -467,13 +460,13 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                             setUsingDefaultWatermark(false);
                             setWatermark({ ...watermark, opacity: Number(e.target.value) / 100 });
                           }}
-                          className="mt-1.5 w-full accent-[--ss-primary]"
+                          className="w-full accent-[--ss-primary]"
                         />
                       </div>
                       <div>
-                        <label className="block text-12 text-ink-muted" htmlFor="gov-wm-scale">
+                        <FieldLabel size="sm" htmlFor="gov-wm-scale">
                           Size &mdash; {Math.round(watermark.scale * 100)}% of frame width
-                        </label>
+                        </FieldLabel>
                         <input
                           id="gov-wm-scale"
                           type="range"
@@ -485,7 +478,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                             setUsingDefaultWatermark(false);
                             setWatermark({ ...watermark, scale: Number(e.target.value) / 100 });
                           }}
-                          className="mt-1.5 w-full accent-[--ss-primary]"
+                          className="w-full accent-[--ss-primary]"
                         />
                       </div>
                     </div>
@@ -517,15 +510,15 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
           <KitSection title="Fine-tune" hint="Finer control over the voice and type chosen above.">
             <div className="grid grid-cols-1 gap-6">
               <div>
-                <h3 className="text-15 font-semibold text-ink">Tone</h3>
+                <h3 className="text-18 font-semibold text-ink">Tone</h3>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {TONE_AXES.map((axis) => (
                     <div key={axis.key}>
                       <div className="flex items-baseline justify-between">
-                        <label className="text-13 text-ink" htmlFor={`tone-${axis.key}`}>
+                        <label className="text-16 font-medium text-ink" htmlFor={`tone-${axis.key}`}>
                           {axis.label}
                         </label>
-                        <span className="text-12 tabular-nums text-ink-muted">
+                        <span className="text-14 tabular-nums text-ink-muted">
                           {Math.round(tone[axis.key] * 100)}%
                         </span>
                       </div>
@@ -538,7 +531,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                         onChange={(e) => setTone((t) => ({ ...t, [axis.key]: Number(e.target.value) / 100 }))}
                         className="mt-1 w-full accent-[--ss-primary]"
                       />
-                      <div className="flex justify-between text-11 text-ink-muted">
+                      <div className="flex justify-between text-12 text-ink-muted">
                         <span>{axis.low}</span>
                         <span>{axis.high}</span>
                       </div>
@@ -563,28 +556,25 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                   deliberately not an option here.
                 */}
                 <div>
-                  <label className="block text-12 text-ink-muted" htmlFor="gov-voice">
-                    Narration voice
-                  </label>
-                  <select
+                  <FieldLabel htmlFor="gov-voice">Narration voice</FieldLabel>
+                  <SelectField
                     id="gov-voice"
                     value={stockVoiceId}
                     onChange={(e) => {
                       setUsingDefaultVoice(false);
                       setStockVoiceId(e.target.value);
                     }}
-                    className="mt-1.5 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-14 text-ink"
                   >
                     {STOCK_VOICES.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.name} — {v.character}
                       </option>
                     ))}
-                  </select>
-                  <p className="mt-1 text-12 text-ink-muted">
+                  </SelectField>
+                  <FieldHint>
                     Used when SPARK records a voiceover. Your own cloned voice is a separate setting that needs a
                     consent record.
-                  </p>
+                  </FieldHint>
                 </div>
               </div>
             </div>
@@ -599,40 +589,32 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                   sliders below and the risk tolerance from the approval mode, so
                   neither can drift from the setting that is actually enforced. */}
               <div className="max-w-md">
-                <label className="text-12 font-medium text-ink-muted" htmlFor="gov-agent-name">
+                <FieldLabel htmlFor="gov-agent-name" className="mb-1">
                   What do you call your agent?
-                </label>
-                <p className="mt-1 text-12 text-ink-muted">
+                </FieldLabel>
+                <p className={LEAD_HINT}>
                   Used wherever SPARK refers to itself — the Command Center, and campaign summaries that say
                   what it will do. Optional; leave it blank and it says &ldquo;your agent&rdquo;.
                 </p>
-                <Input
+                <TextField
                   id="gov-agent-name"
                   value={agentName}
                   onChange={(e) => setAgentName(e.target.value)}
                   placeholder="Ada, Studio Bot, The Intern…"
                   maxLength={60}
-                  className={KIT_FIELD}
                 />
               </div>
               {/* ── When it posts ──────────────────────────────────────────── */}
               <div>
-                <h3 className="text-15 font-semibold text-ink">When it posts</h3>
-                <p className="mt-0.5 text-12 text-ink-muted">
+                <h3 className="text-18 font-semibold text-ink">When it posts</h3>
+                <p className="mt-1 text-14 text-ink-muted">
                   Your timezone decides what &ldquo;Tuesday&rdquo; means, and the hours below are the times of day
                   posts land in.
                 </p>
 
                 <div className="mt-3 max-w-xs">
-                  <label className="text-12 font-medium text-ink-muted" htmlFor="gov-tz">
-                    Timezone
-                  </label>
-                  <select
-                    id="gov-tz"
-                    value={timezone}
-                    onChange={(e) => setTimezone(e.target.value)}
-                    className="mt-1.5 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-14 text-ink"
-                  >
+                  <FieldLabel htmlFor="gov-tz">Timezone</FieldLabel>
+                  <SelectField id="gov-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
                     {zoneRegions.map((r) => {
                       const members = zonesInRegion(r, zoneOptions);
                       // `UTC` has no members under a slash; it is its own entry.
@@ -650,14 +632,14 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                         </optgroup>
                       );
                     })}
-                  </select>
+                  </SelectField>
                 </div>
 
                 <div className="mt-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="text-12 font-medium text-ink-muted">Posting hours</p>
+                    <p className="text-18 font-medium text-ink">Posting hours</p>
                     {usingDefaultWindows ? (
-                      <p className="text-12 text-ink-muted">
+                      <p className="text-14 text-ink-muted">
                         Using the default spread — pick any hour to set your own.
                       </p>
                     ) : (
@@ -667,31 +649,24 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                           setUsingDefaultWindows(true);
                           setWindows([9, 13, 18]);
                         }}
-                        className="text-12 font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
+                        className="text-14 font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
                       >
                         Back to the default
                       </button>
                     )}
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
+                  <div className="mt-[10px] flex flex-wrap gap-2">
                     {Array.from({ length: 24 }, (_, hour) => {
                       const on = windows.includes(hour);
                       return (
-                        <button
+                        <ToggleChip
                           key={hour}
-                          type="button"
-                          aria-pressed={on}
+                          pressed={on}
                           onClick={() => toggleHour(hour)}
-                          className={cn(
-                            'w-11 rounded border px-1 py-1 text-12 tabular-nums transition-colors',
-                            on
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border text-ink-muted hover:bg-surface-muted',
-                            usingDefaultWindows && on && 'opacity-60',
-                          )}
+                          className={cn('w-[72px] px-0 tabular-nums', usingDefaultWindows && on && 'opacity-60')}
                         >
                           {String(hour).padStart(2, '0')}:00
-                        </button>
+                        </ToggleChip>
                       );
                     })}
                   </div>

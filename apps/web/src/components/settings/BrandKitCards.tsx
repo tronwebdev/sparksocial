@@ -327,7 +327,8 @@ export function VoiceCard({ tone, onChange }: { tone: Tone; onChange: (next: Ton
         Select Brand Voice:
       </label>
       {/* 576x57 white at 128, radius 10; the value at 21 in 18/500. */}
-      <div className="relative mt-[15px] h-[57px] rounded-[10px] bg-white">
+      {/* `ss-field`: the same 1.5px purple focus ring as every other control. */}
+      <div className="ss-field relative mt-[15px] h-[57px] rounded-[10px] bg-white">
         <select
           id="gov-voice-preset"
           value={preset?.name ?? ''}
@@ -335,7 +336,7 @@ export function VoiceCard({ tone, onChange }: { tone: Tone; onChange: (next: Ton
             const p = VOICE_PRESETS.find((x) => x.name === e.target.value);
             if (p) onChange(p.tone);
           }}
-          className="h-full w-full cursor-pointer appearance-none rounded-[10px] bg-transparent pl-[21px] pr-[48px] text-18 font-medium text-ink outline-none focus-visible:shadow-[0_0_0_2px_var(--ss-primary)]"
+          className="h-full w-full cursor-pointer appearance-none rounded-[10px] bg-transparent pl-[21px] pr-[48px] text-18 font-medium text-ink outline-none"
         >
           {preset ? null : <option value="">Custom</option>}
           {VOICE_PRESETS.map((p) => (
@@ -403,12 +404,12 @@ export function TypographyCard({
       </div>
 
       {/* 580x72 white at 156, radius 11.4; the face's name at 21 in 20/500 muted. */}
-      <div className="relative mt-[34px] h-[72px] rounded-[11.4px] bg-white">
+      <div className="ss-field relative mt-[34px] h-[72px] rounded-[11.4px] bg-white">
         <select
           aria-label="Headline font"
           value={display ?? ''}
           onChange={(e) => onChange(e.target.value || undefined)}
-          className="h-full w-full cursor-pointer appearance-none rounded-[11.4px] bg-transparent pl-[21px] pr-[48px] text-20 font-medium text-ink-muted outline-none focus-visible:shadow-[0_0_0_2px_var(--ss-primary)]"
+          className="h-full w-full cursor-pointer appearance-none rounded-[11.4px] bg-transparent pl-[21px] pr-[48px] text-20 font-medium text-ink-muted outline-none"
           style={display ? { fontFamily: fontStack(display) } : undefined}
         >
           <option value="">System default</option>

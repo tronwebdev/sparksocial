@@ -3,6 +3,7 @@
 import { AccountAvatar } from '@/components/accounts/AccountParts';
 import { useCallback, useEffect, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
+import { FieldCaption, SelectField, TextArea, TextField, controlClass } from '@/components/ui/field';
 import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { notifyResult } from '@/lib/notify';
@@ -245,53 +246,38 @@ export function ReshareModal({
         </div>
 
         <Field label="Enter Goal">
-          <select
-            value={goal}
-            onChange={(e) => setGoal(e.target.value)}
-            className="h-[48px] w-full appearance-none rounded-[11px] bg-white px-[16px] text-15 font-medium text-ink outline-none"
-            style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
-          >
+          <SelectField value={goal} onChange={(e) => setGoal(e.target.value)}>
             {GOALS.map((g) => (
               <option key={g.value} value={g.value}>
                 {g.label}
               </option>
             ))}
-          </select>
+          </SelectField>
         </Field>
 
         <Field label="Add CTA URL">
-          <input
-            value={cta}
-            onChange={(e) => setCta(e.target.value)}
-            placeholder="Enter URL"
-            inputMode="url"
-            className="h-[48px] w-full rounded-[11px] bg-white px-[16px] text-15 font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
-            style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
-          />
+          <TextField value={cta} onChange={(e) => setCta(e.target.value)} placeholder="Enter URL" inputMode="url" />
         </Field>
 
         <Field label="Ai Generated Caption">
-          <textarea
+          <TextArea
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             rows={3}
             placeholder="Ai will write a caption that reroutes to your CTA"
-            className="w-full resize-none rounded-[11px] bg-white px-[16px] py-[12px] text-15 font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
-            style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
+            className="resize-none"
           />
         </Field>
 
         <div className="mt-[16px] flex flex-wrap gap-[14px]">
           <div className="min-w-[190px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
-            <p className="text-14 font-medium text-ink">Select Account</p>
-            <select
+            <FieldCaption>Select Account</FieldCaption>
+            <SelectField
               value=""
               onChange={(e) => {
                 const p = e.target.value;
                 if (p) setChosen((cur) => (cur.includes(p) ? cur : [...cur, p]));
               }}
-              className="mt-[8px] h-[48px] w-full appearance-none rounded-[11px] bg-white px-[16px] text-15 font-medium text-ink outline-none"
-              style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
             >
               <option value="">
                 {accounts === null
@@ -307,15 +293,15 @@ export function ReshareModal({
                     {label(a)}
                   </option>
                 ))}
-            </select>
+            </SelectField>
           </div>
 
           <div className="min-w-[190px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
-            <p className="text-14 font-medium text-ink">Brand Kit</p>
+            <FieldCaption>Brand Kit</FieldCaption>
+            {/* A read-only value in the same box as its neighbours. */}
             <div
               title="The brand kit is applied when a post is rendered, from Settings → Brand Kit. There is no per-campaign override to store, so this switch would not survive the Publish."
-              className="mt-[8px] flex h-[48px] cursor-not-allowed items-center justify-between rounded-[11px] bg-white px-[16px] opacity-70"
-              style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
+              className={controlClass('md', 'flex cursor-not-allowed items-center justify-between opacity-70')}
             >
               <span className="text-15 font-medium text-ink-muted">Always on</span>
               <span aria-hidden className="relative block h-[22px] w-[38px] rounded-full" style={{ background: 'var(--ss-lib-toggle)' }}>
@@ -399,8 +385,8 @@ export function ReshareModal({
 function Field({ label: text, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mt-[16px]">
-      <p className="text-14 font-medium text-ink">{text}</p>
-      <div className="mt-[8px]">{children}</div>
+      <FieldCaption>{text}</FieldCaption>
+      {children}
     </div>
   );
 }

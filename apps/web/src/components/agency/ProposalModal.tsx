@@ -13,6 +13,7 @@ import {
 } from '@sparksocial/shared/agencyPipeline';
 import { Busy } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
+import { SelectField, TextArea, controlClass } from '@/components/ui/field';
 import type { DraftInput, Proposal } from './useProposals';
 import { majorUnits, money, parseMoney, proposalToText } from './proposalText';
 import { TINT, type StatusTint } from './statusTints';
@@ -67,7 +68,10 @@ const BTN_GHOST =
 const BTN_SOLID =
   'flex h-[40px] items-center rounded-[9px] bg-ink px-[18px] text-15 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-45';
 const RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' } as const;
-const FIELD = 'h-[46px] w-full rounded-[10px] bg-white px-[14px] text-15 font-medium text-ink outline-none';
+/* The shared control box at `sm` (44): a dense line-item editor, where every
+   row is a set of controls side by side. It was a 46/r10 box of its own with
+   no focus state and selects with no chevron. */
+const FIELD = controlClass('sm');
 
 /* ── the line the editor works on ──────────────────────────────────── */
 
@@ -451,7 +455,7 @@ function ProposalEditor({
       <div className="grid grid-cols-[1fr_120px_140px] gap-[16px]">
         <label className="block">
           <span className="block text-14 font-semibold text-ink">Title</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${FIELD} mt-[8px]`} style={RING} />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${FIELD} mt-[8px]`} />
         </label>
         <label className="block">
           <span className="block text-14 font-semibold text-ink">Currency</span>
@@ -460,7 +464,6 @@ function ProposalEditor({
             onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
             aria-label="Currency"
             className={`${FIELD} mt-[8px]`}
-            style={RING}
           />
         </label>
         <label className="block">
@@ -472,8 +475,7 @@ function ProposalEditor({
             value={termMonths}
             onChange={(e) => setTermMonths(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
             aria-label="Term in months"
-            className={`${FIELD} mt-[8px]`}
-            style={RING}
+            className={`${FIELD} mt-[8px] tabular-nums`}
           />
         </label>
       </div>
@@ -484,17 +486,16 @@ function ProposalEditor({
         {lines.map((l, i) => (
           <div key={i} className="grid grid-cols-[1fr_110px_64px_120px_36px] items-end gap-[10px]">
             <label className="block">
-              <select
+              <SelectField
+                fieldSize="sm"
                 value={l.service}
                 onChange={(e) => setLine(i, { service: e.target.value as ProposalService })}
                 aria-label={`Service for line ${i + 1}`}
-                className={`${FIELD} cursor-pointer appearance-none`}
-                style={RING}
               >
                 {SERVICES.map((s) => (
                   <option key={s} value={s}>{PROPOSAL_SERVICE_LABELS[s]}</option>
                 ))}
-              </select>
+              </SelectField>
               {/* Required only where the enum says nothing, matching the tool. */}
               {l.service === 'other' ? (
                 <input
@@ -503,7 +504,6 @@ function ProposalEditor({
                   placeholder="What is this line?"
                   aria-label={`Description for line ${i + 1}`}
                   className={`${FIELD} mt-[8px]`}
-                  style={RING}
                 />
               ) : null}
             </label>
@@ -515,8 +515,7 @@ function ProposalEditor({
                 inputMode="decimal"
                 placeholder="0.00"
                 aria-label={`Price for line ${i + 1}`}
-                className={FIELD}
-                style={RING}
+                className={`${FIELD} tabular-nums`}
               />
             </label>
 
@@ -528,30 +527,27 @@ function ProposalEditor({
                 value={l.quantity}
                 onChange={(e) => setLine(i, { quantity: Math.max(1, Math.min(1000, Number(e.target.value) || 1)) })}
                 aria-label={`Quantity for line ${i + 1}`}
-                className={FIELD}
-                style={RING}
+                className={`${FIELD} tabular-nums`}
               />
             </label>
 
             <label className="block">
-              <select
+              <SelectField
+                fieldSize="sm"
                 value={l.recurrence}
                 onChange={(e) => setLine(i, { recurrence: e.target.value as LineRecurrence })}
                 aria-label={`Recurrence for line ${i + 1}`}
-                className={`${FIELD} cursor-pointer appearance-none`}
-                style={RING}
               >
                 <option value="monthly">per month</option>
                 <option value="one_off">one-off</option>
-              </select>
+              </SelectField>
             </label>
 
             <button
               type="button"
               onClick={() => setLines((ls) => (ls.length === 1 ? [emptyLine()] : ls.filter((_, idx) => idx !== i)))}
               aria-label={`Remove line ${i + 1}`}
-              className="flex h-[46px] w-[36px] items-center justify-center rounded-[10px] bg-white transition-shadow hover:shadow-card"
-              style={RING}
+              className="ss-control flex h-control-sm w-[36px] items-center justify-center transition-shadow hover:shadow-card"
             >
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
                 <path d="M2 2l10 10M12 2L2 12" stroke="rgb(131,131,131)" strokeWidth="1.6" strokeLinecap="round" />
@@ -574,11 +570,11 @@ function ProposalEditor({
 
       <label className="mt-[20px] block">
         <span className="block text-14 font-semibold text-ink">Notes</span>
-        <textarea
+        <TextArea
+          fieldSize="sm"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="mt-[8px] h-[74px] w-full resize-none rounded-[10px] bg-white p-[12px] text-15 font-medium text-ink outline-none"
-          style={RING}
+          className="mt-[8px] h-[74px] resize-none"
         />
       </label>
 

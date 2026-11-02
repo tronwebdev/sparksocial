@@ -3,7 +3,7 @@
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldCaption, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notifyResult } from '@/lib/notify';
@@ -182,9 +182,11 @@ export function BrandBudgetsSection() {
                 </div>
 
                 <div className="flex items-end gap-[10px]">
-                  <label className="grid gap-[6px]">
-                    <span className="text-13 font-medium text-ink">Monthly limit</span>
-                    <Input
+                  {/* Shares a row with Save: `sm`, the default button's 44px. */}
+                  <label className="block">
+                    <FieldCaption size="sm">Monthly limit</FieldCaption>
+                    <TextField
+                      fieldSize="sm"
                       value={shown}
                       inputMode="decimal"
                       placeholder="No limit"
@@ -192,11 +194,10 @@ export function BrandBudgetsSection() {
                       onChange={(e) =>
                         setDrafts((d) => new Map(d).set(b.brandId, e.target.value))
                       }
-                      className="w-[140px]"
+                      className="w-[140px] tabular-nums"
                     />
                   </label>
                   <Button
-                    size="sm"
                     disabled={busy === b.brandId || draft === undefined}
                     onClick={() => {
                       const n = Number(draft);

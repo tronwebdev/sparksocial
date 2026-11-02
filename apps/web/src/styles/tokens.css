@@ -118,6 +118,39 @@
   --ss-panel-note: rgba(131, 131, 131, 0.1);
   --ss-ring: var(--ss-purple);
 
+  /* ── Form controls (`components/ui/field.tsx`) ──────────────────────────
+     The one box every text field, select, date/time field and textarea in the
+     product draws — a white fill inside a 1px inset hairline, never a stroked
+     `border`. Measured, not chosen:
+
+       Automation wizard   58 tall, r12, `inset 0 0 0 1px rgba(131,131,131,0.28)`,
+                           16.5/500 ink, padding 0 20 (Frequency, Start date)
+       Assets Library      54 tall, r12, same hairline, 15.5/500 (File Name)
+       Automation/Discovery search  46 tall, r12, 0.3 hairline, 15/500
+       Settings (all 26)   r10 and a lighter 0.2 hairline — Personal fields,
+                           the Team/Import search (43 tall, 16/500), and the
+                           Brand Kits in-panel rows (54–57 tall, 16/500)
+
+     Three heights cover all of it: `sm` 44 (toolbars, filters, inline rows —
+     also the height of `Button size="default"`, so a field and the button
+     beside it line up), `md` 54 (a labelled field on a panel or in a modal)
+     and `lg` 58 (the wizard's fields). Radius and hairline are the only things
+     that differ by area, so they are variables `.ss-settings` re-points below
+     rather than a prop every caller has to remember. */
+  --ss-control-bg: var(--ss-white);
+  --ss-control-ring: rgba(131, 131, 131, 0.28);
+  --ss-control-radius: 12px;
+  --ss-control-sm: 44px;
+  --ss-control-md: 54px;
+  --ss-control-lg: 58px;
+  /* The trailing chevron and calendar/clock strokes — `#5B5B5B` on the
+     wizard's dropdowns, `#838383` on its date fields. */
+  --ss-control-chevron: var(--ss-ink-600);
+  --ss-control-icon: var(--ss-ink-500);
+  /* Automation's "Run this campaign starting from today" box: 23px at r6, ink
+     when ticked, `inset 0 0 0 1.3px rgba(12,12,12,0.35)` when not. */
+  --ss-check-ring: rgba(12, 12, 12, 0.35);
+
   --ss-primary: var(--ss-ink-900);
   --ss-primary-hover: var(--ss-ink-800);
 
@@ -812,6 +845,13 @@
      white card would be a hole rather than a surface. */
   --ss-panel-card: rgba(255, 255, 255, 0.07);
   --ss-panel-note: rgba(255, 255, 255, 0.05);
+  /* A white control would be a hole in a #0C0C0C page; it recesses like
+     `--ss-field` instead, and the hairline lifts to stay visible. */
+  --ss-control-bg: rgba(255, 255, 255, 0.06);
+  --ss-control-ring: rgba(255, 255, 255, 0.16);
+  --ss-control-chevron: rgba(255, 255, 255, 0.7);
+  --ss-control-icon: rgba(255, 255, 255, 0.55);
+  --ss-check-ring: rgba(255, 255, 255, 0.32);
   --ss-primary: var(--ss-white);
   --ss-primary-hover: var(--ss-surface-200);
 }
@@ -852,6 +892,127 @@
 .ss-settings input::placeholder,
 .ss-settings textarea::placeholder {
   color: #838383;
+}
+
+/*
+ * Settings draws its controls at radius 10 on a lighter `rgba(131,131,131,0.2)`
+ * hairline (Personal fields, Team/Import search) where the product screens use
+ * 12 and 0.28 — the Brand Kits panel rows' `rgba(12,12,12,0.1)` composites to
+ * the same grey on white. Re-pointed here so a control means the right thing
+ * wherever it is mounted. Dark keeps its own hairline inside settings too.
+ */
+.ss-settings {
+  --ss-control-ring: rgba(131, 131, 131, 0.2);
+  --ss-control-radius: 10px;
+}
+.dark .ss-settings,
+.ss-settings.dark {
+  --ss-control-ring: rgba(255, 255, 255, 0.16);
+}
+
+/*
+ * The control box (`components/ui/field.tsx`). Plain CSS for the same reason
+ * as `.ss-field` above: the hairline is a `box-shadow`, and composed
+ * `shadow-[…]` utilities on an element that also takes a focus outline are
+ * what failed before. Utilities still win over these (they are emitted later),
+ * so a caller's `rounded-*` or `bg-*` remains an override, not a fight.
+ */
+.ss-control {
+  background-color: var(--ss-control-bg);
+  box-shadow: inset 0 0 0 1px var(--ss-control-ring);
+  border-radius: var(--ss-control-radius);
+}
+.ss-control:has(:disabled),
+.ss-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/*
+ * Date and time fields keep the native picker — keyboard entry, screen-reader
+ * semantics and the OS calendar all come with it. WebKit/Blink's own indicator
+ * is stretched invisibly over the trailing icon the design draws, so clicking
+ * the drawn calendar opens the real one. Firefox has no such pseudo-element and
+ * shows its own button, so the drawn icon steps aside there rather than
+ * doubling up.
+ */
+.ss-date-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 52px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+@supports (-moz-appearance: none) {
+  .ss-date-icon {
+    display: none;
+  }
+}
+
+/*
+ * The checkbox. A real `<input type="checkbox">` sits transparent over the
+ * drawn box, so the click target, keyboard toggle and label association are
+ * the browser's own; only the paint is the design's.
+ */
+.ss-check-box {
+  background-color: var(--ss-control-bg);
+  box-shadow: inset 0 0 0 1.3px var(--ss-check-ring);
+}
+.ss-check-input:checked + .ss-check-box {
+  background-color: var(--ss-primary);
+  box-shadow: none;
+}
+.ss-check-input:checked + .ss-check-box > svg {
+  opacity: 1;
+}
+.ss-check-input:focus-visible + .ss-check-box {
+  outline: 1.5px solid var(--ss-ring);
+  outline-offset: 2px;
+}
+.ss-check-input:disabled + .ss-check-box {
+  opacity: 0.5;
+}
+
+/*
+ * A pressed choice chip (`ToggleChip`). Selection is an ink ring on the white
+ * control, as the Automation wizard's recipe-type cards draw it
+ * (`inset 0 0 0 1.8px #0C0C0C` on, the 0.28 hairline off) — not a solid ink
+ * fill, which the designs reserve for the primary button.
+ */
+.ss-chip[data-pressed='true'] {
+  box-shadow: inset 0 0 0 1.8px var(--ss-fg);
+  color: var(--ss-fg);
+}
+
+/*
+ * The switch (`Switch`) — `Settings PS Notifications` / Brand Kits' "Activate
+ * Watermark": `#3EC332` on, `rgba(131,131,131,0.2)` off, both inside a
+ * `0 0 0 0.77px #FFF` ring; the knob travels 3 → 23.108.
+ */
+.ss-switch-track {
+  background: rgba(131, 131, 131, 0.2);
+  box-shadow: 0 0 0 0.77px rgb(255, 255, 255);
+}
+.ss-switch-knob {
+  left: 3px;
+}
+.ss-switch-input:checked ~ .ss-switch-track {
+  background: var(--ss-green-600);
+}
+.ss-switch-input:checked ~ .ss-switch-knob {
+  left: 23.108px;
+}
+.ss-switch-input:focus-visible ~ .ss-switch-track {
+  outline: 1.5px solid var(--ss-ring);
+  outline-offset: 2px;
+}
+.ss-switch-input:disabled ~ .ss-switch-track,
+.ss-switch-input:disabled ~ .ss-switch-knob {
+  opacity: 0.5;
 }
 
 /* The workspace card's corner arrow. Inline styles cannot carry a hover, and

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { TextArea } from '@/components/ui/field';
 import { Busy } from '@/components/brand/SparkLoader';
 import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
@@ -100,15 +101,13 @@ export function ReplyAction({
         </button>
       </div>
 
-      <textarea
+      <TextArea
+        fieldSize="sm"
         value={text}
         onChange={(e) => setText(e.target.value)}
         disabled={phase === 'sending'}
         rows={3}
-        className={
-          'mt-2 w-full resize-y rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-2 text-14 text-ink ' +
-          'focus:outline-none focus:ring-[1.5px] focus:ring-ring disabled:opacity-50'
-        }
+        className="mt-2 resize-y"
       />
 
       <div className="mt-2 flex flex-wrap items-center gap-2">

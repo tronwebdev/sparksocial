@@ -5,6 +5,7 @@ import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { notifyResult } from '@/lib/notify';
 import { cn } from '@/lib/utils';
+import { Checkbox, FieldCaption, SelectField, TextField, ToggleChip } from '@/components/ui/field';
 
 /**
  * `DISC-02`'s right column below the samples: PRD §8.9's
@@ -58,7 +59,7 @@ const GOALS = ['Awareness', 'Engagement', 'Leads', 'Sales'] as const;
 
 const CARD = 'rounded-[20px] bg-white';
 const RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' };
-const FIELD = 'h-[48px] w-full rounded-[10px] bg-[#F2F3F5] px-[14px] text-16 text-ink outline-none';
+
 
 /** The next posting window from now, in the brand's timezone. */
 export function nextWindow(windows: number[], timezone: string, now = new Date()): { label: string; inHours: number } | null {
@@ -246,26 +247,28 @@ export function TrendContentPack({
         <p className="text-18 font-bold text-ink">Generate a content pack</p>
         <p className="mt-[6px] text-14 text-ink-muted">One draft per post type, written from this trend and your brief.</p>
 
+        {/* The shared control box — white on the hairline, as every drawn
+            field is. These were a grey-filled 48px box of their own. */}
         <div className="mt-[18px] grid gap-[14px] sm:grid-cols-2">
-          <label className="grid gap-[6px] text-14 font-medium text-ink sm:col-span-2">
-            Brief title
-            <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} className={FIELD} />
+          <label className="block sm:col-span-2">
+            <FieldCaption>Brief title</FieldCaption>
+            <TextField value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
           </label>
-          <label className="grid gap-[6px] text-14 font-medium text-ink">
-            Goal
-            <select value={goal} onChange={(e) => setGoal(e.target.value as (typeof GOALS)[number])} className={cn(FIELD, 'cursor-pointer')}>
+          <label className="block">
+            <FieldCaption>Goal</FieldCaption>
+            <SelectField value={goal} onChange={(e) => setGoal(e.target.value as (typeof GOALS)[number])}>
               {GOALS.map((g) => (
                 <option key={g}>{g}</option>
               ))}
-            </select>
+            </SelectField>
           </label>
-          <label className="grid gap-[6px] text-14 font-medium text-ink">
-            Call to action
-            <input value={cta} onChange={(e) => setCta(e.target.value)} maxLength={160} placeholder="e.g. Book a table" className={FIELD} />
+          <label className="block">
+            <FieldCaption>Call to action</FieldCaption>
+            <TextField value={cta} onChange={(e) => setCta(e.target.value)} maxLength={160} placeholder="e.g. Book a table" />
           </label>
         </div>
 
-        <p className="mt-[18px] text-14 font-medium text-ink">Post types</p>
+        <p className="mt-[18px] text-16 font-semibold text-ink">Post types</p>
         {choices.length === 0 ? (
           <p className="mt-[8px] text-14 text-ink-muted">
             {suggestion === undefined ? <Busy size={16}>Finding the formats you can run…</Busy> : 'No format is ready for this brand yet — the Re-purpose route says what is missing.'}
@@ -275,23 +278,20 @@ export function TrendContentPack({
             {choices.map((c) => {
               const on = types.includes(c.id);
               return (
-                <button
+                <ToggleChip
                   key={c.id}
-                  type="button"
-                  aria-pressed={on}
+                  pressed={on}
                   onClick={() => setTypes((t) => (on ? t.filter((x) => x !== c.id) : [...t, c.id]))}
-                  className="flex h-[38px] items-center rounded-[9px] px-[12px] text-14 font-semibold transition-colors"
-                  style={on ? { background: '#0C0C0C', color: '#FFFFFF' } : { background: '#FFFFFF', color: '#3B3B3B', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
                 >
                   {c.name}
-                </button>
+                </ToggleChip>
               );
             })}
           </div>
         )}
 
-        <label className="mt-[16px] flex items-center gap-[10px] text-14 font-medium text-ink">
-          <input type="checkbox" checked={ab} onChange={(e) => setAb(e.target.checked)} />
+        <label className="mt-[16px] flex cursor-pointer items-center gap-[10px] text-14 font-medium text-ink">
+          <Checkbox checkSize="sm" checked={ab} onChange={(e) => setAb(e.target.checked)} />
           Also write an A/B take of each (costs a little more)
         </label>
 

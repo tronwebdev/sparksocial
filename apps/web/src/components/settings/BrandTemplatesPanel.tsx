@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldLabel, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notify, notifyResult } from '@/lib/notify';
@@ -240,28 +240,30 @@ export function BrandTemplatesPanel() {
           */}
           <div className="mt-4 rounded-[10px] bg-panel-card p-3">
             <div className="flex flex-wrap items-end gap-2">
+              {/* A row with its button: `sm` fields, which are the default
+                  button's 44px, so field and Add share one line. */}
               <div className="min-w-[8rem]">
-                <label className="block text-12 text-ink-muted" htmlFor="tpl-name">
+                <FieldLabel size="sm" htmlFor="tpl-name">
                   Name
-                </label>
-                <Input
+                </FieldLabel>
+                <TextField
                   id="tpl-name"
+                  fieldSize="sm"
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
                   placeholder="optional"
-                  className="mt-1.5"
                 />
               </div>
               <div className="min-w-[16rem] flex-1">
-                <label className="block text-12 text-ink-muted" htmlFor="tpl-text">
+                <FieldLabel size="sm" htmlFor="tpl-text">
                   The line
-                </label>
-                <Input
+                </FieldLabel>
+                <TextField
                   id="tpl-text"
+                  fieldSize="sm"
                   value={draftText}
                   onChange={(e) => setDraftText(e.target.value)}
                   maxLength={280}
-                  className="mt-1.5"
                 />
               </div>
               <Button
@@ -283,14 +285,15 @@ export function BrandTemplatesPanel() {
             {SUGGESTIONS[tab].length > 0 ? (
               <div className="mt-3">
                 <p className="text-11 uppercase tracking-wide text-ink-muted">Suggestions</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <div className="mt-2 flex flex-wrap gap-2">
                   {SUGGESTIONS[tab].map((sug) => (
                     <button
                       key={sug}
                       type="button"
                       disabled={busy}
                       onClick={() => void add(tab, sug)}
-                      className="rounded-full bg-surface-muted px-3 py-1 text-left text-12 text-ink-muted hover:text-ink disabled:opacity-50"
+                      // The control box as a one-tap action, at `ToggleChip`'s size.
+                      className="ss-control inline-flex min-h-[38px] w-auto items-center px-4 py-1.5 text-left text-14 font-medium text-ink-muted transition-colors hover:text-ink disabled:opacity-50"
                     >
                       {sug}
                     </button>

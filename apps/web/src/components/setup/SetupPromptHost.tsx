@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SetupRequirement } from '@sparksocial/shared';
 import { Button } from '@/components/ui/button';
+import { controlClass } from '@/components/ui/field';
 import { Busy } from '@/components/brand/SparkLoader';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { CredentialConnectModal } from '@/components/settings/CredentialConnectModal';
@@ -113,8 +114,9 @@ function Body({ children }: { children: React.ReactNode }) {
   return <p className="mt-[8px] text-15 leading-[1.5] text-ink-muted">{children}</p>;
 }
 
-const fieldClass =
-  'mt-[18px] h-[52px] w-full rounded-[10px] border-0 bg-[#F3F4F8] px-[18px] text-16 text-ink outline-none focus:shadow-[inset_0_0_0_1.5px_var(--ss-accent-purple)]';
+/* The shared control box at `md`: white on the hairline with the app's purple
+   focus ring, where this was a grey-filled 52px box of its own. */
+const fieldClass = controlClass('md', 'mt-[18px]');
 
 /* ── A genome text field — the CTA ─────────────────────────────────────── */
 

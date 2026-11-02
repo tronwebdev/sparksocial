@@ -6,7 +6,7 @@ import { Busy } from '@/components/brand/SparkLoader';
 import { Badge } from '@/components/ui/badge';
 import { CAMPAIGN_STATE } from '@/lib/useCampaigns';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TextField } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
@@ -218,7 +218,9 @@ export function CampaignList({
                 <div className="min-w-0 flex-1">
                   {editing ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <Input
+                      {/* Inline with Save/Cancel: `sm`, the default button's 44px. */}
+                      <TextField
+                        fieldSize="sm"
                         autoFocus
                         value={draftName}
                         maxLength={120}
@@ -230,10 +232,10 @@ export function CampaignList({
                         className="max-w-[280px]"
                         aria-label={`Rename ${c.name}`}
                       />
-                      <Button size="sm" disabled={isWorking} onClick={() => void rename(c.campaignId)}>
+                      <Button disabled={isWorking} onClick={() => void rename(c.campaignId)}>
                         {isWorking ? <Busy size={16}>Saving…</Busy> : 'Save'}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setRenaming(null)}>
+                      <Button variant="ghost" onClick={() => setRenaming(null)}>
                         Cancel
                       </Button>
                     </div>

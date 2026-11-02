@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
+import { SelectField, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { notifyResult } from '@/lib/notify';
 import { userMessage } from '@/lib/errorCopy';
@@ -73,21 +74,25 @@ export function InfluencerPanel({ genomeId }: { genomeId: string }) {
   return (
     <div className="mt-[16px]">
       <div className="flex flex-wrap items-center gap-[12px]">
-        <select
+        {/* The wizard's own 58px dropdown (chevron included) and field, so this
+            row matches Frequency and Posting window above it — it was 60px
+            with no chevron. */}
+        <SelectField
+          fieldSize="lg"
           value={platform}
           onChange={(e) => setPlatform(e.target.value)}
           aria-label="Platform"
-          className="h-[60px] w-[170px] appearance-none rounded-[13px] bg-white px-[18px] text-17 font-medium text-ink outline-none"
-          style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)' }}
+          className="w-[170px]"
         >
           {PLATFORMS.map((p) => (
             <option key={p} value={p}>
               {p === 'x' ? 'X' : p === 'youtube_shorts' ? 'YouTube Shorts' : p[0]!.toUpperCase() + p.slice(1)}
             </option>
           ))}
-        </select>
+        </SelectField>
 
-        <input
+        <TextField
+          fieldSize="lg"
           value={handle}
           onChange={(e) => setHandle(e.target.value)}
           onKeyDown={(e) => {
@@ -98,15 +103,14 @@ export function InfluencerPanel({ genomeId }: { genomeId: string }) {
           }}
           placeholder="@handle"
           aria-label="Account handle"
-          className="h-[60px] min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[13px] bg-white px-[22px] text-17 font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
-          style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)' }}
+          className="w-auto min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full"
         />
 
         <button
           type="button"
           onClick={() => void change('add', platform, handle)}
           disabled={busy || !handle.trim()}
-          className="h-[60px] shrink-0 rounded-[13px] px-[22px] text-16 font-semibold text-ink transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="h-control-lg shrink-0 rounded-[12px] px-[22px] text-16 font-semibold text-ink transition-opacity hover:opacity-90 disabled:opacity-50"
           style={{ background: 'var(--ss-cyan-200)' }}
         >
           {busy ? <Busy>Saving…</Busy> : 'Watch'}

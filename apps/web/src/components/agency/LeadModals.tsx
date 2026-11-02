@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Busy } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
+import { FieldCaption, SelectField, TextArea, controlClass } from '@/components/ui/field';
 import { parseLeadCsv, type LeadCsvPreview, type LeadImportRow } from './leadCsv';
 import type { ImportResult } from './useLeads';
 import { TINT } from './statusTints';
@@ -83,15 +84,17 @@ const BTN_GHOST =
 const BTN_SOLID =
   'h-[44px] rounded-[10px] bg-ink px-[22px] text-16 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50';
 
-const FIELD =
-  'h-[52px] w-full rounded-[11px] bg-white px-[16px] text-15 font-medium text-ink outline-none';
+/* The shared control box at `md` (54, r12, 0.28 hairline, the purple focus
+   ring) — these modals have no prototype, and their own 52/r11 box with no
+   focus state was one more variant of the same field. */
+const FIELD = controlClass('md');
 const RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' } as const;
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-15 font-semibold text-ink">{label}</span>
-      <span className="mt-[8px] block">{children}</span>
+      <FieldCaption>{label}</FieldCaption>
+      <span className="block">{children}</span>
     </label>
   );
 }
@@ -236,7 +239,7 @@ export function LeadImportModal({
         aria-label="CSV text"
         placeholder={'Business Name,Email,Phone,Location\nSunnyvale Innovations,hi@sunnyvale.test,+1 555 010 2030,"Sunnyvale, CA"'}
         spellCheck={false}
-        className="mt-[16px] h-[150px] w-full resize-none rounded-[11px] bg-white p-[14px] font-mono text-13 leading-[1.5] text-ink outline-none"
+        className="ss-field mt-[16px] h-[150px] w-full resize-none rounded-[11px] bg-white p-[14px] font-mono text-13 leading-[1.5] text-ink outline-none"
         style={RING}
       />
 
@@ -402,34 +405,28 @@ export function LeadAddModal({
               onChange={(e) => set({ businessName: e.target.value })}
               placeholder="Sunnyvale Innovations"
               className={FIELD}
-              style={RING}
               autoFocus
             />
           </Field>
         </div>
         <Field label="Contact name">
-          <input value={row.contactName ?? ''} onChange={(e) => set({ contactName: e.target.value })} className={FIELD} style={RING} />
+          <input value={row.contactName ?? ''} onChange={(e) => set({ contactName: e.target.value })} className={FIELD} />
         </Field>
         <Field label="Email">
-          <input value={row.email ?? ''} onChange={(e) => set({ email: e.target.value })} type="email" className={FIELD} style={RING} />
+          <input value={row.email ?? ''} onChange={(e) => set({ email: e.target.value })} type="email" className={FIELD} />
         </Field>
         <Field label="Phone">
-          <input value={row.phone ?? ''} onChange={(e) => set({ phone: e.target.value })} inputMode="tel" className={FIELD} style={RING} />
+          <input value={row.phone ?? ''} onChange={(e) => set({ phone: e.target.value })} inputMode="tel" className={FIELD} />
         </Field>
         <Field label="Location">
-          <input value={row.location ?? ''} onChange={(e) => set({ location: e.target.value })} className={FIELD} style={RING} />
+          <input value={row.location ?? ''} onChange={(e) => set({ location: e.target.value })} className={FIELD} />
         </Field>
         <Field label="How they arrived">
-          <select
-            value={row.source}
-            onChange={(e) => set({ source: e.target.value as typeof row.source })}
-            className={`${FIELD} cursor-pointer appearance-none`}
-            style={RING}
-          >
+          <SelectField value={row.source} onChange={(e) => set({ source: e.target.value as typeof row.source })}>
             <option value="manual">Added by hand</option>
             <option value="referral">Referral</option>
             <option value="inbound">They got in touch</option>
-          </select>
+          </SelectField>
         </Field>
         <Field label="What they want">
           <input
@@ -437,17 +434,11 @@ export function LeadAddModal({
             onChange={(e) => set({ interest: e.target.value })}
             placeholder="Social media management"
             className={FIELD}
-            style={RING}
           />
         </Field>
         <div className="col-span-2">
           <Field label="Notes">
-            <textarea
-              value={row.notes ?? ''}
-              onChange={(e) => set({ notes: e.target.value })}
-              className="h-[90px] w-full resize-none rounded-[11px] bg-white p-[14px] text-15 font-medium text-ink outline-none"
-              style={RING}
-            />
+            <TextArea value={row.notes ?? ''} onChange={(e) => set({ notes: e.target.value })} className="h-[90px] resize-none" />
           </Field>
         </div>
       </div>

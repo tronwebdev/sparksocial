@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldCaption, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { userMessage } from '@/lib/errorCopy';
@@ -253,18 +253,18 @@ function RuleForm({
       </div>
 
       {trigger === 'spend_over' && (
-        <label className="grid gap-1">
-          <span className="text-12 font-medium text-ink">Amount</span>
-          <span className="text-11 text-ink-muted">
+        <label className="block">
+          <FieldCaption className="mb-1">Amount</FieldCaption>
+          <span className="block text-14 text-ink-muted">
             Anything estimated above this waits. Exactly this amount goes through.
           </span>
-          <Input
+          <TextField
             type="number"
             min={0}
             step="1"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="mt-1 w-32 tabular-nums"
+            className="mt-[10px] w-32 tabular-nums"
             aria-label="Amount in dollars"
           />
         </label>

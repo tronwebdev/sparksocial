@@ -3,7 +3,7 @@
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldCaption, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { userMessage } from '@/lib/errorCopy';
@@ -140,7 +140,7 @@ export function OffersSection() {
           The line that closes a post &mdash; &ldquo;Book now&rdquo;, &ldquo;DM for prices&rdquo;. SPARK uses it
           word for word and will not invent one, so fourteen post formats cannot be drafted until it is set.
         </p>
-        <Input
+        <TextField
           value={cta}
           onChange={(e) => setCta(e.target.value)}
           placeholder="Book a free demo"
@@ -171,25 +171,29 @@ export function OffersSection() {
               className="rounded-[12px] bg-white p-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)]"
             >
               <div className="flex flex-wrap items-end gap-[12px]">
-                <label className="grid min-w-[200px] flex-1 gap-[6px]">
-                  <span className="text-13 font-medium text-ink">Name</span>
-                  <Input
+                {/* A row with its Remove button: `sm` fields, the button's 44px. */}
+                <label className="min-w-[200px] flex-1">
+                  <FieldCaption size="sm">Name</FieldCaption>
+                  <TextField
+                    fieldSize="sm"
                     value={p.name}
                     onChange={(e) => update(i, { name: e.target.value })}
                     placeholder="Revenue Workforce plan"
                   />
                 </label>
-                <label className="grid w-[140px] gap-[6px]">
-                  <span className="text-13 font-medium text-ink">Price</span>
-                  <Input
+                <label className="w-[140px]">
+                  <FieldCaption size="sm">Price</FieldCaption>
+                  <TextField
+                    fieldSize="sm"
                     value={p.price ?? ''}
                     onChange={(e) => update(i, { price: e.target.value })}
                     placeholder="£49/mo"
                   />
                 </label>
-                <label className="grid min-w-[200px] flex-1 gap-[6px]">
-                  <span className="text-13 font-medium text-ink">Link</span>
-                  <Input
+                <label className="min-w-[200px] flex-1">
+                  <FieldCaption size="sm">Link</FieldCaption>
+                  <TextField
+                    fieldSize="sm"
                     value={p.cta_url ?? ''}
                     onChange={(e) => update(i, { cta_url: e.target.value })}
                     placeholder="https://…"
@@ -197,7 +201,6 @@ export function OffersSection() {
                   />
                 </label>
                 <Button
-                  size="sm"
                   variant="ghost"
                   onClick={() => setProducts((list) => list.filter((_, n) => n !== i))}
                   aria-label={`Remove ${p.name || `offer ${i + 1}`}`}

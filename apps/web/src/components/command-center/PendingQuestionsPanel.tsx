@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/field';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
@@ -133,15 +134,16 @@ export function PendingQuestionsPanel() {
               ) : null}
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <input
+                {/* A field and its button: `sm`, the default button's 44px. */}
+                <TextField
+                  fieldSize="sm"
                   value={drafts[q.messageId] ?? ''}
                   onChange={(e) => setDrafts((d) => ({ ...d, [q.messageId]: e.target.value }))}
                   disabled={answering === q.messageId}
                   placeholder="Type an answer, or pick an option above"
-                  className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+                  className="w-auto min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full"
                 />
                 <Button
-                  size="sm"
                   disabled={answering === q.messageId || !(drafts[q.messageId] ?? '').trim()}
                   onClick={() => void submitAnswer(q.messageId)}
                 >

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Checkbox, DateField, FieldLabel, SelectField, TextField, ToggleChip } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
-import { cn } from '@/lib/utils';
 import { notifyResult } from '@/lib/notify';
 import { Busy } from '@/components/brand/SparkLoader';
 
@@ -144,49 +144,45 @@ export function PolicyPanel() {
           <p className="text-13 font-medium text-ink">Always require review for</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {PLATFORMS.map((p) => (
-              <button
+              <ToggleChip
                 key={p}
-                type="button"
+                pressed={restrictedPlatforms.includes(p)}
+                announce={false}
                 onClick={() => togglePlatform(p)}
-                className={`rounded-full border px-3 py-1.5 text-13 capitalize ${
-                  restrictedPlatforms.includes(p) ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-ink hover:bg-surface-muted'
-                }`}
+                className="capitalize"
               >
                 {p.replace('_', ' ')}
-              </button>
+              </ToggleChip>
             ))}
           </div>
         </div>
 
         <div>
-          <label className="text-13 font-medium text-ink" htmlFor="policy-content-types">
-            Restricted content types (comma-separated)
-          </label>
-          <input
+          <FieldLabel htmlFor="policy-content-types">Restricted content types (comma-separated)</FieldLabel>
+          <TextField
             id="policy-content-types"
             value={contentTypesText}
             onChange={(e) => setContentTypesText(e.target.value)}
             placeholder="e.g. ai_ugc_testimonial, offer_availability"
-            className="mt-1 h-9 w-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-13 text-ink placeholder:text-ink-placeholder"
           />
         </div>
 
         <div className="flex flex-wrap gap-6">
-          <label className="flex items-center gap-2 text-13 text-ink">
-            <input type="checkbox" checked={spendCredits} onChange={(e) => setSpendCredits(e.target.checked)} />
+          <label className="flex cursor-pointer items-center gap-2.5 text-14 font-medium text-ink">
+            <Checkbox checkSize="sm" checked={spendCredits} onChange={(e) => setSpendCredits(e.target.checked)} />
             Allow spending credits
           </label>
-          <label className="flex items-center gap-2 text-13 text-ink">
-            <input type="checkbox" checked={automationAutoPublish} onChange={(e) => setAutomationAutoPublish(e.target.checked)} />
+          <label className="flex cursor-pointer items-center gap-2.5 text-14 font-medium text-ink">
+            <Checkbox checkSize="sm" checked={automationAutoPublish} onChange={(e) => setAutomationAutoPublish(e.target.checked)} />
             Allow automation recipes to autopublish
           </label>
           {/* PRD §6's fifth permission control, and the one guarding the money:
               an avatar video is 50¢ a call and a dub 60¢. Distinct from the
               spend cap, which answers "can we afford it" rather than "should a
               person look first". */}
-          <label className="flex items-center gap-2 text-13 text-ink">
-            <input
-              type="checkbox"
+          <label className="flex cursor-pointer items-center gap-2.5 text-14 font-medium text-ink">
+            <Checkbox
+              checkSize="sm"
               checked={requireApprovalForMedia}
               onChange={(e) => setRequireApprovalForMedia(e.target.checked)}
             />
@@ -206,24 +202,18 @@ export function PolicyPanel() {
             {PUBLISH_ROLES.map((r) => {
               const on = publishRoles.includes(r);
               return (
-                <button
+                <ToggleChip
                   key={r}
-                  type="button"
-                  aria-pressed={on}
+                  pressed={on}
                   onClick={() =>
                     setPublishRoles((prev) =>
                       prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r],
                     )
                   }
-                  className={cn(
-                    'rounded border px-2.5 py-1 text-12 capitalize transition-colors',
-                    on
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border text-ink hover:bg-surface-muted',
-                  )}
+                  className="capitalize"
                 >
                   {r}
-                </button>
+                </ToggleChip>
               );
             })}
           </div>
@@ -231,20 +221,20 @@ export function PolicyPanel() {
 
         {/* PRD §10: queue caps, the mitigation for "automation floods calendars" */}
         <div className="max-w-xs">
-          <label className="text-13 font-medium text-ink" htmlFor="policy-queue-cap">
+          <FieldLabel htmlFor="policy-queue-cap" className="mb-0">
             Stop SPARK when this many items await review
-          </label>
+          </FieldLabel>
           <p className="mt-0.5 text-12 text-ink-muted">
             Leave empty for no limit. You can always keep clearing the queue yourself — this only stops
             SPARK adding to it.
           </p>
-          <input
+          <TextField
             id="policy-queue-cap"
             value={maxPendingReview}
             inputMode="numeric"
             onChange={(e) => setMaxPendingReview(e.target.value.replace(/[^0-9]/g, ''))}
             placeholder="e.g. 25"
-            className="mt-1.5 h-9 w-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-13 text-ink placeholder:text-ink-placeholder"
+            className="mt-[9px] tabular-nums"
           />
         </div>
 
@@ -261,25 +251,30 @@ export function PolicyPanel() {
             </div>
           ))}
           <div className="mt-2 flex flex-wrap items-end gap-2">
-            <input
+            {/* A filter-row: `sm` controls, and the default 44px button beside
+                them so the row shares one baseline. */}
+            <DateField
               type="datetime-local"
+              fieldSize="sm"
               value={newWindow.from}
               onChange={(e) => setNewWindow((w) => ({ ...w, from: e.target.value }))}
-              className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-12 text-ink"
+              className="w-[236px] max-cq-canvas:w-full"
             />
-            <input
+            <DateField
               type="datetime-local"
+              fieldSize="sm"
               value={newWindow.to}
               onChange={(e) => setNewWindow((w) => ({ ...w, to: e.target.value }))}
-              className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-12 text-ink"
+              className="w-[236px] max-cq-canvas:w-full"
             />
-            <input
+            <TextField
+              fieldSize="sm"
               value={newWindow.reason}
               onChange={(e) => setNewWindow((w) => ({ ...w, reason: e.target.value }))}
               placeholder="reason"
-              className="h-9 min-w-[140px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-12 text-ink placeholder:text-ink-placeholder"
+              className="w-auto min-w-[140px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full"
             />
-            <Button size="sm" variant="outline" onClick={addWindow}>
+            <Button variant="secondary" onClick={addWindow}>
               Add window
             </Button>
           </div>
@@ -302,24 +297,26 @@ export function PolicyPanel() {
             </div>
           ))}
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <input
+            <TextField
+              fieldSize="sm"
               value={newFamily.family}
               onChange={(e) => setNewFamily((f) => ({ ...f, family: e.target.value }))}
               placeholder="e.g. content, publish, learning"
-              className="h-9 min-w-[140px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-12 text-ink placeholder:text-ink-placeholder"
+              className="w-auto min-w-[140px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full"
             />
-            <select
+            <SelectField
+              fieldSize="sm"
               value={newFamily.autonomy}
               onChange={(e) => setNewFamily((f) => ({ ...f, autonomy: e.target.value }))}
-              className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-12 text-ink"
+              className="w-[160px]"
             >
               {AUTONOMY_OPTIONS.map((a) => (
                 <option key={a} value={a}>
                   {a}
                 </option>
               ))}
-            </select>
-            <Button size="sm" variant="outline" onClick={addFamilyOverride}>
+            </SelectField>
+            <Button variant="secondary" onClick={addFamilyOverride}>
               Add override
             </Button>
           </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Busy } from '@/components/brand/SparkLoader';
+import { TextField } from '@/components/ui/field';
 import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import type { AgentStatusView } from './AgentControlBar';
@@ -106,8 +107,9 @@ export function AdjustFrequency({
           <label className="block text-14 text-ink-muted" htmlFor="ss-freq">
             Posts per week
           </label>
-          <input
+          <TextField
             id="ss-freq"
+            fieldSize="sm"
             type="number"
             min={MIN}
             max={MAX}
@@ -117,7 +119,7 @@ export function AdjustFrequency({
             onKeyDown={(e) => {
               if (e.key === 'Enter') void save();
             }}
-            className="mt-1.5 h-10 w-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] px-3 text-16 text-ink outline-none"
+            className="mt-1.5 tabular-nums"
           />
           {error ? <p className="mt-1.5 text-13 text-destructive">{error}</p> : null}
           <button

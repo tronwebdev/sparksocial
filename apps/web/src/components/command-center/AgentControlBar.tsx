@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TextField } from '@/components/ui/field';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
@@ -111,18 +111,19 @@ export function AgentControlBar({
 
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4">
         <span className="text-13 text-ink-muted">Posting frequency</span>
-        <Input
+        {/* `sm`, the same 44 as the button that sets it. */}
+        <TextField
+          fieldSize="sm"
           type="number"
           min={1}
           max={14}
           value={freqDraft ?? String(status.postsPerWeek)}
           onChange={(e) => setFreqDraft(e.target.value)}
-          className="h-9 w-20"
+          className="w-24 tabular-nums"
           aria-label="Posts per week"
         />
         <span className="text-13 text-ink-muted">posts / week</span>
         <Button
-          size="sm"
           variant="outline"
           disabled={busy || freqDraft === null || freqDraft === String(status.postsPerWeek)}
           onClick={() => void submitFrequency()}

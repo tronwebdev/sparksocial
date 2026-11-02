@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FieldCaption, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
 import { CREDIT_CATEGORY_HINT, creditsToCents } from '@sparksocial/shared/credits';
@@ -341,32 +341,35 @@ function LimitEditor({ usage, onDone }: { usage: Usage; onDone: () => Promise<vo
   };
 
   return (
-    <div className="mt-3 grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface-muted p-4">
-      <label className="grid gap-1">
-        <span className="text-12 font-medium text-ink">Monthly limit</span>
-        <span className="text-11 text-ink-muted">
+    // An edit form on its card: the soft filled panel the Brand Kit sections
+    // use, white controls on it — not a stroked box (`KitSection`).
+    <div className="mt-3 grid grid-cols-1 gap-5 rounded-[10px] bg-panel p-4">
+      <label className="block">
+        <FieldCaption className="mb-1">Monthly limit</FieldCaption>
+        <span className="block text-14 text-ink-muted">
           Your plan&rsquo;s ceiling is {credits(usage.monthlyCapCredits)} credits. You can hold the workspace
           below it, not above.
         </span>
-        <Input
+        <TextField
           type="number"
           min={0}
           value={cap}
           onChange={(e) => setCap(e.target.value)}
-          className="mt-1 w-40 tabular-nums"
+          className="mt-[10px] w-40 tabular-nums"
           aria-label="Monthly limit in credits"
         />
       </label>
 
       <div className="grid gap-3">
-        <span className="text-12 font-medium text-ink">Limit per kind of work</span>
+        <FieldCaption className="mb-0">Limit per kind of work</FieldCaption>
         {usage.byCategory.map((c) => (
           <label key={c.category} className="flex items-center justify-between gap-3">
-            <span className="text-12 text-ink">
+            <span className="text-15 text-ink">
               {c.label}
-              <span className="ml-2 text-11 text-ink-muted">{credits(c.credits)} cr used</span>
+              <span className="ml-2 text-13 text-ink-muted">{credits(c.credits)} cr used</span>
             </span>
-            <Input
+            <TextField
+              fieldSize="sm"
               type="number"
               min={0}
               placeholder="No limit"

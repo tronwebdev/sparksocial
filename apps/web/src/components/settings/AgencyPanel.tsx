@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Checkbox, FieldLabel, SelectField, TextField, ToggleChip } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notifyResult } from '@/lib/notify';
@@ -131,17 +132,15 @@ export function AgencyPanel() {
           <p className="text-13 font-medium text-ink-muted">Plan</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {(['starter', 'growth', 'agency'] as const).map((p) => (
-              <button
+              <ToggleChip
                 key={p}
-                type="button"
+                pressed={settings.plan === p}
+                announce={false}
                 disabled={busy}
                 onClick={() => void changePlan(p)}
-                className={`rounded-full border px-3 py-1.5 text-13 disabled:opacity-50 ${
-                  settings.plan === p ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-ink hover:bg-surface-muted'
-                }`}
               >
                 {PLAN_LABEL[p]}
-              </button>
+              </ToggleChip>
             ))}
           </div>
           <p className="mt-2 text-12 text-ink-muted">Spend cap: ${(settings.monthlyCapCents / 100).toLocaleString()} / month</p>
@@ -151,17 +150,16 @@ export function AgencyPanel() {
           <p className="text-13 font-medium text-ink-muted">New brands start on</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {(['autopublish', 'review_first_week', 'review_everything'] as const).map((m) => (
-              <button
+              <ToggleChip
                 key={m}
-                type="button"
+                pressed={settings.defaultApprovalMode === m}
+                announce={false}
                 disabled={busy}
                 onClick={() => void changeGovernance({ defaultApprovalMode: m })}
-                className={`rounded-full border px-3 py-1.5 text-12 capitalize disabled:opacity-50 ${
-                  settings.defaultApprovalMode === m ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-ink hover:bg-surface-muted'
-                }`}
+                className="capitalize"
               >
                 {m.replace(/_/g, ' ')}
-              </button>
+              </ToggleChip>
             ))}
           </div>
           <p className="mt-2 text-12 text-ink-muted">Existing brands keep whatever mode they are already on.</p>
@@ -171,13 +169,13 @@ export function AgencyPanel() {
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <p className="text-13 font-medium text-ink-muted">Security</p>
-          <label className="mt-2 flex items-center gap-2 text-13 text-ink">
-            <input type="checkbox" checked={settings.ssoRequired} disabled={busy} onChange={() => void toggleSso()} />
+          <label className="mt-3 flex cursor-pointer items-center gap-2.5 text-14 font-medium text-ink">
+            <Checkbox checkSize="sm" checked={settings.ssoRequired} disabled={busy} onChange={() => void toggleSso()} />
             Require SSO
           </label>
-          <label className="mt-2 flex items-center gap-2 text-13 text-ink">
-            <input
-              type="checkbox"
+          <label className="mt-2.5 flex cursor-pointer items-center gap-2.5 text-14 font-medium text-ink">
+            <Checkbox
+              checkSize="sm"
               checked={settings.twoFactorRequired}
               disabled={busy}
               onChange={() => void changeGovernance({ twoFactorRequired: !settings.twoFactorRequired })}
@@ -194,39 +192,39 @@ export function AgencyPanel() {
         <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <p className="text-13 font-medium text-ink-muted">Data governance</p>
 
-          <label className="mt-2 block text-12 text-ink-muted" htmlFor="org-residency">
+          <FieldLabel size="sm" htmlFor="org-residency" className="mt-3">
             Data residency
-          </label>
-          <select
+          </FieldLabel>
+          <SelectField
             id="org-residency"
+            fieldSize="sm"
             value={settings.dataResidency}
             disabled={busy}
             onChange={(e) => void changeGovernance({ dataResidency: e.target.value })}
-            className="mt-1 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-1.5 text-13 text-ink disabled:opacity-50"
           >
             {Object.entries(RESIDENCY_LABEL).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
             ))}
-          </select>
+          </SelectField>
 
-          <label className="mt-3 block text-12 text-ink-muted" htmlFor="org-retention">
+          <FieldLabel size="sm" htmlFor="org-retention" className="mt-3">
             Keep content, inbox messages and audit history for
-          </label>
-          <select
+          </FieldLabel>
+          <SelectField
             id="org-retention"
+            fieldSize="sm"
             value={settings.retentionDays == null ? '' : String(settings.retentionDays)}
             disabled={busy}
             onChange={(e) => void changeGovernance({ retentionDays: e.target.value === '' ? null : Number(e.target.value) })}
-            className="mt-1 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-1.5 text-13 text-ink disabled:opacity-50"
           >
             {RETENTION_CHOICES.map((c) => (
               <option key={c.label} value={c.value == null ? '' : String(c.value)}>
                 {c.label}
               </option>
             ))}
-          </select>
+          </SelectField>
 
           <p className="mt-2 text-12 text-ink-muted">
             {settings.dataResidency === 'any'
@@ -319,26 +317,28 @@ function CreditsCard({
         <p className="mt-1 text-12 text-ink-muted">Cap: ${(cap / 100).toLocaleString()}/month. Grant a credit to see the current balance.</p>
       )}
       <div className="mt-3 flex flex-wrap items-end gap-2">
-        <div className="grid grid-cols-1 gap-1">
-          <label className="text-12 font-medium text-ink-muted">Amount ($)</label>
-          <input
+        {/* A row with Grant: `sm` fields, the default button's 44px. */}
+        <div>
+          <FieldLabel size="sm">Amount ($)</FieldLabel>
+          <TextField
+            fieldSize="sm"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="50.00"
             inputMode="decimal"
-            className="h-9 w-28 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder"
+            className="w-28 tabular-nums"
           />
         </div>
-        <div className="grid grid-cols-1 flex-1 gap-1">
-          <label className="text-12 font-medium text-ink-muted">Reason</label>
-          <input
+        <div className="flex-1">
+          <FieldLabel size="sm">Reason</FieldLabel>
+          <TextField
+            fieldSize="sm"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Goodwill credit for a slow month"
-            className="h-9 w-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder"
           />
         </div>
-        <Button size="sm" variant="outline" disabled={busy || !amount || !reason.trim()} onClick={() => void grant()}>
+        <Button variant="outline" disabled={busy || !amount || !reason.trim()} onClick={() => void grant()}>
           {busy ? <Busy>Granting…</Busy> : 'Grant'}
         </Button>
       </div>
@@ -362,25 +362,20 @@ function NewBrandForm({ onCreated }: { onCreated: () => void }) {
 
   return (
     <div className="mt-3 grid grid-cols-1 gap-2 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-      <div className="grid grid-cols-1 gap-1">
-        <label className="text-12 font-medium text-ink-muted">Brand name</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Client name"
-          className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder"
-        />
+      <div>
+        <FieldLabel size="sm">Brand name</FieldLabel>
+        <TextField fieldSize="sm" value={name} onChange={(e) => setName(e.target.value)} placeholder="Client name" />
       </div>
-      <div className="grid grid-cols-1 gap-1">
-        <label className="text-12 font-medium text-ink-muted">Category</label>
-        <input
+      <div>
+        <FieldLabel size="sm">Category</FieldLabel>
+        <TextField
+          fieldSize="sm"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           placeholder="e.g. Barbershop"
-          className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder"
         />
       </div>
-      <Button size="sm" disabled={busy || !name.trim() || !category.trim()} onClick={() => void create()}>
+      <Button disabled={busy || !name.trim() || !category.trim()} onClick={() => void create()}>
         {busy ? <Busy>Creating…</Busy> : 'Create'}
       </Button>
     </div>

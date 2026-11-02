@@ -409,7 +409,10 @@ function StepModel({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wizard
 
 /* ── step 2 · identity ───────────────────────────────────────────────── */
 
-const FIELD = 'h-[56px] w-full rounded-[12px] bg-white px-[18px] text-15 font-medium text-ink outline-none';
+/* The prototype's identity fields (56, r12, 0.25 hairline, 15/500), kept at
+   their measured size; `ss-field` adds the app's one focus ring, which an
+   outline-free field with an inline hairline otherwise has none of. */
+const FIELD = 'ss-field h-[56px] w-full rounded-[12px] bg-white px-[18px] text-15 font-medium text-ink outline-none';
 const RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' } as const;
 
 const AGENCY_MODEL = ['local_business', 'personal_brand'] as const;
@@ -490,7 +493,7 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
             onChange={(e) => set({ tagline: e.target.value })}
             placeholder="Enter tagline"
             aria-label="Tagline"
-            className="h-[150px] w-full resize-none rounded-[12px] bg-white px-[18px] py-[14px] text-15 font-medium text-ink outline-none"
+            className="ss-field h-[150px] w-full resize-none rounded-[12px] bg-white px-[18px] py-[14px] text-15 font-medium text-ink outline-none"
             style={RING}
           />
         </Field>

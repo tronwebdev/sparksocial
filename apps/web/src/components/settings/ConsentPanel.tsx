@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FieldLabel, SelectField, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { notifyResult } from '@/lib/notify';
@@ -99,48 +100,44 @@ export function ConsentPanel() {
       {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
       <div className="mt-4 flex min-w-0 flex-wrap items-end gap-3">
-        <div className="grid grid-cols-1 gap-1">
-          <label className="text-12 font-medium text-ink-muted" htmlFor="consent-kind">
+        {/* One row with its button: `sm` controls, the default button's 44px. */}
+        <div>
+          <FieldLabel size="sm" htmlFor="consent-kind">
             Type
-          </label>
-          <select
-            id="consent-kind"
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink"
-          >
+          </FieldLabel>
+          <SelectField id="consent-kind" fieldSize="sm" value={kind} onChange={(e) => setKind(e.target.value)} className="w-auto min-w-[180px]">
             {KINDS.map((k) => (
               <option key={k.value} value={k.value}>
                 {k.label}
               </option>
             ))}
-          </select>
+          </SelectField>
         </div>
-        <div className="grid grid-cols-1 min-w-[200px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full gap-1">
-          <label className="text-12 font-medium text-ink-muted" htmlFor="consent-subject">
+        <div className="min-w-[200px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
+          <FieldLabel size="sm" htmlFor="consent-subject">
             Whose likeness/voice (name)
-          </label>
-          <input
+          </FieldLabel>
+          <TextField
             id="consent-subject"
+            fieldSize="sm"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="e.g. Emeka Okafor"
-            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
-        <div className="grid grid-cols-1 min-w-[200px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full gap-1">
-          <label className="text-12 font-medium text-ink-muted" htmlFor="consent-evidence">
+        <div className="min-w-[200px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
+          <FieldLabel size="sm" htmlFor="consent-evidence">
             Evidence URL (optional)
-          </label>
-          <input
+          </FieldLabel>
+          <TextField
             id="consent-evidence"
+            fieldSize="sm"
             value={evidenceUrl}
             onChange={(e) => setEvidenceUrl(e.target.value)}
             placeholder="https://…"
-            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
-        <Button size="sm" disabled={busy || !subject.trim()} onClick={() => void grant()}>
+        <Button disabled={busy || !subject.trim()} onClick={() => void grant()}>
           {busy ? <Busy>Recording…</Busy> : 'Record consent'}
         </Button>
       </div>

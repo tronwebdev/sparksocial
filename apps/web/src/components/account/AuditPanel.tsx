@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Checkbox, DateField, FieldLabel, SelectField, TextField } from '@/components/ui/field';
 import { invoke } from '@/lib/tools';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -197,53 +197,57 @@ export function AuditPanel() {
       </div>
 
       {/* ── Filters. The feature, not the table. ────────────────────────── */}
+      {/* A filter row: every control `sm` (44), so the text, date and select
+          boxes share one height and the date fields carry the design's
+          calendar glyph instead of each browser's own. */}
       <div className="mt-4 flex flex-wrap items-end gap-3">
         {tab === 'calls' ? (
           <div className="min-w-[180px]">
-            <label className="block text-12 text-ink-muted" htmlFor="audit-tool">
+            <FieldLabel size="sm" htmlFor="audit-tool">
               Tool
-            </label>
-            <Input
+            </FieldLabel>
+            <TextField
               id="audit-tool"
+              fieldSize="sm"
               value={tool}
               onChange={(e) => setTool(e.target.value)}
               placeholder="publish.now"
-              className="mt-1"
             />
           </div>
         ) : null}
         <div>
-          <label className="block text-12 text-ink-muted" htmlFor="audit-since">
+          <FieldLabel size="sm" htmlFor="audit-since">
             From
-          </label>
-          <Input id="audit-since" type="date" value={since} onChange={(e) => setSince(e.target.value)} className="mt-1" />
+          </FieldLabel>
+          <DateField id="audit-since" fieldSize="sm" value={since} onChange={(e) => setSince(e.target.value)} className="w-[180px]" />
         </div>
         <div>
-          <label className="block text-12 text-ink-muted" htmlFor="audit-until">
+          <FieldLabel size="sm" htmlFor="audit-until">
             To
-          </label>
-          <Input id="audit-until" type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="mt-1" />
+          </FieldLabel>
+          <DateField id="audit-until" fieldSize="sm" value={until} onChange={(e) => setUntil(e.target.value)} className="w-[180px]" />
         </div>
         <div>
-          <label className="block text-12 text-ink-muted" htmlFor="audit-limit">
+          <FieldLabel size="sm" htmlFor="audit-limit">
             Rows
-          </label>
-          <select
+          </FieldLabel>
+          <SelectField
             id="audit-limit"
+            fieldSize="sm"
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}
-            className="mt-1 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-13 text-ink"
+            className="w-[96px]"
           >
             {LIMITS.map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
             ))}
-          </select>
+          </SelectField>
         </div>
         {tab === 'calls' ? (
-          <label className="flex items-center gap-2 pb-2 text-13 text-ink">
-            <input type="checkbox" checked={refusalsOnly} onChange={(e) => setRefusalsOnly(e.target.checked)} />
+          <label className="flex h-control-sm cursor-pointer items-center gap-2.5 text-14 font-medium text-ink">
+            <Checkbox checkSize="sm" checked={refusalsOnly} onChange={(e) => setRefusalsOnly(e.target.checked)} />
             Refusals only
           </label>
         ) : null}
