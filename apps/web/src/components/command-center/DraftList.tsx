@@ -8,6 +8,7 @@ import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { VariantResult } from './VariantResult';
 import { userMessage } from '@/lib/errorCopy';
+import { useContentRevision } from '@/lib/contentEvents';
 
 /**
  * CC-03 — the Draft List: everything a genome has in flight, across every
@@ -85,6 +86,8 @@ export function DraftList({
   const [ctaTraffic, setCtaTraffic] = useState<Record<string, CtaTraffic>>({});
   const [metricsLoading, setMetricsLoading] = useState<string | null>(null);
   const [metricsError, setMetricsError] = useState<Record<string, string>>({});
+  /* Re-read when the Draft Panel changes a post — see `contentEvents`. */
+  const contentRev = useContentRevision();
 
   useEffect(() => {
     if (!genomeId) return;
@@ -102,7 +105,7 @@ export function DraftList({
     return () => {
       cancelled = true;
     };
-  }, [genomeId, refreshKey]);
+  }, [genomeId, refreshKey, contentRev]);
 
   async function syncMetrics(contentItemId: string) {
     if (!genomeId || syncing) return;

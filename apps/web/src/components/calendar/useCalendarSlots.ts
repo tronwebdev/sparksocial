@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
+import { useContentRevision } from '@/lib/contentEvents';
 
 /**
  * The rows every calendar span draws from.
@@ -65,9 +66,11 @@ export function useCalendarSlots(genomeId: string | undefined, refreshKey = 0): 
     setSlots(res.output.items.filter((s) => Boolean(s.scheduledAt)));
   }, [genomeId]);
 
+  /* Re-read when the Draft Panel changes a post — see `contentEvents`. */
+  const contentRev = useContentRevision();
   useEffect(() => {
     void reload();
-  }, [reload, refreshKey]);
+  }, [reload, refreshKey, contentRev]);
 
   return { slots, error, reload };
 }

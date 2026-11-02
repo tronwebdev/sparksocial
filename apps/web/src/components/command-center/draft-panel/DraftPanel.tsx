@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
+import { announceContentChanged } from '@/lib/contentEvents';
 import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
@@ -261,8 +262,21 @@ export function DraftPanel({
   /** Clear the screen if this job is still the one on it, and say so if nobody is watching. */
   function finishJob(job: GenJob, ok: boolean) {
     setGenerating((g) => (g === job ? null : g));
-    if (ok && !openRef.current) notify.success(readyTitle(job), { body: 'Open the draft to see it.' });
+    if (!ok) return;
+    announceContentChanged();
+    if (!openRef.current) notify.success(readyTitle(job), { body: 'Open the draft to see it.' });
   }
+
+  /*
+    And once more on the way out. Everything else this panel writes — a hand
+    edit, a retime, a schedule, a delete — happens behind the drawer, so the
+    lists only need to catch up when it closes, not after every keystroke.
+  */
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    if (wasOpen.current && !open) announceContentChanged();
+    wasOpen.current = open;
+  }, [open]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');

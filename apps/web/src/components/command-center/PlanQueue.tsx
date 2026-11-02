@@ -18,6 +18,7 @@ import { EmptyCard } from '@/components/common/EmptyCard';
 import { userMessage } from '@/lib/errorCopy';
 import { CampaignTag } from '@/components/common/CampaignTag';
 import type { CampaignInfo } from '@/lib/useCampaigns';
+import { useContentRevision } from '@/lib/contentEvents';
 
 /**
  * §7.5's **Plan** queue — the fourth of the four the PRD makes first-class.
@@ -148,6 +149,8 @@ export function PlanQueue({
   /** The row being removed, likewise. */
   const [removing, setRemoving] = useState<string | null>(null);
 
+  /* Re-read when the Draft Panel changes a post — see `contentEvents`. */
+  const contentRev = useContentRevision();
   const load = useCallback(async () => {
     if (!genomeId) return;
     /*
@@ -200,7 +203,7 @@ export function PlanQueue({
 
   useEffect(() => {
     void load();
-  }, [load, refreshKey]);
+  }, [load, refreshKey, contentRev]);
 
   /**
    * Publish a scheduled post now, ahead of its slot.

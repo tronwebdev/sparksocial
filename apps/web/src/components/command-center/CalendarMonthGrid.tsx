@@ -15,6 +15,7 @@ import {
 } from './QueueFilters';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { userMessage } from '@/lib/errorCopy';
+import { useContentRevision } from '@/lib/contentEvents';
 
 /**
  * Calendar Mode — the month grid on the Agent Calendar tab
@@ -163,9 +164,11 @@ export function CalendarMonthGrid({
     setSlots(res.output.items.filter((s) => Boolean(s.scheduledAt)));
   }, [genomeId]);
 
+  /* Re-read when the Draft Panel changes a post — see `contentEvents`. */
+  const contentRev = useContentRevision();
   useEffect(() => {
     void load();
-  }, [load, refreshKey]);
+  }, [load, refreshKey, contentRev]);
 
   if (!genomeId) return null;
 
