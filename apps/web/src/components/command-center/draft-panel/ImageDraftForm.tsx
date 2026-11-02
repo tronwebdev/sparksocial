@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactElement, SVGProps } from 'react';
+import type { ReactElement, ReactNode, SVGProps } from 'react';
 import { cn } from '@/lib/utils';
 import { Busy } from '@/components/brand/SparkLoader';
 import { TypeIcon, type PostType } from './DraftDrawer';
@@ -185,117 +185,21 @@ export function ImageDraftForm({
     // 16 below the tab row's hairline: the focus card's top is y112 of the
     // pane in every `DP` form, and the hairline is y95.
     <div className={cn(COLUMN, 'pt-[16px] pb-[30px]')}>
-      {/* ── Focus card — y139, 240 tall ─────────────────────────────────── */}
-      {/* A cyan wash at 8% inside a 1px sky ring at 40%. The 40% sky was being
-          used as the fill, which painted the card several shades too dark. */}
-      <section
-        className="flex min-h-[240px] flex-col rounded-[15px] px-[25px] pt-[13px] pb-[18px]"
-        style={{ background: 'rgba(108,232,255,0.08)', boxShadow: 'inset 0 0 0 1px rgba(100,195,213,0.4)' }}
-      >
-        <div className="flex flex-wrap items-center gap-[8px]">
-          <span className="text-14 font-medium text-ink">Current Focus</span>
-          {/* The separator is a violet colon, not a dot — `--ss-violet` is in
-              the token file for exactly this label. */}
-          <span className="text-16 font-medium text-violet">:</span>
-          {/* Only when the opener said where this came from. The design's
-              "From: Spark Chat" is the label for one entry point, not a default
-              — printing it for a post opened from the calendar would be the
-              card stating something untrue. */}
-          {source ? (
-            /* 27 tall, r8.79, the label 9px in — `DP video`'s pill, not a capsule. */
-            <span
-              className="flex h-[27px] items-center rounded-[8.786px] bg-white px-[9px] text-14 font-medium text-ink"
-              style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
-            >
-              From: {source}
-            </span>
-          ) : null}
-        </div>
-
-        <h2 className="mt-[7px] text-26 font-semibold leading-[1.26] text-ink">
-          {campaignName ?? 'This post'}
-        </h2>
-
-        {/*
-          Three columns, not a packed row.
-
-          The design's facts start at x843, x1013 and x1180 — a fixed ~168px
-          pitch — so they line up whatever the values say. Built as a flex row
-          with a gap first, which looked right with the design's copy and
-          bunched everything against the left edge the moment a real campaign
-          had a short objective.
-        */}
-        <dl className="mt-[17px] grid grid-cols-[168px_167px_1fr] gap-y-[8px]">
-          <Fact label="Goal" value={goal} />
-          <Fact label="Type" value={campaignType} />
-          <Fact label="Duration" value={duration} />
-        </dl>
-
-        {/*
-          The circles at y275 — 30px, r50%, #F8F8F8, 44px pitch.
-
-          They read as collaborators in the design, and a draft has none. What
-          this date *does* have is the accounts its posts are going to, which
-          the calendar knows slot by slot — so the row shows the channels this
-          post will land on. Absent when the day has no platform chosen yet,
-          which `content.list` treats as a real state rather than a blank.
-        */}
-        {platforms && platforms.length > 0 ? (
-          <div className="mt-[16px] flex items-center gap-[14px]">
-            {platforms.slice(0, 4).map((p) => (
-              <span
-                key={p}
-                title={p}
-                className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-11 font-semibold uppercase text-ink-muted"
-                style={{ background: 'var(--ss-surface-100)', boxShadow: 'inset 0 0 0 0.761px rgba(120,120,120,0.28)' }}
-              >
-                {p.slice(0, 2)}
-              </span>
-            ))}
-          </div>
-        ) : null}
-
-        {/*
-          Pinned to the card's foot — y326 in the design, 18px above its edge.
-
-          The design draws four chips: "Generating", "Completed", "No post",
-          "No post". They are the four post types in the rail, and what each one
-          is doing on this date — which the calendar already knows, slot by
-          slot. When the caller has no such view (a post opened from somewhere
-          with no campaign behind it) the row falls back to the one status this
-          draft genuinely carries, rather than four slots of invention.
-        */}
-        <div className="mt-auto flex flex-wrap items-center gap-[6px] pt-[24px]">
-          {production && production.length > 0 ? (
-            production.map((p) => (
-              <StatusChip key={p.label} label={p.state} tone={p.tone} type={p.label as PostType} />
-            ))
-          ) : (
-            <StatusChip label={statusLabel(status)} tone={statusTone(status)} />
-          )}
-        </div>
-      </section>
+      <FocusCard
+        campaignName={campaignName}
+        goal={goal}
+        campaignType={campaignType}
+        duration={duration}
+        source={source}
+        production={production}
+        platforms={platforms}
+        status={status}
+      />
 
       {/* ── The form ────────────────────────────────────────────────────── */}
       <h3 className="mt-[33px] text-22 font-semibold text-ink">{TITLE[postType]}</h3>
 
-      <label className="mt-[29px] block text-18 font-medium text-ink-muted" htmlFor="dp-intent">
-        {ABOUT[postType]}
-      </label>
-      <input
-        id="dp-intent"
-        value={intent}
-        onChange={(e) => onIntent(e.target.value)}
-        placeholder="Announce the new pricing plan"
-        className={cn(
-          'mt-[12px] h-[67px] w-full rounded-[10.158px] bg-white px-[25px] text-18 font-medium text-ink outline-none placeholder:text-ink-placeholder focus:shadow-[0_0_0_2px_var(--ss-ring)]',
-          /* The prototypes split here: image and text lift the field on a
-             violet glow, video and carousel outline it in grey at 30%. */
-          postType === 'video' || postType === 'carousel'
-            ? 'shadow-[inset_0_0_0_1px_rgba(131,131,131,0.3)]'
-            : 'shadow-[0_4px_15px_0_rgba(163,65,255,0.2)]',
-        )}
-      />
+      <AboutField postType={postType} id="dp-intent" value={intent} onChange={onIntent} />
 
       {/*
         Video: the settings card, then the storyboard.
@@ -307,37 +211,12 @@ export function ImageDraftForm({
       */}
       {postType === 'video' ? (
         <>
-          <div
-            className="mt-[18px] rounded-[10px] px-[21px] py-[19px]"
-            style={{ background: 'rgba(131,131,131,0.05)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
-          >
-            <div className="flex flex-wrap items-center gap-[36px]">
-              <Chip label="9:16" mark="ratio" />
-              <Chip label={`${clock(totalSeconds(scenes))} total`} mark="clock" />
-              {language ? <Chip label={language} mark="globe" /> : null}
-            </div>
-
-            <div className="mt-[24px] grid grid-cols-1 gap-[16px] md:grid-cols-2">
-              <DefaultCard title="Voice (default)" pill="Ai Voice" value={voice} kind="voice" />
-              {/*
-                The design titles this card "Voice (default)" too and fills it
-                with "Upbeat / Modern, energetic loop". Two cards with one title
-                and different contents is an authoring slip in the export, not a
-                spec — so the music card is titled for what it holds.
-              */}
-              <DefaultCard title="Music (default)" pill="Ai Music" value={music} kind="music" ringed />
-            </div>
-
-            <p className="mt-[14px] flex items-center gap-[3.277px] text-14 font-medium text-ink-muted">
-              <InfoIcon className="shrink-0" />
-              Each scene below uses these defaults — override per scene as needed
-            </p>
-          </div>
+          <VideoSettingsCard totalSec={totalSeconds(scenes)} language={language} voice={voice} music={music} />
 
           {/* The full-width rule 25 below the card, then 34 to the heading —
               y828 and y863 in `DP video`. */}
           <Rule className="mt-[25px]" />
-          <h4 className="mt-[34px] text-18 font-medium text-ink">AI storyboard</h4>
+          <StoryboardHeading className="mt-[34px]" />
           <VideoStoryboard
             beats={scenes}
             voiceName={voice?.name}
@@ -355,28 +234,11 @@ export function ImageDraftForm({
       */}
       {postType === 'carousel' ? (
         <>
-          <div className="mt-[22px] flex flex-wrap items-center gap-[37px]">
-            <Chip label="4:5" mark="ratio" />
-            <Chip label="Brand template" mark="palette" />
-            <Chip label={scenes.length === 1 ? '1 slide' : `${scenes.length} slides`} mark="slides" />
-          </div>
+          <CarouselChips count={scenes.length} />
 
           {/* `DP carousel`'s rule at y610: 18 under the chips, 22 over the heading. */}
           <Rule className="mt-[18px]" />
-          <div className="mt-[22px] flex items-baseline justify-between gap-4">
-            <span className="text-18 font-medium text-ink">AI storyboard</span>
-            {onRegenerate ? (
-              <button
-                type="button"
-                onClick={onRegenerate}
-                disabled={busy}
-                className="flex items-center gap-[9.063px] text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
-              >
-                <RegenerateIcon className="shrink-0" />
-                Regenerate concept
-              </button>
-            ) : null}
-          </div>
+          <StoryboardHeading className="mt-[22px]" onRegenerate={onRegenerate} busy={busy} />
 
           <CarouselStoryboard beats={scenes} onAddScene={onAddScene} busy={busy} />
         </>
@@ -385,32 +247,7 @@ export function ImageDraftForm({
       {/* Image and text: the concept card and the editable prompt. */}
       {postType === 'image' || postType === 'text' ? (
         <>
-      <div className="mt-[22px] flex items-baseline justify-between gap-4">
-        <span className="text-18 font-medium text-ink">AI image concept</span>
-        {onRegenerate ? (
-          <button
-            type="button"
-            onClick={onRegenerate}
-            disabled={busy}
-            className="flex items-center gap-[9.063px] text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
-          >
-            <RegenerateIcon className="shrink-0" />
-            Regenerate concept
-          </button>
-        ) : null}
-      </div>
-
-      <div
-        className="mt-[13px] min-h-[114px] rounded-[10px] px-[19px] py-[14px]"
-        style={{ background: 'rgba(131,131,131,0.1)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
-      >
-        {/* The card has a heading of its own — 20/500 ink at y648, above the
-            grey body at y686. */}
-        <p className="text-20 font-medium text-ink">Concept</p>
-        <p className="mt-[13px] text-18 font-medium leading-[1.28] text-ink-muted">
-          {concept ?? 'No concept yet — generating the post writes one.'}
-        </p>
-      </div>
+      <ConceptCard concept={concept} onRegenerate={onRegenerate} busy={busy} />
 
       <label className="mt-[27px] block text-18 font-medium text-ink" htmlFor="dp-prompt">
         Prompt (editable)
@@ -426,11 +263,7 @@ export function ImageDraftForm({
         className="mt-[12px] min-h-[111px] w-full resize-y rounded-[10px] bg-white px-[25px] py-[18px] text-18 font-medium leading-[1.28] text-ink-muted outline-none placeholder:text-ink-placeholder focus:shadow-[0_0_0_2px_var(--ss-ring)]"
       />
 
-      <div className="mt-[17px] flex flex-wrap items-center gap-[22px]">
-        <Chip label="4:5" mark="ratio" />
-        <Chip label="Brand colors" mark="palette" />
-        <Chip label="Premium" mark="premium" />
-      </div>
+      <ImageChips />
         </>
       ) : null}
 
@@ -482,6 +315,336 @@ export function ImageDraftForm({
       </div>
 
       {blockedReason ? <p className="mt-[10px] text-14 text-ink-muted">{blockedReason}</p> : null}
+    </div>
+  );
+}
+
+/* ── The form's sections ─────────────────────────────────────────────────
+   Exported so the editor phase draws an existing post with the same pieces
+   the trigger phase draws a new one with. They were private to this form, so
+   the editor grew plainer versions of its own — a title header, a textarea, a
+   "Storyboard" strip — and every post anybody reopened looked unlike the `DP`
+   prototypes, which draw the editor and the trigger as one form. */
+
+/**
+ * The "Current Focus" card — `DP image`'s y139, 240 tall.
+ *
+ * `heading` overrides the campaign name: the editor passes the post's own
+ * title when the post belongs to no campaign, which is the prototypes'
+ * "Untitled Post" case. `note` replaces the Goal/Type/Duration row with a line
+ * of its own, for a post with no campaign to state facts about.
+ */
+export function FocusCard({
+  campaignName,
+  heading,
+  goal,
+  campaignType,
+  duration,
+  source,
+  production,
+  platforms,
+  status,
+  note,
+}: {
+  campaignName?: string;
+  heading?: string;
+  goal?: string;
+  campaignType?: string;
+  duration?: string;
+  source?: string;
+  production?: Array<{ label: string; state: string; tone: 'work' | 'done' | 'idle' }>;
+  platforms?: string[];
+  status: string;
+  note?: ReactNode;
+}) {
+  return (
+    <>
+      {/* ── Focus card — y139, 240 tall ─────────────────────────────────── */}
+      {/* A cyan wash at 8% inside a 1px sky ring at 40%. The 40% sky was being
+          used as the fill, which painted the card several shades too dark. */}
+      <section
+        className="flex min-h-[240px] flex-col rounded-[15px] px-[25px] pt-[13px] pb-[18px]"
+        style={{ background: 'rgba(108,232,255,0.08)', boxShadow: 'inset 0 0 0 1px rgba(100,195,213,0.4)' }}
+      >
+        <div className="flex flex-wrap items-center gap-[8px]">
+          <span className="text-14 font-medium text-ink">Current Focus</span>
+          {/* The separator is a violet colon, not a dot — `--ss-violet` is in
+              the token file for exactly this label. */}
+          <span className="text-16 font-medium text-violet">:</span>
+          {/* Only when the opener said where this came from. The design's
+              "From: Spark Chat" is the label for one entry point, not a default
+              — printing it for a post opened from the calendar would be the
+              card stating something untrue. */}
+          {source ? (
+            /* 27 tall, r8.79, the label 9px in — `DP video`'s pill, not a capsule. */
+            <span
+              className="flex h-[27px] items-center rounded-[8.786px] bg-white px-[9px] text-14 font-medium text-ink"
+              style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
+            >
+              From: {source}
+            </span>
+          ) : null}
+        </div>
+
+        <h2 className="mt-[7px] text-26 font-semibold leading-[1.26] text-ink">
+          {heading ?? campaignName ?? 'This post'}
+        </h2>
+
+        {/*
+          Three columns, not a packed row.
+
+          The design's facts start at x843, x1013 and x1180 — a fixed ~168px
+          pitch — so they line up whatever the values say. Built as a flex row
+          with a gap first, which looked right with the design's copy and
+          bunched everything against the left edge the moment a real campaign
+          had a short objective.
+        */}
+        {note ? (
+          <div className="mt-[12px] text-16 text-ink-muted">{note}</div>
+        ) : (
+          <dl className="mt-[17px] grid grid-cols-[168px_167px_1fr] gap-y-[8px]">
+            <Fact label="Goal" value={goal} />
+            <Fact label="Type" value={campaignType} />
+            <Fact label="Duration" value={duration} />
+          </dl>
+        )}
+
+        {/*
+          The circles at y275 — 30px, r50%, #F8F8F8, 44px pitch.
+
+          They read as collaborators in the design, and a draft has none. What
+          this date *does* have is the accounts its posts are going to, which
+          the calendar knows slot by slot — so the row shows the channels this
+          post will land on. Absent when the day has no platform chosen yet,
+          which `content.list` treats as a real state rather than a blank.
+        */}
+        {platforms && platforms.length > 0 ? (
+          <div className="mt-[16px] flex items-center gap-[14px]">
+            {platforms.slice(0, 4).map((p) => (
+              <span
+                key={p}
+                title={p}
+                className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-11 font-semibold uppercase text-ink-muted"
+                style={{ background: 'var(--ss-surface-100)', boxShadow: 'inset 0 0 0 0.761px rgba(120,120,120,0.28)' }}
+              >
+                {p.slice(0, 2)}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        {/*
+          Pinned to the card's foot — y326 in the design, 18px above its edge.
+
+          The design draws four chips: "Generating", "Completed", "No post",
+          "No post". They are the four post types in the rail, and what each one
+          is doing on this date — which the calendar already knows, slot by
+          slot. When the caller has no such view (a post opened from somewhere
+          with no campaign behind it) the row falls back to the one status this
+          draft genuinely carries, rather than four slots of invention.
+        */}
+        <div className="mt-auto flex flex-wrap items-center gap-[6px] pt-[24px]">
+          {production && production.length > 0 ? (
+            production.map((p) => (
+              <StatusChip key={p.label} label={p.state} tone={p.tone} type={p.label as PostType} />
+            ))
+          ) : (
+            <StatusChip label={statusLabel(status)} tone={statusTone(status)} />
+          )}
+        </div>
+      </section>
+    </>
+  );
+}
+
+/** "Image Post" — 22/600, 33 under the focus card. */
+export function PostHeading({ postType }: { postType: PostType }) {
+  return <h3 className="mt-[33px] text-22 font-semibold text-ink">{TITLE[postType]}</h3>;
+}
+
+/** "What is this post about?" and its 67px field. */
+export function AboutField({
+  postType,
+  id,
+  value,
+  onChange,
+  placeholder,
+}: {
+  postType: PostType;
+  id: string;
+  value: string;
+  onChange: (next: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <>
+    <label className="mt-[29px] block text-18 font-medium text-ink-muted" htmlFor={id}>
+      {ABOUT[postType]}
+    </label>
+    <input
+      id={id}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder ?? 'Announce the new pricing plan'}
+      className={cn(
+        'mt-[12px] h-[67px] w-full rounded-[10.158px] bg-white px-[25px] text-18 font-medium text-ink outline-none placeholder:text-ink-placeholder focus:shadow-[0_0_0_2px_var(--ss-ring)]',
+        /* The prototypes split here: image and text lift the field on a
+           violet glow, video and carousel outline it in grey at 30%. */
+        postType === 'video' || postType === 'carousel'
+          ? 'shadow-[inset_0_0_0_1px_rgba(131,131,131,0.3)]'
+          : 'shadow-[0_4px_15px_0_rgba(163,65,255,0.2)]',
+      )}
+    />
+    </>
+  );
+}
+
+/**
+ * `DP video`'s settings card: aspect, running time, language, and the voice and
+ * music every scene inherits. `footer` is what the editor adds under it — the
+ * duration band and the brand-preset scenes.
+ */
+export function VideoSettingsCard({
+  totalSec,
+  language,
+  voice,
+  music,
+  footer,
+}: {
+  totalSec: number;
+  language?: string;
+  voice?: { name: string; description?: string };
+  music?: { name: string; description?: string };
+  footer?: ReactNode;
+}) {
+  return (
+    <div
+      className="mt-[18px] rounded-[10px] px-[21px] py-[19px]"
+      style={{ background: 'rgba(131,131,131,0.05)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
+    >
+      <div className="flex flex-wrap items-center gap-[36px]">
+        <Chip label="9:16" mark="ratio" />
+        <Chip label={`${clock(totalSec)} total`} mark="clock" />
+        {language ? <Chip label={language} mark="globe" /> : null}
+      </div>
+
+      <div className="mt-[24px] grid grid-cols-1 gap-[16px] md:grid-cols-2">
+        <DefaultCard title="Voice (default)" pill="Ai Voice" value={voice} kind="voice" />
+        {/*
+          The design titles this card "Voice (default)" too and fills it
+          with "Upbeat / Modern, energetic loop". Two cards with one title
+          and different contents is an authoring slip in the export, not a
+          spec — so the music card is titled for what it holds.
+        */}
+        <DefaultCard title="Music (default)" pill="Ai Music" value={music} kind="music" ringed />
+      </div>
+
+      <p className="mt-[14px] flex items-center gap-[3.277px] text-14 font-medium text-ink-muted">
+        <InfoIcon className="shrink-0" />
+        Each scene below uses these defaults — override per scene as needed
+      </p>
+      {footer}
+    </div>
+  );
+}
+
+/** `DP carousel`'s chip row: 4:5, Brand template, the slide count. */
+export function CarouselChips({ count }: { count: number }) {
+  return (
+    <div className="mt-[22px] flex flex-wrap items-center gap-[37px]">
+      <Chip label="4:5" mark="ratio" />
+      <Chip label="Brand template" mark="palette" />
+      <Chip label={count === 1 ? '1 slide' : `${count} slides`} mark="slides" />
+    </div>
+  );
+}
+
+/**
+ * "AI storyboard", with "Regenerate concept" at the right when there is a
+ * concept to regenerate, and `DP video`'s numbered scene squares after the
+ * heading when `steps` is given.
+ */
+export function StoryboardHeading({
+  className,
+  onRegenerate,
+  busy,
+  steps,
+}: {
+  className?: string;
+  onRegenerate?: () => void;
+  busy?: boolean;
+  steps?: ReactNode;
+}) {
+  return (
+    <div className={cn('flex flex-wrap items-center justify-between gap-4', className)}>
+      <div className="flex flex-wrap items-center gap-[18px]">
+        <span className="text-18 font-medium text-ink">AI storyboard</span>
+        {steps}
+      </div>
+      {onRegenerate ? (
+        <button
+          type="button"
+          onClick={onRegenerate}
+          disabled={busy}
+          className="flex items-center gap-[9.063px] text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
+        >
+          <RegenerateIcon className="shrink-0" />
+          {busy ? <Busy>Regenerating…</Busy> : 'Regenerate concept'}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** "AI image concept" and the grey Concept card — `DP image`'s y598–748. */
+export function ConceptCard({
+  concept,
+  onRegenerate,
+  busy,
+}: {
+  concept?: string;
+  onRegenerate?: () => void;
+  busy?: boolean;
+}) {
+  return (
+    <>
+    <div className="mt-[22px] flex items-baseline justify-between gap-4">
+      <span className="text-18 font-medium text-ink">AI image concept</span>
+      {onRegenerate ? (
+        <button
+          type="button"
+          onClick={onRegenerate}
+          disabled={busy}
+          className="flex items-center gap-[9.063px] text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
+        >
+          <RegenerateIcon className="shrink-0" />
+          Regenerate concept
+        </button>
+      ) : null}
+    </div>
+
+    <div
+      className="mt-[13px] min-h-[114px] rounded-[10px] px-[19px] py-[14px]"
+      style={{ background: 'rgba(131,131,131,0.1)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
+    >
+      {/* The card has a heading of its own — 20/500 ink at y648, above the
+          grey body at y686. */}
+      <p className="text-20 font-medium text-ink">Concept</p>
+      <p className="mt-[13px] text-18 font-medium leading-[1.28] text-ink-muted">
+        {concept ?? 'No concept yet — generating the post writes one.'}
+      </p>
+    </div>
+    </>
+  );
+}
+
+/** `DP image`'s chip row under the prompt: 4:5, Brand colors, Premium. */
+export function ImageChips() {
+  return (
+    <div className="mt-[17px] flex flex-wrap items-center gap-[22px]">
+      <Chip label="4:5" mark="ratio" />
+      <Chip label="Brand colors" mark="palette" />
+      <Chip label="Premium" mark="premium" />
     </div>
   );
 }
@@ -604,7 +767,7 @@ function totalSeconds(beats: ResolvedBeat[]): number {
  * label is a checkbox everywhere else in this app, and these are statements
  * about the post, not toggles.
  */
-function Chip({ label, mark }: { label: string; mark: ChipMarkKind }) {
+export function Chip({ label, mark }: { label: string; mark: ChipMarkKind }) {
   const { Icon, slot } = MARK[mark];
   return (
     <span className="flex items-center text-18 font-medium text-ink-muted">
@@ -638,7 +801,7 @@ const MARK: Record<ChipMarkKind, { Icon: (props: SVGProps<SVGSVGElement>) => Rea
  * A full-width hairline — 25% grey across the whole 940 content pane, not just
  * the 875 column, which is how every `DP` form draws its section rules.
  */
-function Rule({ className }: { className?: string }) {
+export function Rule({ className }: { className?: string }) {
   return <div aria-hidden className={cn('-mx-[30px] h-px', className)} style={{ background: 'rgba(131,131,131,0.25)' }} />;
 }
 

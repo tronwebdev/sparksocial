@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import { PANEL_CARD, PANEL_CARD_BODY, PANEL_CARD_STYLE, PANEL_CARD_TITLE, PANEL_FIELD } from './controls';
 import { Button } from '@/components/ui/button';
 import { Busy } from '@/components/brand/SparkLoader';
 import { startAgentRun } from '@/lib/agent';
@@ -96,9 +98,9 @@ export function DraftChat({
   }
 
   return (
-    <div className="rounded-lg border border-border p-4">
-      <p className="text-13 font-medium text-ink">Ask for a change</p>
-      <p className="mt-1 text-12 text-ink-muted">
+    <div className={PANEL_CARD} style={PANEL_CARD_STYLE}>
+      <p className={PANEL_CARD_TITLE}>Ask for a change</p>
+      <p className={PANEL_CARD_BODY}>
         Plain instructions &mdash; &ldquo;make the hook punchier&rdquo;, &ldquo;cut the third scene to two
         seconds&rdquo;. SPARK edits this post with the same tools the buttons above use.
       </p>
@@ -108,11 +110,11 @@ export function DraftChat({
           {turns.map((t, i) => (
             <li
               key={`${t.role}-${i}`}
-              className={`rounded-lg px-3 py-2 text-13 ${
+              className={`rounded-[10px] px-[14px] py-[10px] text-15 ${
                 t.role === 'you' ? 'bg-surface-muted text-ink' : 'border border-border text-ink-muted'
               }`}
             >
-              <span className="mr-2 text-11 uppercase tracking-wide text-ink-muted">
+              <span className="mr-2 text-13 font-medium text-ink-muted">
                 {t.role === 'you' ? 'You' : 'SPARK'}
               </span>
               {t.text}
@@ -121,7 +123,7 @@ export function DraftChat({
         </ul>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-end gap-2">
+      <div className="mt-[14px] flex flex-wrap items-end gap-2">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -134,7 +136,7 @@ export function DraftChat({
           rows={2}
           disabled={busy || disabled}
           placeholder="Make the CTA less pushy"
-          className="min-w-[16rem] flex-1 resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring disabled:opacity-50"
+          className={cn('min-w-[16rem] flex-1 resize-none', PANEL_FIELD, 'disabled:opacity-50')}
         />
         <Button disabled={busy || disabled || !text.trim()} onClick={() => void send()}>
           {busy ? <Busy>Working…</Busy> : 'Send'}
@@ -142,7 +144,7 @@ export function DraftChat({
       </div>
 
       {turns.length > 0 ? (
-        <p className="mt-2 text-11 text-ink-muted">
+        <p className="mt-[10px] text-13 text-ink-muted">
           This conversation is not saved &mdash; it goes when the panel closes. Every change it made to the
           post is saved.
         </p>

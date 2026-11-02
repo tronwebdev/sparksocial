@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { PANEL_CARD, PANEL_CARD_STYLE, PANEL_FIELD, PANEL_FIELD_SM } from './controls';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Busy } from '@/components/brand/SparkLoader';
 import { backdropOf, clock, DUBBABLE_BEAT_KINDS, type DraftView, type KitTemplate, type ResolvedBeat } from './types';
@@ -106,7 +108,7 @@ export function BeatRow({
   const Frame = chrome ? 'li' : 'div';
 
   return (
-    <Frame className={chrome ? 'rounded-lg border border-border p-4' : undefined}>
+    <Frame className={chrome ? PANEL_CARD : undefined} style={chrome ? PANEL_CARD_STYLE : undefined}>
       {/*
         The storyboard header - M5. The badge is the label the design draws
         ("Hook", "Talking head", "B-roll + text overlay"), falling back to the
@@ -116,15 +118,15 @@ export function BeatRow({
         Skipped when a storyboard card is already showing all three above it.
       */}
       {chrome ? (
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div className="flex flex-wrap items-baseline gap-2">
-            <span className="rounded bg-surface-muted px-1.5 py-0.5 text-11 font-medium text-ink">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-[12px]">
+            <span className="flex h-[26px] items-center rounded-[12.381px] bg-[rgba(108,232,255,0.3)] px-[10px] text-13 font-medium text-ink">
               {beat.label ?? beat.beatId}
             </span>
-            <span className="text-11 uppercase tracking-wide text-ink-muted">Scene {index + 1}</span>
+            <span className="text-15 font-medium text-ink-muted">Scene {index + 1}</span>
           </div>
           {timed && beat.durationSec !== undefined ? (
-            <span className="text-11 tabular-nums text-ink-muted">
+            <span className="text-15 font-medium tabular-nums text-ink-muted">
               {clock(startSec)}&ndash;{clock(startSec + beat.durationSec)}
             </span>
           ) : null}
@@ -132,19 +134,19 @@ export function BeatRow({
       ) : null}
 
       {beat.kind === 'asset' ? (
-        <p className="mt-2 text-14 text-ink-muted">
+        <p className="mt-[12px] text-15 font-medium text-ink-muted">
           Your own {beat.role.replace(/_/g, ' ')} asset{beat.caption ? ` — ${beat.caption}` : ''}.
         </p>
       ) : beat.kind === 'generated_image' ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={beat.url} alt={beat.prompt} className="mt-2 max-h-64 rounded object-contain" />
+        <img src={beat.url} alt={beat.prompt} className="mt-[12px] max-h-64 rounded-[10px] object-contain" />
       ) : beat.kind === 'generated_video' || beat.kind === 'generated_broll' ? (
-        <video src={beat.url} controls className="mt-2 max-h-64 rounded" />
+        <video src={beat.url} controls className="mt-[12px] max-h-64 rounded-[10px]" />
       ) : beat.kind === 'generated_audio' ? (
         <audio src={beat.url} controls className="mt-2 w-full" />
       ) : beat.kind === 'dubbed_media' ? (
         beat.mediaType === 'video' ? (
-          <video src={beat.url} controls className="mt-2 max-h-64 rounded" />
+          <video src={beat.url} controls className="mt-[12px] max-h-64 rounded-[10px]" />
         ) : (
           <audio src={beat.url} controls className="mt-2 w-full" />
         )
@@ -166,10 +168,10 @@ export function BeatRow({
         <div className="mt-2 flex flex-wrap gap-2">
           {backdrop.urls.map((u, i) =>
             backdrop.kind === 'video' ? (
-              <video key={u + i} src={u} controls className="max-h-48 rounded" />
+              <video key={u + i} src={u} controls className="max-h-48 rounded-[10px]" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={u + i} src={u} alt="" className="max-h-48 rounded object-contain" />
+              <img key={u + i} src={u} alt="" className="max-h-48 rounded-[10px] object-contain" />
             ),
           )}
         </div>
@@ -185,12 +187,12 @@ export function BeatRow({
           onChange={(e) => setText(e.target.value)}
           disabled={busy}
           rows={2}
-          className="mt-2 w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
+          className={cn('mt-[12px] w-full resize-y', PANEL_FIELD)}
         />
       ) : null}
 
       {beat.kind !== 'asset' ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-[12px] flex flex-wrap items-center gap-2">
           {beat.kind === 'text' ? (
             <Button
               size="sm"
@@ -244,7 +246,7 @@ export function BeatRow({
             onChange={(e) => setDubLanguage(e.target.value)}
             disabled={busy}
             placeholder="Language code, e.g. es"
-            className="h-8 w-40 rounded border border-border bg-input px-2 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+            className={cn('w-48', PANEL_FIELD_SM)}
           />
           <Button
             size="sm"
@@ -270,10 +272,10 @@ export function BeatRow({
         a timed one, so they are gated rather than offered as controls that write
         a value nothing reads.
       */}
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+      <div className="mt-[14px] flex flex-wrap items-center gap-2 pt-[14px]" style={{ boxShadow: 'inset 0 1px 0 rgba(131,131,131,0.25)' }}>
         {timed ? (
           <>
-            <label className="text-11 text-ink-muted" htmlFor={`dur-${beat.beatId}`}>
+            <label className="text-14 font-medium text-ink-muted" htmlFor={`dur-${beat.beatId}`}>
               Seconds
             </label>
             <input
@@ -282,7 +284,7 @@ export function BeatRow({
               onChange={(e) => setDuration(e.target.value)}
               disabled={busy}
               inputMode="decimal"
-              className="h-8 w-16 rounded border border-border bg-input px-2 text-13 tabular-nums text-ink disabled:opacity-50"
+              className={cn('w-16 tabular-nums', PANEL_FIELD_SM)}
             />
             <Button
               size="sm"
@@ -308,7 +310,7 @@ export function BeatRow({
             value={beat.voice ?? 'default'}
             disabled={busy}
             onChange={(e) => onSetVoice(beat.beatId, e.target.value as 'brand' | 'stock' | 'default')}
-            className="h-8 rounded border border-border bg-input px-2 text-13 text-ink disabled:opacity-50"
+            className={PANEL_FIELD_SM}
             aria-label="Voice for this scene"
           >
             <option value="default">Default voice</option>
@@ -338,7 +340,7 @@ export function BeatRow({
               // Reset to the placeholder so the same preset can be applied twice.
               e.target.value = '';
             }}
-            className="h-8 max-w-[13rem] rounded border border-border bg-input px-2 text-13 text-ink disabled:opacity-50"
+            className={cn('max-w-[13rem]', PANEL_FIELD_SM)}
             aria-label="Apply a brand preset to this scene"
           >
             <option value="">Use a brand preset…</option>

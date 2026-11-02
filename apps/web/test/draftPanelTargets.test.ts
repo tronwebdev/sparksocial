@@ -15,6 +15,7 @@ const PREVIEW = code('PostPreview.tsx');
 const PANEL = code('DraftPanel.tsx');
 const DRAWER = code('DraftDrawer.tsx');
 const STORYBOARD = code('Storyboard.tsx');
+const FORM = code('ImageDraftForm.tsx');
 
 /**
  * Three things the panel said that were not true of the post in it.
@@ -138,11 +139,22 @@ describe('the preview follows the prototype for its own format', () => {
   });
 });
 
+/*
+ * The title, the format and the meta row are the trigger form's own sections
+ * now — every `DP` prototype draws an open post with the same form as a new
+ * one — so the editor is checked for using them, not for a copy of them.
+ */
 describe('the editor says what the draft is', () => {
-  it('carries the title, the format and the meta row', () => {
-    expect(PANEL).toContain('postTitle(draft)');
-    expect(PANEL).toContain('{draft.mediaType} Post');
-    expect(PANEL).toContain('Brand template');
+  it('opens with the focus card, the format heading and the format’s chips', () => {
+    expect(PANEL).toContain('<FocusCard');
+    expect(PANEL).toContain('heading={draft.campaignId ? undefined : postTitle(draft)}');
+    expect(PANEL).toContain('<PostHeading postType={draft.mediaType} />');
+    expect(PANEL).toContain('<CarouselChips count={draft.beats.length} />');
+    expect(FORM).toContain('<Chip label="Brand template" mark="palette" />');
+  });
+
+  it('reads the campaign itself when the opener did not pass one', () => {
+    expect(PANEL).toContain("invoke<FocusCalendarView>('calendar.get', { campaignId: focusCampaignId })");
   });
 
   it('prefers the post’s own first line to the placeholder', () => {
@@ -162,14 +174,16 @@ describe('the editor says what the draft is', () => {
  */
 describe('the editor carries the concept controls', () => {
   it('asks what the post is about, in the design’s words per format', () => {
-    expect(PANEL).toContain('{ABOUT[draft.mediaType]}');
+    expect(PANEL).toContain('<AboutField');
     expect(PANEL).toContain('id="dp-editor-intent"');
+    expect(FORM).toContain('{ABOUT[postType]}');
   });
 
   it('heads the slide list and offers another take beside it', () => {
-    expect(PANEL).toContain('AI storyboard');
-    expect(PANEL).toContain('Regenerate concept');
-    expect(PANEL).toContain('redraftThisPost');
+    expect(PANEL).toContain('<StoryboardHeading');
+    expect(PANEL).toContain('onRegenerate={() => void redraftThisPost()}');
+    expect(FORM).toContain('AI storyboard');
+    expect(FORM).toContain("'Regenerate concept'");
   });
 
   it('refills this slot rather than adding a second post', () => {

@@ -178,6 +178,11 @@ export interface StoryboardProps {
   onMoveScene?: (beatId: string, toIndex: number) => void;
 }
 
+/** The id each video scene card carries, so the storyboard's numbered squares can scroll to it. */
+export function sceneAnchor(beatId: string): string {
+  return `dp-scene-${beatId}`;
+}
+
 /**
  * Drag-to-reorder for a storyboard list, through the panel's own reorder.
  *
@@ -253,6 +258,7 @@ export function VideoStoryboard({
           return (
             <li
               key={beat.beatId}
+              id={sceneAnchor(beat.beatId)}
               {...(reorder.enabled ? reorder.item(i) : {})}
               className={cn('rounded-[15px]', reorder.target(i) ? 'outline outline-2 outline-ring' : '')}
             >

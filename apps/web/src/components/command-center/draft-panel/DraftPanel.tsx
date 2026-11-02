@@ -9,14 +9,27 @@ import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
 import { DraftChat } from './DraftChat';
 import { DraftDrawer, type PostType, type DrawerTab } from './DraftDrawer';
-import { ImageDraftForm, ABOUT } from './ImageDraftForm';
-import { CarouselStoryboard, VideoStoryboard } from './Storyboard';
+import {
+  AboutField,
+  CarouselChips,
+  ConceptCard,
+  FocusCard,
+  ImageChips,
+  ImageDraftForm,
+  PostHeading,
+  Rule,
+  StoryboardHeading,
+  VideoSettingsCard,
+} from './ImageDraftForm';
+import { focusFromCalendar, type FocusCalendarView, type FocusFacts } from '@/components/calendar/focusFacts';
+import { CarouselStoryboard, VideoStoryboard, sceneAnchor } from './Storyboard';
 import { DraftsList } from './DraftsList';
 import { PostPreview } from './PostPreview';
 import { cn } from '@/lib/utils';
-import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, caption, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
+import { PANEL_CARD, PANEL_CARD_BODY, PANEL_CARD_STYLE, PANEL_CARD_TITLE, PANEL_FIELD, PANEL_FIELD_SM } from './controls';
+import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, caption, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
 import { userMessage } from '@/lib/errorCopy';
-import { ArrowUpRightIcon, RegenerateIcon, SmallPlusIcon, SparkleIcon } from './icons';
+import { ArrowUpRightIcon, SmallPlusIcon, SparkleIcon } from './icons';
 
 /**
  * The Draft Panel — plan §6.8's Draft Panel, `ui build/figma-dp/`'s ~20
@@ -485,6 +498,40 @@ export function DraftPanel({
   const band = draft?.durationBand;
   const outsideBand = band ? shownTotal < band[0] || shownTotal > band[1] : false;
   const headroom = band ? Math.round((band[1] - shownTotal) * 10) / 10 : 0;
+  /** Brand presets that add a scene — intros, outros, bumpers — rather than change one. */
+  const hasScenePresets = (kitTemplates ?? []).some((t) => t.category !== 'caption' && t.category !== 'lower_third');
+
+  /**
+   * The focus card's facts when the opener did not supply them.
+   *
+   * Only the Calendar passes `focus`. Every other way into this panel — the
+   * Command Center, the queue, the Drafts List, a notification — opened a post
+   * with no campaign card, though every `DP` prototype draws one. A post that
+   * belongs to a campaign carries its id, so the panel reads that campaign
+   * through the same `calendar.get` the Calendar uses.
+   */
+  const [campaignFocus, setCampaignFocus] = useState<FocusFacts | null>(null);
+  const focusCampaignId = focus?.campaignName ? undefined : draft?.campaignId;
+  const focusDay = draft?.scheduledAt?.slice(0, 10);
+  useEffect(() => {
+    setCampaignFocus(null);
+    if (!focusCampaignId) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await invoke<FocusCalendarView>('calendar.get', { campaignId: focusCampaignId });
+      // A failed read costs the card its facts and nothing else; the post still opens.
+      if (cancelled || res.status !== 'succeeded') return;
+      setCampaignFocus(focusFromCalendar(res.output, { ...(focusDay ? { day: focusDay } : {}) }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [focusCampaignId, focusDay]);
+  const shownFocus: FocusFacts | undefined = focus?.campaignName
+    ? focus
+    : campaignFocus
+      ? { ...campaignFocus, ...(focus?.source ? { source: focus.source } : {}), ...(focus?.brandName ? { brandName: focus.brandName } : {}) }
+      : focus;
 
   /** Where scene `i` starts in the cut - the left edge of its `0:00-0:04` range. */
   function startOf(i: number): number {
@@ -1273,9 +1320,9 @@ export function DraftPanel({
    * control and the panel keeps its one way to add a scene.
    */
   const addSceneForm = (
-    <div className="mt-[16px] rounded-lg border border-dashed border-border p-4">
-      <p className="text-13 font-medium text-ink">Add a scene</p>
-      <p className="mt-1 text-12 text-ink-muted">
+    <div className={cn('mt-[16px]', PANEL_CARD)} style={PANEL_CARD_STYLE}>
+      <p className={PANEL_CARD_TITLE}>Add a scene</p>
+      <p className={PANEL_CARD_BODY}>
         Describe what happens in it. Nothing is generated yet &mdash; the new scene arrives as a written slot
         you can film, generate, or leave as an overlay.
       </p>
@@ -1286,10 +1333,10 @@ export function DraftPanel({
           disabled={busyBeatId !== null}
           rows={2}
           placeholder="Cut to the pricing page, text overlay: one hero, one CTA."
-          className="min-w-[16rem] flex-1 resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
+          className={cn('min-w-[16rem] flex-1 resize-none', PANEL_FIELD)}
         />
         <div className="flex items-center gap-2">
-          <label className="text-11 text-ink-muted" htmlFor="new-scene-seconds">
+          <label className="text-14 font-medium text-ink-muted" htmlFor="new-scene-seconds">
             Seconds
           </label>
           <input
@@ -1298,7 +1345,7 @@ export function DraftPanel({
             onChange={(e) => setSceneDuration(e.target.value)}
             disabled={busyBeatId !== null}
             inputMode="decimal"
-            className="h-9 w-16 rounded border border-border bg-input px-2 text-13 tabular-nums text-ink disabled:opacity-50"
+            className={cn('w-16 tabular-nums', PANEL_FIELD_SM)}
           />
           <Button
             size="sm"
@@ -1351,7 +1398,7 @@ export function DraftPanel({
         <div
           className={cn(
             'flex-1 overflow-y-auto',
-            phase === 'trigger' ? '' : 'px-6 pt-[11px] pb-5',
+            phase === 'trigger' ? '' : phase === 'editor' ? 'px-[30px] pt-[16px] pb-[30px]' : 'px-6 pt-[11px] pb-5',
           )}
         >
           {phase === 'loading' ? <SparkLoader label="Loading your draft…" className="min-h-64" /> : null}
@@ -1401,13 +1448,13 @@ export function DraftPanel({
               */}
               <ImageDraftForm
                 postType={postType}
-                campaignName={focus?.campaignName}
-                goal={focus?.goal}
-                campaignType={focus?.campaignType}
-                duration={focus?.duration}
-                source={focus?.source}
-                production={focus?.production}
-                platforms={focus?.platforms}
+                campaignName={shownFocus?.campaignName}
+                goal={shownFocus?.goal}
+                campaignType={shownFocus?.campaignType}
+                duration={shownFocus?.duration}
+                source={shownFocus?.source}
+                production={shownFocus?.production}
+                platforms={shownFocus?.platforms}
                 onSaveDraft={selectedPlaybookId ? () => void saveAsDraft() : undefined}
                 /*
                   Only once there is a concept to regenerate — before the first
@@ -1558,21 +1605,47 @@ export function DraftPanel({
 
               Only while editing: once the post is published or already held,
               its own banner is the more specific thing to read. */}
-          {phase === 'editor' && draft && !draft.campaignId && draft.status !== 'published' ? (
-            <div className="rounded-lg border border-warn/40 bg-warn/10 p-3.5">
-              <p className="text-13 font-medium text-ink">This post is not part of a campaign</p>
-              <p className="mt-1 text-13 text-ink-muted">
-                It will wait for your approval rather than going out on its own — autonomy is set per
-                campaign, and this post has none. Add it to a campaign from the{' '}
-                <Link
-                  href="/calendar"
-                  className="font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
-                >
-                  calendar
-                </Link>{' '}
-                if you want it published unattended.
-              </p>
-            </div>
+          {/*
+            ── The Current Focus card, on every post ─────────────────────────
+
+            Every `DP` prototype opens the editor with it. It was drawn only by
+            the trigger form, and only filled when the Calendar opened the
+            panel, so every post reopened from anywhere else began with no
+            campaign card at all. The facts now come from the opener when it
+            has them and from the post's own campaign when it does not.
+
+            A post with no campaign gets the card too, titled by its own first
+            line — the prototypes' "Untitled Post" — and carrying what used to
+            be a separate warning banner: with no campaign there is no autonomy
+            setting, so it waits for approval rather than going out on its own.
+          */}
+          {phase === 'editor' && draft ? (
+            <FocusCard
+              campaignName={shownFocus?.campaignName}
+              heading={draft.campaignId ? undefined : postTitle(draft)}
+              goal={shownFocus?.goal}
+              campaignType={shownFocus?.campaignType}
+              duration={shownFocus?.duration}
+              source={shownFocus?.source}
+              production={shownFocus?.production}
+              platforms={shownFocus?.platforms}
+              status={draft.status ?? 'draft'}
+              note={
+                draft.campaignId || draft.status === 'published' ? undefined : (
+                  <>
+                    Not part of a campaign, so it waits for your approval instead of going out on its own — autonomy
+                    is set per campaign. Add it to one from the{' '}
+                    <Link
+                      href="/calendar"
+                      className="font-medium text-brand-purple underline decoration-dotted underline-offset-2 hover:no-underline"
+                    >
+                      calendar
+                    </Link>{' '}
+                    to publish it unattended.
+                  </>
+                )
+              }
+            />
           ) : null}
 
           {phase === 'editor' && draft && (draft.status === 'blocked' || draft.status === 'failed' || draft.status === 'needs_review') ? (
@@ -1638,318 +1711,255 @@ export function DraftPanel({
           ) : null}
 
           {phase === 'editor' && draft ? (
-            <div className="grid grid-cols-1 gap-4">
+            <div>
               {/*
-                ── The editor's header, which was not there ──────────────────
+                ── The editor, as the prototypes draw it ───────────────────────
 
-                `DP carousel.dc.html` opens the content pane with three lines
-                before anything else: the post's title at 843,189 in 27/600
-                ink, the format as a section heading at 821,412 in 22/600, and
-                a meta row at y596 in 18/500 grey — aspect, template, and how
-                many slides. The build started at the storyboard, so a person
-                opening a draft saw a list of slides with nothing above it
-                saying what they were slides *of*.
+                `DP image`, `DP video`, `DP carousel` and `DP text` are one form
+                for a new post and an open one alike: the focus card (above),
+                "Image Post", the brief, then the format's own section. The
+                editor had its own plainer version — a title header, a textarea,
+                a "Storyboard" strip — so it is now built from the trigger
+                form's sections. Nothing the editor did is gone: the per-scene
+                controls still open from each card, and the editing tools follow
+                the storyboard.
 
-                The title is the post's own first line rather than the
-                design's "Untitled Post" placeholder, because by the time a
-                draft is open it has one, and a real headline identifies the
-                post in a way a placeholder cannot.
-              */}
-              <header>
-                <h2 className="text-26 font-semibold leading-[1.2] text-ink">{postTitle(draft)}</h2>
-                <p className="mt-[14px] text-22 font-semibold capitalize text-ink">{draft.mediaType} Post</p>
-                <div className="mt-[10px] flex flex-wrap items-center gap-x-[22px] gap-y-[6px] text-18 font-medium text-ink-muted">
-                  {draft.mediaType === 'carousel' || draft.mediaType === 'image' ? <span>4:5</span> : null}
-                  {draft.mediaType === 'video' ? <span>9:16</span> : null}
-                  <span>Brand template</span>
-                  <span>
-                    {draft.beats.length} {draft.mediaType === 'carousel' ? 'slide' : 'scene'}
-                    {draft.beats.length === 1 ? '' : 's'}
-                  </span>
-                </div>
-              </header>
-
-              {/*
-                ── The concept, where the design puts it ─────────────────────
-
-                `DP carousel.dc.html` is one screen: the brief at 818,470, the
-                "AI storyboard" heading at 818,660, and the slides under it.
-                The build split that across two phases — `trigger` holds the
-                brief and "Regenerate concept", `editor` holds the storyboard —
-                and opening a post from the queue lands straight in `editor`.
-                So for every existing draft, which is every draft anybody
-                reviews, both controls were unreachable.
-
-                The field seeds from the post's own copy rather than starting
+                The brief seeds from the post's own copy rather than starting
                 empty: the brief that produced it is the honest starting point
-                for another take, and an empty box beside a written post reads
-                as "we have forgotten what this was for".
+                for another take.
               */}
-              <section>
-                <label htmlFor="dp-editor-intent" className="block text-18 font-medium text-ink-muted">
-                  {ABOUT[draft.mediaType]}
-                </label>
-                <textarea
-                  id="dp-editor-intent"
-                  value={intent}
-                  onChange={(e) => setIntent(e.target.value)}
-                  rows={2}
-                  placeholder={summariseBeats(draft.beats) ?? 'What this post is about'}
-                  /*
-                    White, never the grey field fill. The edge is the format's:
-                    `DP video` / `DP carousel` ring it in grey at 30%, `DP image`
-                    / `DP text` drop the ring and lift it on a violet glow. The
-                    border stays (transparent) so the box keeps its size.
-                  */
-                  className={cn(
-                    'mt-[10px] w-full resize-y rounded-[10px] border bg-white px-[16px] py-[12px] text-16 text-ink placeholder:text-ink-placeholder',
-                    draft.mediaType === 'video' || draft.mediaType === 'carousel'
-                      ? 'border-ink-muted/30'
-                      : 'border-transparent shadow-[0_4px_15px_0_rgba(163,65,255,0.2)]',
-                  )}
-                />
-              </section>
-
-              {/*
-                "AI storyboard" 18/500 ink at 818,660, with the one action the
-                design gives the whole concept beside it. Regenerating refuses
-                on a hand-edited storyboard and says why — see `redraftThisPost`.
-              */}
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-18 font-medium text-ink">AI storyboard</p>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void redraftThisPost()}
-                  className="flex items-center gap-[9.063px] text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
-                >
-                  <RegenerateIcon className="shrink-0" />
-                  {busy ? <Busy>Regenerating…</Busy> : 'Regenerate concept'}
-                </button>
-              </div>
-              {/*
-                The storyboard header - M5's "9:16 / 0:24 total / Add scene" strip.
-                The total prefers whatever the last scene tool returned, because
-                the server is the only party that knows what a beat with no
-                duration of its own falls back to.
-              */}
-              {/* Painted as `DP video`'s settings card — grey at 5% inside a 30%
-                  grey edge — since this is where its "0:24 total" lives. */}
-              {draft.mediaType === 'video' ? (
-                <div
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-muted/30 px-4 py-3"
-                  style={{ background: 'rgba(131,131,131,0.05)' }}
-                >
-                  <div className="flex flex-wrap items-baseline gap-3">
-                    <p className="text-13 font-medium text-ink">Storyboard</p>
-                    <span className="text-12 tabular-nums text-ink-muted">
-                      {clock(sceneTotal ?? localTotal)} total
-                    </span>
-                    {draft.durationBand ? (
-                      <span className="text-12 text-ink-muted">
-                        {outsideBand ? (
-                          <span className="text-destructive">
-                            outside this format&rsquo;s {draft.durationBand[0]}&ndash;{draft.durationBand[1]}s
-                          </span>
-                        ) : (
-                          <>
-                            {headroom}s of headroom in {draft.durationBand[0]}&ndash;{draft.durationBand[1]}s
-                          </>
-                        )}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {/*
-                    Intros, outros and bumpers — the three categories that add a
-                    scene rather than change one. They belong here rather than on
-                    a row because the tool decides where the new scene goes
-                    (front, end, or before the last), and a per-row control would
-                    imply it lands next to that row.
-                  */}
-                  {(kitTemplates ?? []).some((t) => t.category !== 'caption' && t.category !== 'lower_third') ? (
-                    <select
-                      value=""
-                      disabled={busyBeatId !== null}
-                      onChange={(e) => {
-                        const chosen = (kitTemplates ?? []).find((t) => t.id === e.target.value);
-                        if (chosen) void applyTemplate(chosen);
-                        e.target.value = '';
-                      }}
-                      className="h-8 max-w-[15rem] rounded border border-border bg-input px-2 text-13 text-ink disabled:opacity-50"
-                      aria-label="Add a scene from a brand preset"
-                    >
-                      <option value="">Add from a brand preset…</option>
-                      {(kitTemplates ?? [])
-                        .filter((t) => t.category !== 'caption' && t.category !== 'lower_third')
-                        .map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {KIT_TEMPLATE_LABEL[t.category]}: {t.name}
-                          </option>
-                        ))}
-                    </select>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {/*
-                Video and carousel wear the design's storyboard.
-
-                `DP video` and `DP carousel` draw this list as cards — time
-                range, badges, the voiceover script — where the editor drew a
-                bordered row per beat. The cards are presentation only, so each
-                one opens the same `BeatRow` underneath on demand: nothing this
-                phase could do before it can't do now, it is one click further
-                in. Image and text keep the plain list, because the design draws
-                no storyboard for them.
-              */}
-              {draft.mediaType === 'video' ? (
-                <VideoStoryboard
-                  beats={draft.beats}
-                  busy={busyBeatId !== null}
-                  onAddScene={() => setAddingScene((v) => !v)}
-                  addSlot={addingScene ? addSceneForm : null}
-                  renderDetail={(beat, i) => beatRowFor(beat, i, false)}
-                  onRemoveScene={removeScene}
-                  onMoveScene={moveScene}
-                />
-              ) : draft.mediaType === 'carousel' ? (
-                <CarouselStoryboard
-                  beats={draft.beats}
-                  busy={busyBeatId !== null}
-                  renderDetail={(beat, i) => beatRowFor(beat, i, false)}
-                  onRemoveScene={removeScene}
-                  onMoveScene={moveScene}
-                />
-              ) : (
-              <ul className="grid grid-cols-1 gap-3">
-                {draft.beats.map((beat, i) => beatRowFor(beat, i, true))}
-              </ul>
-              )}
-
-
-              {/*
-                `M10`. One line, naming the beat and what is being asked of which
-                vendor. No percentage: each generate call is a single request with
-                no job id to poll, so a bar would be animation over an unknown.
-              */}
-              {stage ? (
-                <div className="rounded-lg border border-border bg-surface-muted px-4 py-3">
-                  <SparkLoader
-                    size="inline"
-                    label={`${stage.label} — ${draft.beats.find((b) => b.beatId === stage.beatId)?.label ?? stage.beatId}`}
-                    className="text-13 text-ink"
-                  />
-                </div>
-              ) : null}
-
-              {/* `M9` — conversational editing, over the agent runtime. */}
-              <DraftChat
-                contentItemId={draft.contentItemId}
-                genomeId={genomeId ?? ''}
-                disabled={busyBeatId !== null}
-                onChanged={() => void loadDraft(draft.contentItemId)}
+              <PostHeading postType={draft.mediaType} />
+              <AboutField
+                postType={draft.mediaType}
+                id="dp-editor-intent"
+                value={intent}
+                onChange={setIntent}
+                placeholder={summariseBeats(draft.beats) ?? 'What this post is about'}
               />
 
-              <div className="rounded-lg border border-border p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="text-13 font-medium text-ink">Not sure this is the best take?</p>
-                    <p className="text-12 text-ink-muted">
-                      Preview alternative takes on the written copy. Use one, or keep both and let them compete —
-                      nothing is saved until you choose.
-                    </p>
-                  </div>
-                  <Button size="sm" variant="outline" disabled={variantsLoading} onClick={() => void loadVariants()}>
-                    {variantsLoading ? <Busy>Generating…</Busy> : 'See variants'}
-                  </Button>
-                </div>
-                {variants && variants.length > 0 ? (
-                  <ul className="mt-3 grid grid-cols-1 gap-2">
-                    {variants.map((v, i) => (
-                      <li key={i} className="rounded border border-border p-3">
-                        <p className="whitespace-pre-wrap text-13 text-ink">
-                          {v.beats
-                            .filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text')
-                            .map((b) => b.text)
-                            .join('\n\n') || '(no written copy in this take)'}
-                        </p>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <Button
-                            size="sm"
-                            disabled={applyingVariant !== null || splitting !== null}
-                            onClick={() => void applyVariant(i, v.beats)}
-                          >
-                            {applyingVariant === i ? <Busy>Applying…</Busy> : 'Use this'}
-                          </Button>
-                          {/* The two genuinely different things to do with a
-                              take: replace the copy, or keep both and find out.
-                              Only the second is a test. */}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={applyingVariant !== null || splitting !== null}
-                            onClick={() => void splitTest(i, v.beats)}
-                          >
-                            {splitting === i ? <Busy>Setting up…</Busy> : 'Test both'}
-                          </Button>
+              {draft.mediaType === 'video' ? (
+                <>
+                  <VideoSettingsCard
+                    totalSec={sceneTotal ?? localTotal}
+                    footer={
+                      draft.durationBand || hasScenePresets ? (
+                        <div className="mt-[14px] flex flex-wrap items-center justify-between gap-3">
+                          {/* What the scene tools will refuse, said before an edit rather than after. */}
+                          {draft.durationBand ? (
+                            <span className={cn('text-14 font-medium', outsideBand ? 'text-destructive' : 'text-ink-muted')}>
+                              {outsideBand
+                                ? `Outside this format’s ${draft.durationBand[0]}–${draft.durationBand[1]}s`
+                                : `${headroom}s of headroom in ${draft.durationBand[0]}–${draft.durationBand[1]}s`}
+                            </span>
+                          ) : (
+                            <span />
+                          )}
+                          {/*
+                            Intros, outros and bumpers — the three categories that
+                            add a scene rather than change one, so they belong to
+                            the post rather than to a scene card.
+                          */}
+                          {hasScenePresets ? (
+                            <select
+                              value=""
+                              disabled={busyBeatId !== null}
+                              onChange={(e) => {
+                                const chosen = (kitTemplates ?? []).find((t) => t.id === e.target.value);
+                                if (chosen) void applyTemplate(chosen);
+                                e.target.value = '';
+                              }}
+                              className="h-[41px] max-w-[16rem] rounded-[10px] bg-white px-[12px] text-15 font-medium text-ink-muted outline-none shadow-[inset_0_0_0_1px_rgba(131,131,131,0.3)] focus:shadow-[0_0_0_2px_var(--ss-ring)] disabled:opacity-50"
+                              aria-label="Add a scene from a brand preset"
+                            >
+                              <option value="">Add from a brand preset…</option>
+                              {(kitTemplates ?? [])
+                                .filter((t) => t.category !== 'caption' && t.category !== 'lower_third')
+                                .map((t) => (
+                                  <option key={t.id} value={t.id}>
+                                    {KIT_TEMPLATE_LABEL[t.category]}: {t.name}
+                                  </option>
+                                ))}
+                            </select>
+                          ) : null}
                         </div>
-                      </li>
-                    ))}
+                      ) : null
+                    }
+                  />
+                  {/* The rule 25 under the card, the heading 34 under that — y828 / y863 in `DP video`. */}
+                  <Rule className="mt-[25px]" />
+                  <StoryboardHeading
+                    className="mt-[34px]"
+                    onRegenerate={() => void redraftThisPost()}
+                    busy={busy}
+                    steps={<SceneSteps beats={draft.beats} />}
+                  />
+                  <VideoStoryboard
+                    beats={draft.beats}
+                    busy={busyBeatId !== null}
+                    onAddScene={() => setAddingScene((v) => !v)}
+                    addSlot={addingScene ? addSceneForm : null}
+                    renderDetail={(beat, i) => beatRowFor(beat, i, false)}
+                    onRemoveScene={removeScene}
+                    onMoveScene={moveScene}
+                  />
+                </>
+              ) : draft.mediaType === 'carousel' ? (
+                <>
+                  <CarouselChips count={draft.beats.length} />
+                  {/* `DP carousel`'s rule at y610: 18 under the chips, 22 over the heading. */}
+                  <Rule className="mt-[18px]" />
+                  <StoryboardHeading className="mt-[22px]" onRegenerate={() => void redraftThisPost()} busy={busy} />
+                  <CarouselStoryboard
+                    beats={draft.beats}
+                    busy={busyBeatId !== null}
+                    renderDetail={(beat, i) => beatRowFor(beat, i, false)}
+                    onRemoveScene={removeScene}
+                    onMoveScene={moveScene}
+                  />
+                </>
+              ) : (
+                <>
+                  {/*
+                    Image and text: the concept card, then what the prototype
+                    calls the editable prompt. A written post's editable part is
+                    its copy, section by section, and each section keeps its own
+                    "Generate image" — so the copy sits where the prompt box does,
+                    under the same 18/500 label style.
+                  */}
+                  <ConceptCard concept={imageConcept(draft.beats)} onRegenerate={() => void redraftThisPost()} busy={busy} />
+                  <p className="mt-[27px] text-18 font-medium text-ink">Copy (editable)</p>
+                  <ul className="mt-[12px] grid grid-cols-1 gap-3">
+                    {draft.beats.map((beat, i) => beatRowFor(beat, i, true))}
                   </ul>
-                ) : null}
-              </div>
+                  <ImageChips />
+                </>
+              )}
 
-              <div className="rounded-lg border border-border p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="text-13 font-medium text-ink">Want this as a different format?</p>
-                    <p className="text-12 text-ink-muted">Repurpose this post's topic into another playbook — creates a new draft, this one stays as-is.</p>
+              {/* The editing tools the prototypes do not draw, under the work they act on. */}
+              <div className="mt-[24px] grid grid-cols-1 gap-4">
+                {/*
+                  `M10`. One line, naming the beat and what is being asked of which
+                  vendor. No percentage: each generate call is a single request with
+                  no job id to poll, so a bar would be animation over an unknown.
+                */}
+                {stage ? (
+                  <div className={cn(PANEL_CARD, 'py-[14px]')} style={PANEL_CARD_STYLE}>
+                    <SparkLoader
+                      size="inline"
+                      label={`${stage.label} — ${draft.beats.find((b) => b.beatId === stage.beatId)?.label ?? stage.beatId}`}
+                      className="text-15 font-medium text-ink"
+                    />
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => setRepurposeOpen((v) => !v)}>
-                    {repurposeOpen ? 'Cancel' : 'Repurpose'}
-                  </Button>
-                </div>
-                {repurposeOpen ? (
-                  repurposePlaybooks === null ? (
-                    <SparkLoader size="inline" label="Loading formats…" className="mt-3 min-h-10" />
-                  ) : (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {repurposePlaybooks
-                        .filter((p) => p.playbookId !== draft.playbookId)
-                        .map((p) => (
-                          <div key={p.playbookId} className="inline-flex items-center gap-1 rounded-full border border-border pr-1">
-                            <button
-                              type="button"
-                              disabled={repurposing}
-                              onClick={() => void repurposeAs(p.playbookId)}
-                              className="rounded-full px-3 py-1.5 text-13 text-ink hover:bg-surface-muted disabled:opacity-50"
-                            >
-                              {repurposing ? <Busy size={16}>Working…</Busy> : p.name}
-                            </button>
-                            <button
-                              type="button"
-                              title="Why — is this producible for this brand right now?"
-                              onClick={() => void explainPlaybook(p.playbookId)}
-                              className="flex h-5 w-5 items-center justify-center rounded-full text-11 text-ink-muted hover:bg-surface-muted hover:text-ink"
-                            >
-                              ⓘ
-                            </button>
-                          </div>
-                        ))}
-                    </div>
-                  )
                 ) : null}
-                {explainOpenId ? (
-                  explainLoading === explainOpenId ? (
-                    <SparkLoader size="inline" label="Working it out…" className="mt-2 text-12" />
-                  ) : (
-                    <p className="mt-2 text-12 text-ink-muted">{explainSummary[explainOpenId]}</p>
-                  )
-                ) : null}
-              </div>
 
-              {error ? <p className="text-13 text-destructive">{error}</p> : null}
+                {/* `M9` — conversational editing, over the agent runtime. */}
+                <DraftChat
+                  contentItemId={draft.contentItemId}
+                  genomeId={genomeId ?? ''}
+                  disabled={busyBeatId !== null}
+                  onChanged={() => void loadDraft(draft.contentItemId)}
+                />
+
+                <div className={PANEL_CARD} style={PANEL_CARD_STYLE}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className={PANEL_CARD_TITLE}>Not sure this is the best take?</p>
+                      <p className={PANEL_CARD_BODY}>
+                        Preview alternative takes on the written copy. Use one, or keep both and let them compete —
+                        nothing is saved until you choose.
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" disabled={variantsLoading} onClick={() => void loadVariants()}>
+                      {variantsLoading ? <Busy>Generating…</Busy> : 'See variants'}
+                    </Button>
+                  </div>
+                  {variants && variants.length > 0 ? (
+                    <ul className="mt-[14px] grid grid-cols-1 gap-2">
+                      {variants.map((v, i) => (
+                        <li key={i} className="rounded-[10px] bg-white p-[14px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.3)]">
+                          <p className="whitespace-pre-wrap text-15 font-medium text-ink">
+                            {v.beats
+                              .filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text')
+                              .map((b) => b.text)
+                              .join('\n\n') || '(no written copy in this take)'}
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Button
+                              size="sm"
+                              disabled={applyingVariant !== null || splitting !== null}
+                              onClick={() => void applyVariant(i, v.beats)}
+                            >
+                              {applyingVariant === i ? <Busy>Applying…</Busy> : 'Use this'}
+                            </Button>
+                            {/* The two genuinely different things to do with a
+                                take: replace the copy, or keep both and find out.
+                                Only the second is a test. */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={applyingVariant !== null || splitting !== null}
+                              onClick={() => void splitTest(i, v.beats)}
+                            >
+                              {splitting === i ? <Busy>Setting up…</Busy> : 'Test both'}
+                            </Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+
+                <div className={PANEL_CARD} style={PANEL_CARD_STYLE}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className={PANEL_CARD_TITLE}>Want this as a different format?</p>
+                      <p className={PANEL_CARD_BODY}>Repurpose this post's topic into another playbook — creates a new draft, this one stays as-is.</p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => setRepurposeOpen((v) => !v)}>
+                      {repurposeOpen ? 'Cancel' : 'Repurpose'}
+                    </Button>
+                  </div>
+                  {repurposeOpen ? (
+                    repurposePlaybooks === null ? (
+                      <SparkLoader size="inline" label="Loading formats…" className="mt-3 min-h-10" />
+                    ) : (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {repurposePlaybooks
+                          .filter((p) => p.playbookId !== draft.playbookId)
+                          .map((p) => (
+                            <div key={p.playbookId} className="inline-flex items-center gap-1 rounded-full bg-white pr-1 shadow-[inset_0_0_0_1px_rgba(131,131,131,0.4)]">
+                              <button
+                                type="button"
+                                disabled={repurposing}
+                                onClick={() => void repurposeAs(p.playbookId)}
+                                className="rounded-full px-[14px] py-[8px] text-14 font-medium text-ink hover:bg-surface-muted disabled:opacity-50"
+                              >
+                                {repurposing ? <Busy size={16}>Working…</Busy> : p.name}
+                              </button>
+                              <button
+                                type="button"
+                                title="Why — is this producible for this brand right now?"
+                                onClick={() => void explainPlaybook(p.playbookId)}
+                                className="flex h-5 w-5 items-center justify-center rounded-full text-11 text-ink-muted hover:bg-surface-muted hover:text-ink"
+                              >
+                                ⓘ
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    )
+                  ) : null}
+                  {explainOpenId ? (
+                    explainLoading === explainOpenId ? (
+                      <SparkLoader size="inline" label="Working it out…" className="mt-2 text-12" />
+                    ) : (
+                      <p className="mt-[10px] text-14 text-ink-muted">{explainSummary[explainOpenId]}</p>
+                    )
+                  ) : null}
+                </div>
+
+                {error ? <p className="text-13 text-destructive">{error}</p> : null}
+              </div>
 
               {/*
                 ── The editor's actions, in flow ─────────────────────────────
@@ -1966,7 +1976,8 @@ export function DraftPanel({
                 is sized to its label rather than the prototype's 190 because
                 this label is longer.
               */}
-              <div className="flex flex-wrap items-center justify-between gap-4 pt-[6px]">
+              <Rule className="mt-[34px]" />
+              <div className="mt-[19px] flex flex-wrap items-center justify-between gap-4">
                 <button
                   type="button"
                   onClick={() => setPhase('preview')}
@@ -2285,4 +2296,60 @@ function summariseBeats(beats: ResolvedBeat[]): string | undefined {
     .map((s) => s.trim())
     .filter(Boolean);
   return words.length > 0 ? words.join(' ') : undefined;
+}
+
+/**
+ * What the image concept card says for a written post: the prompt its picture
+ * was made from, when it has one. The copy is right below it, section by
+ * section, so repeating that here would say the same thing twice.
+ */
+function imageConcept(beats: ResolvedBeat[]): string {
+  const image = beats.find((b) => b.kind === 'generated_image');
+  if (image && image.kind === 'generated_image' && image.prompt.trim()) return image.prompt.trim();
+  return 'No image yet — use Generate image on a section below to make one.';
+}
+
+/**
+ * `DP video`'s numbered squares beside "AI storyboard" — 46x56, r4.77, a 30%
+ * grey ring, the number 12/600.
+ *
+ * One per scene, and each jumps to its card, which is what a row of numbers
+ * beside a long list is for. The green dot the design puts on the first is
+ * read as "this scene has its footage": it marks every scene whose media has
+ * been generated, and the number turns ink to match.
+ */
+function SceneSteps({ beats }: { beats: ResolvedBeat[] }) {
+  if (beats.length < 2) return null;
+  return (
+    <ol className="flex flex-wrap items-center gap-[9px]">
+      {beats.map((b, i) => {
+        const made = b.kind !== 'text';
+        return (
+          <li key={b.beatId}>
+            <button
+              type="button"
+              onClick={() =>
+                document.getElementById(sceneAnchor(b.beatId))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+              aria-label={`Go to scene ${i + 1}`}
+              className={cn(
+                'relative flex h-[56px] w-[46px] items-center justify-center rounded-[4.769px] text-12 font-semibold hover:bg-surface-muted',
+                made ? 'text-ink' : 'text-ink-muted',
+              )}
+              style={{ boxShadow: 'inset 0 0 0 0.954px rgba(131,131,131,0.3)' }}
+            >
+              {made ? (
+                <span
+                  aria-hidden
+                  className="absolute -left-[4px] -top-[4px] h-[11px] w-[11px] rounded-full"
+                  style={{ background: 'var(--ss-scene-cta)' }}
+                />
+              ) : null}
+              {i + 1}
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
