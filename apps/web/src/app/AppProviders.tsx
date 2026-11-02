@@ -2,6 +2,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { NotificationProvider } from '@/lib/notifications';
 import { SetupPromptHost } from '@/components/setup/SetupPromptHost';
 import { NotificationToasts } from '@/components/notifications/NotificationToasts';
+import { BrandScope } from '@/components/shell/BrandScope';
 
 /**
  * Everything the signed-in product needs wrapped around it — and nothing the
@@ -74,7 +75,8 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         See `lib/notifications.tsx`.
       */}
       <NotificationProvider>
-        {children}
+        {/* Remounts the screen when the brand switcher picks another brand. */}
+        <BrandScope>{children}</BrandScope>
         <NotificationToasts />
         {/* Missing setup — a CTA, an account, consent — asked for in place. See `lib/setupPrompt.ts`. */}
         <SetupPromptHost />

@@ -18,6 +18,7 @@ import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useAuth } from '@clerk/nextjs';
 import { invoke } from '@/lib/tools';
 import { readSelectedGenome, writeSelectedGenome } from '@/lib/selectedGenome';
+import { announceBrandChange } from './BrandScope';
 
 /**
  * Brand switcher. This is the seam where auth and the shell actually meet, and
@@ -75,8 +76,23 @@ export function BrandSwitcher() {
     // Cookie shape and lifetime now live in one module, because four files used
     // to parse this by hand and the rule they were all missing had nowhere to go.
     if (orgId) writeSelectedGenome(orgId, genomeId);
+    const changed = genomeId !== activeId;
     setActiveId(genomeId);
-    if (refresh) router.refresh();
+    if (!refresh) return;
+    if (changed) {
+      /*
+        A `?draft=` names a post in the brand being left; reopening it under the
+        new one would only say "No such draft". Dropped before the remount.
+      */
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('draft')) {
+        url.searchParams.delete('draft');
+        router.replace(url.pathname + url.search);
+      }
+      // Client panels read the brand on mount; this remounts them. See `BrandScope`.
+      announceBrandChange();
+    }
+    router.refresh();
   }
 
   if (genomes === null) {
